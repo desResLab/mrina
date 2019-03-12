@@ -37,7 +37,7 @@ def getInputData(directory, data):
 	for k in data:
 		filename = directory + "pout" + str(k) + "_0.vtk"
 		velocity, concentration = getInput(reader,filename)
-		data = np.concatenate((velocity,concentration),axis=0)
+		data = np.concatenate((concentration,velocity),axis=0)
 		samples =np.append(samples,np.expand_dims(data,axis=0), axis=0)
 	return samples
 
@@ -48,22 +48,22 @@ def getVenc(vel):
     return venc
 
 def getKspace(sample, venc):
-    #return the complex images
+    #return the fft of the complex images
     numSamples = sample.shape[0]
     mag_samples = np.empty((0,) + sample.shape[2:])
     vel_samples = np.empty((0,3,) + sample.shape[2:])
     for n in range(numSamples):
-        magnitude = sample[n,3]
-        magk = np.zeros(magnitude.shape,dtype=complex)
-        vel = sample[n,0:3]
-        velk = np.zeros(vel.shape,dtype=complex) #reference complex images for computing velocities
+        magnitude = sample[n,0]
+        y0 = np.zeros(magnitude.shape,dtype=complex)
+        vel = sample[n,1:4]
+        yk = np.zeros(vel.shape,dtype=complex) #reference complex images for computing velocities
         #2d fourier transform each slice for k space
         for k in range(magnitude.shape[0]): #number of 2d images in grid
-            magk[k] = fft.fft2(magnitude[k])
+            y0[k] = fft.fft2(magnitude[k])
             for j in range(0,3):
-                velk[j,k] = np.multiply(magk[k], np.exp((2*math.pi*1j/venc)*vel[j,k]))
-        mag_samples = np.append(mag_samples, np.expand_dims(magk,axis=0), axis=0)
-        vel_samples = np.append(vel_samples, np.expand_dims(velk,axis=0), axis=0)
+                yk[j,k] = fft.fft2(np.multiply(magnitude[k], np.exp((2*math.pi*1j/venc)*vel[j,k])))
+        mag_samples = np.append(mag_samples, np.expand_dims(y0,axis=0), axis=0)
+        vel_samples = np.append(vel_samples, np.expand_dims(yk,axis=0), axis=0)
     return mag_samples, vel_samples
 
 def undersamplingMask(shape,p,type='bernoulli'):

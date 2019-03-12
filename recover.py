@@ -7,6 +7,7 @@ import numpy as np
 import os
 import math
 from multiprocessing import Process
+from genSamples import getKspace,getVenc
 home = os.getenv('HOME')
 
 def recover(fourier_file, pattern):
@@ -54,10 +55,11 @@ def recover_vel(recovered, venc):
     for n in range(0,recovered.shape[0]):
         for k in range(1,4):
             for j in range(0, recovered.shape[2]):
-                v = fft.fft2(recovered[n,k,j])
-                m = fft.fft2(mag[n,j])
+                m = mag[n,j]
+                v = recovered[n,k,j]
                 v = venc/(2*math.pi)*np.log(np.divide(v,m)).imag
                 vel[n,k-1,j] = v
+    mag = np.abs(mag)
     return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
 
 if __name__ == '__main__':
@@ -70,5 +72,6 @@ if __name__ == '__main__':
     #    Process(target=recover, args=p).start()
     recovered = recover(fourier_file, pattern)
     imgs = recover_vel(recovered, np.load(dir + 'venc.npy'))
+    orig = np.load(dir + 'imgs.npy')
 
     print('mse between original and recovered images: ', (np.square(imgs - orig)).mean())
