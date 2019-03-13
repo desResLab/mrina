@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../')
 from CSRecoverySuite import CSRecovery, Operator4dFlow, pywt2array, array2pywt, crop
 import cv2
 import matplotlib.pyplot as plt
@@ -10,14 +12,6 @@ import os
 im      = cv2.imread('nd_small.jpg', cv2.IMREAD_GRAYSCALE);
 im = crop(im)      #crop for multilevel wavelet decomp. array transform
 imsz    = im.shape;
-if im.shape[0] % 2 !=0:
-    newrow = np.zeros(im.shape[1])
-    im = np.vstack([im, newrow])
-if im.shape[1] % 2 != 0:
-    newcol = np.zeros(im.shape[0])
-    print(newcol.shape)
-    print(np.expand_dims(newcol, axis=1).shape)
-    im = np.hstack([im, np.expand_dims(newcol,axis=1)])
 plt.figure();
 plt.imshow(im, cmap='gray');
 plt.title('true image');
@@ -37,7 +31,6 @@ delta       = 0.75;
 #   Sampling set
 omega       = np.where( np.random.uniform(0, 1, imsz) < delta, True, False );
 # 4dFlow Operator
-print(omega)
 A           = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=omega, waveletName='haar', waveletMode='periodic' );
 # True data (recall A takes as input wavelet coefficients)
 yim         = A.eval( wim, 1 );
@@ -64,12 +57,38 @@ eta             = 1E-3 * imNrm;
 cswim, fcwim    = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=2, method='pgdl1');
 csim            = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic');
 
+# Covariance from adding noise with fixed undersampling pattern
+stdev = 1
+noise = np.random.normal(scale=stdev, size=im.shape) + 1j*np.random.normal(scale=stdev, size=im.shape)
+fim = fft.fft2(im) + noise
+imnoise = fft.ifft2(fim)
+wim         = pywt2array( pywt.wavedec2(fft.ifft2(fim), wavelet='haar', mode='periodic'), imsz);
+yim         = A.eval( wim, 1 );
+cswim, fcwim    = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=2, method='pgdl1');
+csimnoise            = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic');
+
+cv = np.cov(noise, csimnoise-csim)#np.cov(csim, csimnoise)
+plt.figure();
+plt.imshow(np.abs(cv), cmap='gray')
+plt.title('covariance')
+plt.draw()
+
 # Summary statistics
 print('l1-norm (true)', np.linalg.norm(wim.ravel(), 1))
 print('l1-norm (recovered)', np.linalg.norm(cswim.ravel(), 1))
 print('Reconstruction error:', np.linalg.norm((cswim - wim).ravel() , 2))
 print('Residual:', np.linalg.norm((A.eval(cswim, 1) - yim).ravel() , 2))
 print('Residual (true):', np.linalg.norm((A.eval(wim, 1) - yim).ravel() , 2))
+
+plt.figure();
+plt.imshow(np.abs(imnoise), cmap='gray');
+plt.title('noisy true image (before undersampling)');
+plt.draw();
+
+plt.figure();
+plt.imshow(np.abs(imnoise-im), cmap='gray');
+plt.title('diff between noisy image and original');
+plt.draw();
 
 # Show recovered picture
 plt.figure();
