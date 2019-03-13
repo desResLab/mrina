@@ -12,8 +12,33 @@ import numpy.linalg as la
 import sigpy.mri as mri
 home = os.getenv('HOME')
 #home = 'C:/Users/Lauren/'
-#sys.path.insert('../unet/unet/')
-#import unet as u
+
+def next_prime():
+    def is_prime(num):
+    #"Checks if num is a prime value"
+        for i in range(2,int(num**0.5)+1):
+            if(num % i)==0: return False
+            return True
+    prime = 3
+    while(1):
+        if is_prime(prime):
+            yield prime
+        prime += 2
+def vdc(n, base=2):
+    vdc, denom = 0, 1
+    while n:
+        denom *= base
+        n, remainder = divmod(n, base)
+        vdc += remainder/float(denom)
+    return vdc
+def halton_sequence(size, dim):
+    seq = []
+    primeGen = next_prime()
+    next(primeGen)
+    for d in range(dim):
+        base = next(primeGen)
+        seq.append([vdc(i, base) for i in range(size)])
+    return seq
 
 def getInput(reader, filename):
 	reader.SetFileName(filename)
@@ -72,9 +97,17 @@ def undersamplingMask(shape,p,type='bernoulli'):
         #to keep undersampling the same for each slice
         if type=='bernoulli':
             indices = bernoulli.rvs(size=(shape[2], shape[3]), p=p)
-        else: #poisson
+        elif type =='poisson': #poisson
             accel =  1/p  #accel: Target acceleration factor. Greater than 1.
             indices = mri.poisson((shape[2],shape[3]), accel)
+        else: #halton sequence
+            numPts = int(p*shape[2]*shape[3])
+            pts = np.transpose(np.asarray(halton_sequence(numPts, 2)))
+            pts[:,0] = pts[:,0]*shape[2]
+            pts[:,1] = pts[:,1]*shape[3]
+            pts = pts.astype(int)
+            indices = np.zeros((shape[2],shape[3]))
+            indices[pts[:,0], pts[:,1]] = 1
         mask[k] = np.ma.make_mask(indices)
     return mask
 
@@ -126,11 +159,11 @@ def samples(directory, numSamples, p=0.5, uType='bernoulli', npydir=home +'/Docu
         noisy,snr = add_noise(kspace,noisePercent)
         noisy = undersample(noisy,mask)
         noisy = np.concatenate((np.expand_dims(noisy[0], axis=1), noisy[1]), axis=1)
-        np.save(npydir + 'noisy_noise' + str(int(noisePercent*100)) + '_p' + str(int(p*100)), noisy)
-        np.save(npydir + 'snr_noise' + str(int(noisePercent*100)) + '_p' + str(int(p*100)), snr)
+        np.save(npydir + 'noisy_noise' + str(int(noisePercent*100)) + '_p' + str(int(p*100)) + uType, noisy)
+        np.save(npydir + 'snr_noise' + str(int(noisePercent*100)) + '_p' + str(int(p*100)) + uType, snr)
 
 if __name__ == '__main__':
 
     #directory = home + '/apps/undersampled/vtk/'
 	directory = home + "/Documents/undersampled/vtk/"
-	samples(directory, 1)
+	samples(directory, 1, uType='halton')
