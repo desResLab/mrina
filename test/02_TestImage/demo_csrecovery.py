@@ -172,7 +172,7 @@ else:
 
 # Show recovered picture
 plt.figure();
-plt.imshow(np.absolute(csimnoise), cmap='gray', vmin=0, vmax=np.linalg.norm( csim.ravel(), np.inf))
+plt.imshow(np.absolute(csimnoise), cmap='gray', vmin=0, vmax=np.linalg.norm( csimnoise.ravel(), np.inf))
 plt.title('reconstructed image')
 if(showAtTheEnd):
   plt.draw()

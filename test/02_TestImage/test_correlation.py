@@ -11,10 +11,9 @@ EPSILON = 0.5
 plot = False
 def circle(shape, center, dist):
     #probably a more efficient way to determine this
-    #should cut down x,y range iterates at least
     pts = []
-    for x in range(shape[0]):
-        for y in range(shape[1]):
+    for x in range(max(0,center[0]-dist), min(center[0]+dist, shape[0])):#shape[0]):
+        for y in range(max(0,center[1]-dist), min(center[1]+dist, shape[1])):
             if abs((x-center[0])**2 + (y-center[1])**2- dist**2) < EPSILON**2:
                 pts.append([x, y])
     return pts
@@ -40,19 +39,23 @@ if plot:
     plt.title('diff between actual')
     plt.draw()
 print(samples.shape)
-size = 150
+size = 200
 coeff = np.zeros(size)
 for k in range(1, size+1):
     pt1 = (random.randint(0, samples.shape[1]-1), random.randint(0, samples.shape[2]-1))
-    dir = (random.choice([-1,1]), random.choice([-1,1]))
-    #need some check to make sure pt1 isn't situated so that no other pt can be found
-    # (for larger distances)
-    pt2 = random.choice(circle(samples.shape[1:], pt1, k))
+    choices = circle(samples.shape[1:], pt1, k)
+    print(choices)
+    while not choices: #make sure there were points within range for distance
+        pt1 = (random.randint(0, samples.shape[1]-1), random.randint(0, samples.shape[2]-1))
+        choices = circle(samples.shape[1:], pt1, k)
+    pt2 = random.choice(choices)
     if k % 50 == 0:
         pts = np.asarray(circle(samples.shape[1:], pt1, k))
         plt.figure()
         plt.scatter(pts[:,0], pts[:,1])
         plt.scatter(pt1[0], pt1[1], c='r')
+        plt.xlim(0,256)
+        plt.ylim(0,256)
         plt.title('dist' + str(k))
         plt.draw()
     var1 = np.abs(samples[:,pt1[0], pt1[1]])
