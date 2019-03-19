@@ -14,6 +14,8 @@ FX          = np.zeros(( n, n ))
 FX[ Omega ] = 1 / np.count_nonzero( Omega )
 X           = n**2 * fft.fftshift( fft.ifft2( FX ) )
 
+print('delta 1 ',np.max(X))
+
 fs=8
 plt.rc('font',  family='serif')
 plt.rc('xtick', labelsize='x-small')
@@ -25,14 +27,14 @@ plt.imshow(np.absolute( Omega ), cmap='gray', vmin=0, vmax=1/np.count_nonzero( O
 plt.xlabel('Width',fontsize=fs)
 plt.ylabel('Height',fontsize=fs)
 plt.tick_params(labelsize=fs)
-plt.savefig('linRec_01_omega.pdf')
+plt.savefig('linRec_01_omega.png')
 
 plt.figure(figsize=(4,3))
 plt.imshow(np.absolute( X ), cmap='jet', vmin=0, vmax=1, aspect='equal')
 plt.xlabel('Width',fontsize=fs)
 plt.ylabel('Height',fontsize=fs)
 plt.tick_params(labelsize=fs)
-plt.savefig('linRec_01_x.pdf')
+plt.savefig('linRec_01_x.png')
 
 # sampling ratio
 delta       = 0.0001
@@ -41,13 +43,15 @@ FX          = np.zeros(( n, n ))
 FX[ Omega ] = 1 / np.count_nonzero( Omega )
 X           = n**2 * fft.fftshift( fft.ifft2( FX ) )
 
+print('delta 2 ',np.max(X))
+
 plt.figure(figsize=(4,3))
 plt.imshow(np.absolute( Omega ), cmap='gray', vmin=0, vmax=1/np.count_nonzero( Omega ))
 plt.colorbar()
 plt.xlabel('Width',fontsize=fs)
 plt.ylabel('Height',fontsize=fs)
 plt.tick_params(labelsize=fs)
-plt.savefig('linRec_02_omega.pdf')
+plt.savefig('linRec_02_omega.png')
 
 plt.figure(figsize=(4,3))
 plt.imshow(np.absolute( X ), cmap='jet', vmin=0, vmax=1, aspect='equal')
@@ -55,4 +59,4 @@ plt.colorbar()
 plt.xlabel('Width',fontsize=fs)
 plt.ylabel('Height',fontsize=fs)
 plt.tick_params(labelsize=fs)
-plt.savefig('linRec_02_x.pdf')
+plt.savefig('linRec_02_x.png')
