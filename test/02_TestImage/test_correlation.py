@@ -4,11 +4,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 home = os.getenv('HOME')
-num_samples = 100
+num_samples = 100 #number of samples in file
 noise_percent = 0.1
 dir = home + "/Documents/undersampled/npy/"
 EPSILON = 0.5
+n=100 #number of samples to include
 plot = False
+
+fs=8
+plt.rc('font',  family='serif')
+plt.rc('xtick', labelsize='x-small')
+plt.rc('ytick', labelsize='x-small')
+plt.rc('text',  usetex=True)
+
 def circle(shape, center, dist):
     #probably a more efficient way to determine this
     pts = []
@@ -18,8 +26,8 @@ def circle(shape, center, dist):
                 pts.append([x, y])
     return pts
 samples = np.load(dir + 'ndrec_noise'+str(int(noise_percent*100))+'_n'+str(num_samples) + '.npy')
-print(len(samples))
 samples = np.concatenate(samples, axis=0)
+samples = samples[0:n]
 if plot:
     plt.figure()
     plt.imshow(np.abs(samples[0]), cmap='gray')
@@ -59,7 +67,7 @@ for k in range(1, size+1):
     for j in range(num_pts):
         pt1, pt2 = select_points(k)
         while (pt1,pt2) in points: #select new points if we've already looked at these
-            pt1, pt2 = select_points(k)
+            pt1, pt2 = select_points(k) #todo; need to recognize order of points is irrelevant
         points[j] = (pt1,pt2)
         if k % 50 == 0 and j == 1:
             pts = np.asarray(circle(samples.shape[1:], pt1, k))
@@ -72,18 +80,26 @@ for k in range(1, size+1):
             plt.draw()
         var1 = np.abs(samples[:,pt1[0], pt1[1]])
         var2 = np.abs(samples[:,pt2[0], pt2[1]])
-        coeff[k-1, j] = np.corrcoef(np.asarray([var1, var2]))[0,1]
+        coeff[k-1, j] = np.corrcoef(np.asarray([var1, var2]))[0,1]**2#R^2 correlation
     corravg[k-1] = np.mean(coeff[k-1])
-plt.figure()
+plt.figure(figsize=(4,3))
 plt.plot(range(1,size+1), np.abs(corravg))
-plt.xlabel('distance')
-plt.ylabel('abs of correlation coefficient')
-plt.title('Avg for ' + str(num_pts) + ' points at each distance')
-plt.draw()
-
-plt.figure()
-plt.boxplot(coeff.T)
-plt.xlabel('distance')
-plt.ylabel('abs of correlation coefficient')
-plt.title('boxplot')
-plt.show()
+plt.xlabel('Distance',fontsize=fs)
+plt.ylabel('Correlation Coefficient ($R^2$)',fontsize=fs)
+plt.tick_params(labelsize=fs)
+plt.savefig('corrsqravg' + str(num_pts) + '_noise' + str(noise_percent*100) + '_n'+str(n) + '.png')
+#plt.draw()
+spc = 5
+plt.figure(figsize=(4,3))
+plt.boxplot(np.abs(coeff[::spc]).T, sym='.')
+sz = len(coeff[::spc])
+plt.xticks(range(sz+1),range(0, size+1, spc))
+ax = plt.axes()
+for index, label in enumerate(ax.xaxis.get_ticklabels()):
+    if index % 4 != 0 and index!=sz:
+        label.set_visible(False)
+plt.xlabel('Distance',fontsize=fs)
+plt.ylabel('Correlation Coefficient ($R^2$)',fontsize=fs)
+plt.tick_params(labelsize=fs)
+plt.savefig('corrsqrboxplt' + str(num_pts) + '_noise' + str(noise_percent*100) + '_n'+str(n) + '.png')
+#plt.show()
