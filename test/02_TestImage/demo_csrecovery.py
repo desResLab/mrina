@@ -8,6 +8,7 @@ import pywt
 import numpy as np
 import math
 import os
+from scipy.stats import norm,bernoulli
 from multiprocessing import Process, cpu_count, Manager
 home = os.getenv('HOME')
 
@@ -34,8 +35,9 @@ def recover(imgs,eta, A, processnum, return_dict):
     def recover(im,imsz,eta):
         wim          = pywt2array( pywt.wavedec2(im, wavelet='haar', mode='periodic'), imsz)
         yim          = A.eval( wim, 1 )
+        print('l2 norm of yim: ', np.linalg.norm(yim.ravel(), 2))
         wsz = wim.shape
-        cswim, fcwim = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=0, method='pgdl1')
+        cswim, fcwim = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1')
         csim    = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic')
         return csim
     cs = np.zeros(imgs.shape,dtype=complex)
@@ -44,6 +46,17 @@ def recover(imgs,eta, A, processnum, return_dict):
         cs[k] = recover(imgs[k], imsz, eta)
     return_dict[processnum] = cs
     return cs
+
+def get_eta(im, imNrm, noise_percent, m):
+    avgnorm = imNrm/math.sqrt(im.size)
+    stdev = noise_percent * avgnorm
+    print('stdev', stdev)
+    print('noise_percent', noise_percent)
+    rv = norm()
+    #ppf: inverse of cdf
+    eta = stdev*math.sqrt(2*m + 2*math.sqrt(m)*rv.ppf(0.95))
+    print('eta: ', eta)
+    return eta
 
 # Load data
 im   = cv2.imread('nd_small.jpg', cv2.IMREAD_GRAYSCALE)
@@ -73,7 +86,7 @@ else:
 #   Sampling fraction
 delta       = 0.75
 #   Sampling set
-omega       = np.where( np.random.uniform(0, 1, imsz) < delta, True, False )
+omega = np.ma.make_mask(bernoulli.rvs(size=imsz, p=delta))
 # 4dFlow Operator
 A           = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=omega, waveletName='haar', waveletMode='periodic' )
 # True data (recall A takes as input wavelet coefficients)
@@ -105,7 +118,7 @@ else:
 #   proportional to the noise variance
 print('--- CS Recovery')
 imNrm        = np.linalg.norm(im.ravel(), 2)
-eta          = 1E-3 * imNrm
+eta = get_eta(im, imNrm, noise_percent, imsz[0])
 #cswim, fcwim = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=2, method='pgdl1')
 #csim         = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic')
 
@@ -127,6 +140,7 @@ if csrecover:
         p = Process(target=recover, args=(s[n:n+interval], eta, A, int(n/interval), return_dict))
         jobs.append(p)
         p.start()
+    print('num of processes:', len(jobs))
     for job in jobs:
         job.join()
     print(return_dict.values())
