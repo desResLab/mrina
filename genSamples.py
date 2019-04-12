@@ -10,6 +10,7 @@ import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
 import sigpy.mri as mri
+
 home = os.getenv('HOME')
 #home = 'C:/Users/Lauren/'
 
@@ -41,30 +42,35 @@ def halton_sequence(size, dim):
     return seq
 
 def getInput(reader, filename):
-	reader.SetFileName(filename)
-	reader.Update()
-	polyDataModel = reader.GetOutput()
-	dim = polyDataModel.GetDimensions()
-	data = polyDataModel.GetPointData()
-	velocity = vtk_to_numpy(data.GetArray('velocity'))
-	velocity = np.reshape(velocity, (3,) + dim)
-	concentration = vtk_to_numpy(data.GetScalars('concentration'))
-	concentration = np.reshape(concentration, (1,) + dim)
-	return velocity,concentration
+    reader.SetFileName(filename)
+    reader.Update()
+    polyDataModel = reader.GetOutput()
+    dims = polyDataModel.GetDimensions()
+    data = polyDataModel.GetPointData()
+    velocity = vtk_to_numpy(data.GetArray('velocity'))
+    velocity = np.reshape(velocity, (dims[2], dims[1], dims[0],3))
+    velocity = np.transpose(velocity, (3,2,1,0))
+    concentration = vtk_to_numpy(data.GetScalars('concentration'))
+    concentration = np.reshape(concentration, (dims[2], dims[1], dims[0],1))
+    concentration = np.transpose(concentration, (3,2,1,0))
+    return velocity,concentration
 
-def getInputData(directory, data):
-	reader = vtk.vtkStructuredPointsReader()
-	reader.SetFileName(directory + "pout0_0.vtk")
-	reader.ReadAllVectorsOn()
-	reader.ReadAllScalarsOn()
-	reader.Update()
-	samples = np.empty((0,4,16,16,16))
-	for k in data:
-		filename = directory + "pout" + str(k) + "_0.vtk"
-		velocity, concentration = getInput(reader,filename)
-		data = np.concatenate((concentration,velocity),axis=0)
-		samples =np.append(samples,np.expand_dims(data,axis=0), axis=0)
-	return samples
+def getInputData(directory, nums):
+    reader = vtk.vtkRectilinearGridReader()#vtk.vtkStructuredPointsReader()
+    reader.SetFileName(directory + "pout0_0.vtk")
+    reader.ReadAllVectorsOn()
+    reader.ReadAllScalarsOn()
+    reader.Update()
+    velocity, concentration = getInput(reader,directory + "pout0_0.vtk")
+    data = np.concatenate((concentration,velocity),axis=0)
+    samples = np.empty((0,) + data.shape)
+    print(samples.shape)
+    for k in nums:
+        filename = directory + "pout" + str(k) + "_0.vtk"
+        velocity, concentration = getInput(reader,filename)
+        data = np.concatenate((concentration,velocity),axis=0)
+        samples =np.append(samples,np.expand_dims(data,axis=0), axis=0)
+    return samples
 
 def getVenc(vel):
     mx = np.amax(np.fabs(vel))
@@ -72,7 +78,7 @@ def getVenc(vel):
     venc = mx*3
     return venc
 
-def getKspace(sample, venc):
+def getKspace(sample, venc, sliceIndex=0):
     #return the fft of the complex images
     numSamples = sample.shape[0]
     mag_samples = np.empty((0,) + sample.shape[2:])
@@ -119,29 +125,27 @@ def undersample(kspace, mask):
     return mag, vel
 
 def add_noise(kspace,noise):
-    #noise is a percentage of how much noise to be added
+    #noise param is a percentage of how much noise to be added
     mag,vel=kspace
-    print('add noise')
-    #print(mag)
     snr = np.zeros((mag.shape[0],4))
     for k in range(0, mag.shape[0]):
-        #print(mag[k,:].shape)
         avgnorm = la.norm(mag[k,:])/math.sqrt(mag[k,:].size)
         stdev = noise * avgnorm
-        #print(avgnorm, stdev, la.norm(vel[k,0]))
         snr[k,0] = math.pow(avgnorm/stdev,2)
         mag[k,:] = mag[k,:] + np.random.normal(scale=stdev, size=mag.shape[1:]) + 1j*np.random.normal(scale=stdev, size=mag.shape[1:])
         for j in range(0,3):
             avgnorm = la.norm(vel[k,j,:])/math.sqrt(vel[k,j,:].size)
-            #print(avgnorm,stdev, la.norm(vel[k,j,0]))
             stdev = noise * avgnorm
             snr[k,j+1] = math.pow(avgnorm/stdev,2)
             vel[k,j,:] = vel[k,j,:] + np.random.normal(scale=stdev, size=vel.shape[2:]) + 1j*np.random.normal(scale=stdev, size=vel.shape[2:])
     return (mag,vel),snr
 
-def samples(directory, numSamples, p=0.5, uType='bernoulli', npydir=home +'/Documents/undersampled/npy/'):
+def samples(directory, numSamples, p=0.5, uType='bernoulli', sliceIndex=0,npydir=home +'/Documents/undersampled/npy/'):
+    #p: percent not sampled, uType: bernoulli, poisson, halton, sliceIndex= 0,1,2 where to slice in grid
+    #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
     print(range(0,numSamples))
     inp = getInputData(directory, range(0,numSamples))
+    inp = np.moveaxis(inp, 2+sliceIndex, 2)
     np.save(npydir + 'imgs.npy', inp)
     venc = getVenc(inp[:,1:,:])
     np.save(npydir + 'venc.npy', venc)
@@ -157,7 +161,7 @@ def samples(directory, numSamples, p=0.5, uType='bernoulli', npydir=home +'/Docu
         print('percent',noisePercent)
         print(kspace[0].shape, kspace[1].shape)
         noisy,snr = add_noise(kspace,noisePercent)
-        noisy = undersample(noisy,mask)
+        #noisy = undersample(noisy,mask)
         noisy = np.concatenate((np.expand_dims(noisy[0], axis=1), noisy[1]), axis=1)
         np.save(npydir + 'noisy_noise' + str(int(noisePercent*100)) + '_p' + str(int(p*100)) + uType, noisy)
         np.save(npydir + 'snr_noise' + str(int(noisePercent*100)) + '_p' + str(int(p*100)) + uType, snr)
@@ -165,5 +169,6 @@ def samples(directory, numSamples, p=0.5, uType='bernoulli', npydir=home +'/Docu
 if __name__ == '__main__':
 
     #directory = home + '/apps/undersampled/vtk/'
-	directory = home + "/Documents/undersampled/vtk/"
-	samples(directory, 1, uType='halton')
+	#directory = home + "/Documents/undersampled/vtk/"
+    directory = home + "/Documents/poiseuille/256/"
+    samples(directory, 1, p=0.1, uType='bernoulli',sliceIndex=2,npydir=home+"/Documents/undersampled/poiseuille/npy/")

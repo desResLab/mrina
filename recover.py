@@ -6,50 +6,79 @@ import pywt
 import numpy as np
 import os
 import math
-from multiprocessing import Process
+import sys
+from multiprocessing import Process, cpu_count, Manager
 from genSamples import getKspace,getVenc
+from scipy.stats import norm,bernoulli
+
 home = os.getenv('HOME')
 
-def recover(fourier_file, pattern):
+def get_eta(im, imNrm, noise_percent, m):
+    avgnorm = imNrm/math.sqrt(im.size)
+    stdev = noise_percent * avgnorm
+    print('stdev', stdev)
+    print('noise_percent', noise_percent)
+    rv = norm()
+    #ppf: inverse of cdf
+    eta = stdev*math.sqrt(2*m + 2*math.sqrt(m)*rv.ppf(0.95))
+    print('eta: ', eta)
+    return eta
+
+def recover(noisy, original, wsz, processnum, return_dict):
+    def recover(kspace,imsz,eta,omega):
+        print('shape',kspace.shape)
+        #im = crop(im)      #crop for multilevel wavelet decomp. array transform
+        wim          = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet='haar', mode='periodic'), imsz)
+        wsz = wim.shape
+        A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName='haar', waveletMode='periodic' )
+        yim          = A.eval( wim, 1 )
+        print('l2 norm of yim: ', np.linalg.norm(yim.ravel(), 2))
+        cswim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1',maxItns=4)
+        if isinstance(cswim, tuple):
+            cswim = cswim[0] #for the case where ynrm is less than eta
+        csim    = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic')
+        return csim
+    cs = np.zeros(noisy.shape,dtype=complex)
+    imsz = noisy.shape[3:]
+    for n in range(0,noisy.shape[0]):
+        omega = crop(pattern[n]);
+        print('omega', omega.shape)
+        for k in range(0,4):
+            for j in range(0, noisy.shape[2]):
+                im = original[n,k,j]
+                imNrm=np.linalg.norm(im.ravel(), 2)
+                eta = get_eta(im, imNrm, noise_percent, imsz[0])
+                cs[n,k,j] = recover(noisy[n,k,j], imsz, eta, omega)
+
+    return_dict[processnum] = cs
+    return cs
+
+def recoverAll(fourier_file, orig_file, pattern, c=1):
 	# Load data
     data = np.load(fourier_file)
-    #pattern = np.load(undersample_file)
+    original = np.load(orig_file)
     shp = data.shape[0:3] + crop(np.zeros(data.shape[3:])).shape
     recovered = np.empty(shp,dtype=np.complex64)
     print(shp)
     print(pattern.shape)
-
-    for n in range(0,data.shape[0]):
-        omega = crop(pattern[n]);
-        for k in range(0,4):
-            for j in range(0, data.shape[2]):
-
-                im      = data[n,k,j];
-                im = crop(im)      #crop for multilevel wavelet decomp. array transform
-                imsz    = im.shape;
-
-                # Wavelet Parameters
-                wim         = pywt2array( pywt.wavedec2(im, wavelet='haar', mode='periodic'), imsz);
-                wsz         = wim.shape;
-
-                # 4dFlow Operator
-                A           = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=omega, waveletName='haar', waveletMode='periodic' );
-                # True data (recall A takes as input wavelet coefficients)
-                yim         = A.eval( wim, 1 );
-
-                # Recovery via CSRecovery
-                #   Here we choose \eta as a fraction of the true image. In general it is
-                #   proportional to the noise variance
-                imNrm           = np.linalg.norm(im.ravel(), 2);
-                eta             = 1E-3 * imNrm;
-                cswim, fcwim    = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=0, method='pgdl1', maxItns=4);
-                csim            = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic');
-                recovered[n,k,j] = csim
-    #print(recovered)
+    interval = max(int(data.shape[0]/c),1)
+    manager = Manager()
+    return_dict = manager.dict()
+    jobs = []
+    imsz = original[0,0,0].shape
+    wsz = pywt2array(pywt.wavedec2(original[0,0,0], wavelet='haar', mode='periodic'), imsz).shape
+    for n in range(0, data.shape[0], interval):
+        p = Process(target=recover, args=(data[n:n+interval], original[n:n+interval], wsz, int(n/interval), return_dict))
+        jobs.append(p)
+        p.start()
+    print('num of processes:', len(jobs))
+    for job in jobs:
+        job.join()
+    recovered = np.asarray(return_dict.values())
+    recovered = np.concatenate(recovered, axis=0)
     return recovered
 
 def recover_vel(recovered, venc):
-    #not sure if this is correct
     mag = recovered[:, 0, :]
     vel = np.empty((recovered.shape[0],) + (3,) + recovered.shape[2:] )
     for n in range(0,recovered.shape[0]):
@@ -63,15 +92,22 @@ def recover_vel(recovered, venc):
     return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
 
 if __name__ == '__main__':
-    dir = home + '/Documents/undersampled/npy/'
-    fourier_file = dir + 'undersampled_p50bernoulli.npy'
-    undersample_file = dir + 'undersamplpattern_p50bernoulli.npy'
+    if len(sys.argv) > 1:
+        noise_percent = sys.argv[1]
+        p=sys.argv[2]
+        type=sys.argv[3]
+    else:
+        noise_percent=0.05
+        p=0.10 #percent not sampled
+        type='bernoulli'
+    dir = home + '/Documents/undersampled/poiseuille/npy/'
+    fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type + '.npy'
+    undersample_file = dir + 'undersamplpattern_p' + str(int(p*100)) + type + '.npy'
     pattern = np.load(undersample_file)
-    #params = [(dir + 'noisy_noise5_p50.npy', pattern), (dir + 'noisy_noise10_p50.npy', pattern)]
-    #for p in params:
-    #    Process(target=recover, args=p).start()
-    recovered = recover(fourier_file, pattern)
+    orig_file = dir+'imgs.npy'
+    recovered = recoverAll(fourier_file, orig_file, pattern)
+    #np.save(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type , recovered)
+    #recovered = np.load(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '.npy')
     imgs = recover_vel(recovered, np.load(dir + 'venc.npy'))
-    orig = np.load(dir + 'imgs.npy')
-
-    print('mse between original and recovered images: ', (np.square(imgs - orig)).mean())
+    orig = np.load(orig_file)
+    #print('mse between original and recovered images: ', (np.square(imgs - orig)).mean())

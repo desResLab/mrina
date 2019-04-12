@@ -18,7 +18,7 @@ num_samples = 100
 noise_percent = 0.1
 dir = home + "/Documents/undersampled/npy/"
 generate = False #whether to generate noisy realizations or not
-csrecover=True #whether to recover the noisy realizations or not
+csrecover=False #whether to recover the noisy realizations or not
 
 def add_noise(im, imNrm, num_samples,noise_percent):
     avgnorm = imNrm/math.sqrt(im.size)
@@ -57,6 +57,21 @@ def get_eta(im, imNrm, noise_percent, m):
     eta = stdev*math.sqrt(2*m + 2*math.sqrt(m)*rv.ppf(0.95))
     print('eta: ', eta)
     return eta
+
+def recover_all(s, imsz, wsz, omega, c, eta, A, fcn=recover):
+    interval = max(int(s.shape[0]/c),1)
+    manager = Manager()
+    return_dict = manager.dict()
+    jobs = []
+    A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=omega, waveletName='haar', waveletMode='periodic' )
+    for n in range(0, s.shape[0], interval):
+        p = Process(target=fcn, args=(s[n:n+interval], eta, A, int(n/interval), return_dict))
+        jobs.append(p)
+        p.start()
+    print('num of processes:', len(jobs))
+    for job in jobs:
+        job.join()
+    return np.asarray(return_dict.values())
 
 # Load data
 im   = cv2.imread('nd_small.jpg', cv2.IMREAD_GRAYSCALE)
@@ -131,20 +146,8 @@ print(cpu_count())
 c = cpu_count()-2
 if csrecover:
     np.save(dir + 'ndpattern_noise'+str(int(noise_percent*100))+'_n'+str(num_samples), omega)
-    interval = max(int(s.shape[0]/c),1)
-    manager = Manager()
-    return_dict = manager.dict()
-    jobs = []
-    A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=omega, waveletName='haar', waveletMode='periodic' )
-    for n in range(0, s.shape[0], interval):
-        p = Process(target=recover, args=(s[n:n+interval], eta, A, int(n/interval), return_dict))
-        jobs.append(p)
-        p.start()
-    print('num of processes:', len(jobs))
-    for job in jobs:
-        job.join()
-    print(return_dict.values())
-    np.save(dir + 'ndrec_noise'+str(int(noise_percent*100))+'_n'+str(num_samples), np.asarray(return_dict.values()))
+    recovered =  recover_all(s, imsz, wsz, omega, c, eta, A)
+    np.save(dir + 'ndrec_noise'+str(int(noise_percent*100))+'_n'+str(num_samples), recovered)
     print('finish')
 
 plt.figure();
