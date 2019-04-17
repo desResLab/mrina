@@ -146,16 +146,16 @@ def samples(directory, numSamples, p=0.5, uType='bernoulli', sliceIndex=0,npydir
     print(range(0,numSamples))
     inp = getInputData(directory, range(0,numSamples))
     inp = np.moveaxis(inp, 2+sliceIndex, 2)
-    np.save(npydir + 'imgs.npy', inp)
+    np.save(npydir + 'imgs_n' + str(numSamples) + '.npy', inp)
     venc = getVenc(inp[:,1:,:])
-    np.save(npydir + 'venc.npy', venc)
+    np.save(npydir + 'venc_n' + str(numSamples) + '.npy', venc)
     kspace = getKspace(inp, venc)
     mask=undersamplingMask(kspace[0].shape,p,uType)
 
     undersampled = undersample(kspace,mask)
     undersampled = np.concatenate((np.expand_dims(undersampled[0], axis=1), undersampled[1]), axis=1)
-    np.save(npydir + 'undersampled_p' + str(int(p*100)) + uType, undersampled)
-    np.save(npydir + 'undersamplpattern_p' + str(int(p*100)) + uType, mask)
+    np.save(npydir + 'undersampled_p' + str(int(p*100)) + uType + '_n'+str(numSamples), undersampled)
+    np.save(npydir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numSamples), mask)
 
     for noisePercent in [0.05, 0.10, 0.30]:
         print('percent',noisePercent)
@@ -163,8 +163,9 @@ def samples(directory, numSamples, p=0.5, uType='bernoulli', sliceIndex=0,npydir
         noisy,snr = add_noise(kspace,noisePercent)
         #noisy = undersample(noisy,mask)
         noisy = np.concatenate((np.expand_dims(noisy[0], axis=1), noisy[1]), axis=1)
-        np.save(npydir + 'noisy_noise' + str(int(noisePercent*100)) + '_p' + str(int(p*100)) + uType, noisy)
-        np.save(npydir + 'snr_noise' + str(int(noisePercent*100)) + '_p' + str(int(p*100)) + uType, snr)
+        np.save(npydir + 'noisy_noise' + str(int(noisePercent*100)) + '_n' + str(numSamples), noisy)
+        np.save(npydir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numSamples), snr)
+
 
 if __name__ == '__main__':
 

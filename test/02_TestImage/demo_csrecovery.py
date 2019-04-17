@@ -71,7 +71,7 @@ def recover_all(s, imsz, wsz, omega, c, eta, A, fcn=recover):
     print('num of processes:', len(jobs))
     for job in jobs:
         job.join()
-    return np.asarray(return_dict.values())
+    return np.concatenate([v for k,v in sorted(return_dict.items())], axis=0)
 
 # Load data
 im   = cv2.imread('nd_small.jpg', cv2.IMREAD_GRAYSCALE)

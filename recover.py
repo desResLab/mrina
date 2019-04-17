@@ -74,8 +74,8 @@ def recoverAll(fourier_file, orig_file, pattern, c=1):
     print('num of processes:', len(jobs))
     for job in jobs:
         job.join()
-    recovered = np.asarray(return_dict.values())
-    recovered = np.concatenate(recovered, axis=0)
+    recovered = np.concatenate([v for k,v in sorted(return_dict.items())], axis=0)
+    print('recovered shape', recovered.shape)
     return recovered
 
 def recover_vel(recovered, venc):
@@ -93,21 +93,25 @@ def recover_vel(recovered, venc):
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        noise_percent = sys.argv[1]
-        p=sys.argv[2]
+        noise_percent = float(sys.argv[1])
+        p=float(sys.argv[2])
         type=sys.argv[3]
+        num_samples = int(sys.argv[4])
     else:
         noise_percent=0.05
         p=0.10 #percent not sampled
         type='bernoulli'
+        num_samples = 100
     dir = home + '/Documents/undersampled/poiseuille/npy/'
-    fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type + '.npy'
-    undersample_file = dir + 'undersamplpattern_p' + str(int(p*100)) + type + '.npy'
+    fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
+    undersample_file = dir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
-    orig_file = dir+'imgs.npy'
-    recovered = recoverAll(fourier_file, orig_file, pattern)
-    #np.save(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type , recovered)
-    #recovered = np.load(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '.npy')
-    imgs = recover_vel(recovered, np.load(dir + 'venc.npy'))
+    orig_file = dir+'imgs_n' + str(num_samples) + '.npy'
+    recovered = recoverAll(fourier_file, orig_file, pattern, c=2)
+    np.save(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type  + '_n' + str(num_samples), recovered)
+    #recovered = np.load(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy')
+    print(recovered.shape)
+    venc = np.load(dir + 'venc_n' + str(num_samples) + '.npy')
+    imgs = recover_vel(recovered, venc)
     orig = np.load(orig_file)
-    #print('mse between original and recovered images: ', (np.square(imgs - orig)).mean())
+    print('mse between original and recovered images: ', (np.square(imgs - orig)).mean())
