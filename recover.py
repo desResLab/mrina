@@ -10,7 +10,7 @@ import sys
 from multiprocessing import Process, cpu_count, Manager
 from genSamples import getKspace,getVenc
 from scipy.stats import norm,bernoulli
-
+import scipy.misc
 home = os.getenv('HOME')
 
 def get_eta(im, imNrm, noise_percent, m):
@@ -24,7 +24,7 @@ def get_eta(im, imNrm, noise_percent, m):
     print('eta: ', eta)
     return eta
 
-def recover(noisy, original, wsz, processnum, return_dict):
+def recover(noisy, original, pattern, wsz, processnum, return_dict):
     def recover(kspace,imsz,eta,omega):
         print('shape',kspace.shape)
         #im = crop(im)      #crop for multilevel wavelet decomp. array transform
@@ -33,22 +33,24 @@ def recover(noisy, original, wsz, processnum, return_dict):
         A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName='haar', waveletMode='periodic' )
         yim          = A.eval( wim, 1 )
         print('l2 norm of yim: ', np.linalg.norm(yim.ravel(), 2))
-        cswim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1',maxItns=4)
+        cswim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1')
         if isinstance(cswim, tuple):
             cswim = cswim[0] #for the case where ynrm is less than eta
         csim    = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic')
         return csim
-    cs = np.zeros(noisy.shape,dtype=complex)
-    imsz = noisy.shape[3:]
+    imsz = crop(noisy[0,0,0]).shape
+    cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
+    print('recov shape', cs.shape)
+    omega = crop(pattern[0]);
+    print('omega', omega.shape)
+    print('original',original.shape)
     for n in range(0,noisy.shape[0]):
-        omega = crop(pattern[n]);
-        print('omega', omega.shape)
         for k in range(0,4):
             for j in range(0, noisy.shape[2]):
-                im = original[n,k,j]
+                im = crop(original[0,k,j])
                 imNrm=np.linalg.norm(im.ravel(), 2)
                 eta = get_eta(im, imNrm, noise_percent, imsz[0])
-                cs[n,k,j] = recover(noisy[n,k,j], imsz, eta, omega)
+                cs[n,k,j] = recover(crop(noisy[n,k,j]), imsz, eta, omega)
 
     return_dict[processnum] = cs
     return cs
@@ -65,10 +67,11 @@ def recoverAll(fourier_file, orig_file, pattern, c=1):
     manager = Manager()
     return_dict = manager.dict()
     jobs = []
-    imsz = original[0,0,0].shape
-    wsz = pywt2array(pywt.wavedec2(original[0,0,0], wavelet='haar', mode='periodic'), imsz).shape
+    imsz = crop(original[0,0,0]).shape
+    first = original[0,0,0]
+    wsz = pywt2array(pywt.wavedec2(crop(first), wavelet='haar', mode='periodic'), imsz).shape
     for n in range(0, data.shape[0], interval):
-        p = Process(target=recover, args=(data[n:n+interval], original[n:n+interval], wsz, int(n/interval), return_dict))
+        p = Process(target=recover, args=(data[n:n+interval], original, pattern, wsz, int(n/interval), return_dict))
         jobs.append(p)
         p.start()
     print('num of processes:', len(jobs))
@@ -91,6 +94,18 @@ def recover_vel(recovered, venc):
     mag = np.abs(mag)
     return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
 
+def linear_reconstruction(fourier_file, omega):
+    kspace = np.load(fourier_file)
+    omega = crop(omega)
+    kspace = kspace[:,:,:, :omega.shape[0], :omega.shape[1]]
+    linrec = np.zeros(kspace.shape[0:3] + omega.shape, dtype=complex)
+    for n in range(kspace.shape[0]):
+        for k in range(kspace.shape[1]):
+            for j in range(kspace.shape[2]):
+                kspace[n,k,j][omega] = 0
+                linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
+    return linrec
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         noise_percent = float(sys.argv[1])
@@ -98,20 +113,26 @@ if __name__ == '__main__':
         type=sys.argv[3]
         num_samples = int(sys.argv[4])
     else:
-        noise_percent=0.05
-        p=0.10 #percent not sampled
+        noise_percent=0.01
+        p=0.75 #percent not sampled
         type='bernoulli'
         num_samples = 100
-    dir = home + '/Documents/undersampled/poiseuille/npy/'
+    dir = home + '/apps/undersampled/modelflow/aorta_orig/npy/'
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = dir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
-    orig_file = dir+'imgs_n' + str(num_samples) + '.npy'
+    omega = pattern[0]
+    orig_file = dir+'imgs_n1' +  '.npy'
     recovered = recoverAll(fourier_file, orig_file, pattern, c=2)
     np.save(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type  + '_n' + str(num_samples), recovered)
     #recovered = np.load(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy')
     print(recovered.shape)
-    venc = np.load(dir + 'venc_n' + str(num_samples) + '.npy')
-    imgs = recover_vel(recovered, venc)
+    linrec = linear_reconstruction(fourier_file, omega)
+    venc = np.load(dir + 'venc_n1' + '.npy')
+    imgs = recover_vel(linrec, venc)
+    csimgs = recover_vel(recovered, venc)
     orig = np.load(orig_file)
-    print('mse between original and recovered images: ', (np.square(imgs - orig)).mean())
+    new_shape = crop(orig[0,0,0]).shape
+    
+    print('mse between original and recovered images: ', (np.square(csimgs[0] - orig[0,:,:,:new_shape[0], :new_shape[1]])).mean())
+    print('mse between original and linear reconstructed images: ', (np.square(imgs[0,:,:,:new_shape[0], :new_shape[1]] - orig[0,:,:,:new_shape[0], :new_shape[1]])).mean())
