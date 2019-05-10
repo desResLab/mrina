@@ -249,7 +249,7 @@ def f( y, A, alpha ):
 def f_grad( y, A, alpha ):
   return A.eval(A.eval(alpha, 1) - y, 2);
 
-def CSRecovery( eta, y, A, x0, maxItns=1E3, dfAbsTol=1E-2, dtAbsTol=1E-9, disp=0, printEvery=0 ):
+def CSRecovery(eta, y, A, x0, disp=0, printEvery=0):
     # Parameters
     if( disp == 0 ):
         root_disp = 0;
@@ -297,3 +297,26 @@ def CSRecovery( eta, y, A, x0, maxItns=1E3, dfAbsTol=1E-2, dtAbsTol=1E-9, disp=0
         print('      Optimal value:       {:5.3E}'.format(topt) );
         print('      Elapsed time:        {:8.4f} seconds'.format(tend) );
     return wopt, la.norm( wopt.ravel(), 1 )
+
+def CSRecoveryDebiasing(y, A, x, maxItns=1E4, dwAbsTol=1E-5, dfwAbsTol=1E-6, xthr=1E-6):
+    # Find lipschitz constant
+    smax        = OperatorNorm( A );
+    L           = 1.01 * math.pow(smax, 2);
+    # Find support of the input signal
+    xsupp       = np.where( np.absolute(x) > xthr, 1, 0)
+    # Initialize variables
+    w           = x;
+    dwNrm       = np.inf;
+    itn         = 0;
+    fw          = 0.5 * math.pow(la.norm((y - A.eval(w, 1)).ravel(), 2), 2);
+    # Optimization loop
+    while( ( dwNrm > dwAbsTol or np.abs(dfw) > dfwAbsTol ) and itn <= maxItns):
+        itn         = itn + 1;
+        wk          = w - (1/L) * A.eval(A.eval(w, 1) - y, 2);
+        wk          = np.where(xsupp > 0, wk, 0)
+        fwk         = 0.5 * math.pow(la.norm((y - A.eval(wk, 1)).ravel(), 2), 2);
+        dfw         = fwk - fw;
+        dwNrm       = la.norm( (wk - w).ravel(), 2 );
+        w           = wk;
+        fw          = fwk;
+    return w, fw
