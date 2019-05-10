@@ -1,4 +1,4 @@
-from CSRecoverySuite import crop, CSRecovery, Operator4dFlow, pywt2array, array2pywt
+from CSRecoverySuite import crop, CSRecovery, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
@@ -19,7 +19,7 @@ print('Non-zero coefficients:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1,
 print('Non-zero fraction:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1, 0)) / np.prod(imsz))
 # Create undersampling pattern
 #   Sampling fraction
-delta       = 0.3;
+delta       = 0.5;
 #   Sampling set
 omega       = np.where( np.random.uniform(0, 1, imsz) < delta, True, False );
 # 4dFlow Operator
@@ -36,20 +36,31 @@ fim             = fft.ifft2( fim );
 #   Here we choose \eta as a fraction of the true image. In general it is
 #   proportional to the noise variance
 imNrm           = np.linalg.norm(im.ravel(), 2);
-eta             = 1E-2;
+eta             = 5E1;
 cswim, fcwim    = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=3);
 csim            = pywt.waverec2(array2pywt(cswim), wavelet='haar', mode='periodic');
+deb_cswim, deb_fcwim  = CSRecoveryDebiasing(yim, A, cswim)
+deb_csim        = pywt.waverec2(array2pywt(deb_cswim), wavelet='haar', mode='periodic');
+
 
 # Summary statistics
 print('l1-norm (true)', np.linalg.norm(wim.ravel(), 1))
 print('l1-norm (recovered)', np.linalg.norm(cswim.ravel(), 1))
 print('Reconstruction error:', np.linalg.norm((cswim - wim).ravel() , 2))
+print('Reconstruction error (debiased):', np.linalg.norm((deb_cswim - wim).ravel() , 2))
 print('Residual / eta:', np.linalg.norm((A.eval(cswim, 1) - yim).ravel() , 2), eta)
 print('Residual (true):', np.linalg.norm((A.eval(wim, 1) - yim).ravel() , 2))
+print('Residual (debiased):', np.linalg.norm((A.eval(deb_cswim, 1) - yim).ravel() , 2))
 
 # Show recovered picture
 plt.figure();
 plt.imshow(np.absolute(csim), cmap='gray', vmin=0, vmax=np.linalg.norm( csim.ravel(), np.inf))
+plt.title('reconstructed image')
+plt.draw()
+
+# Show debiased picture
+plt.figure();
+plt.imshow(np.absolute(deb_csim), cmap='gray', vmin=0, vmax=np.linalg.norm( csim.ravel(), np.inf))
 plt.title('reconstructed image')
 plt.draw()
 
