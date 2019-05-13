@@ -261,7 +261,7 @@ def CSRecovery(eta, y, A, x0, disp=0, printEvery=0):
         print('      Error level:        {:5.3E}'.format(eta) );
         print('      l2-norm of y:       {:5.3E}'.format(yNrm) );
     if( yNrm <= eta ):
-        return np.zeros( x0.shape );
+        return 0, np.zeros( x0.shape );
         print('  Summary');
         print('      Optimal value:      {:5.3E}'.format(yNrm) );
         print('      Elapsed time:       {:8.4f} seconds'.format(0.0) );
