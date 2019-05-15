@@ -1,4 +1,4 @@
-from CSRecoverySuite import crop, CSRecovery, OperatorNorm, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing
+from CSRecoverySuite import crop, CSRecovery, OperatorNorm, OperatorTestAdjoint, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
@@ -29,10 +29,11 @@ print('Sampling ratio:', nsamp/im.size)
 # 4dFlow Operator
 A           = Operator4dFlow(imsz=imsz, insz=wsz, samplingSet=omega, waveletName='haar', waveletMode='periodic');
 print('Operator norm:', OperatorNorm(A))
+OperatorTestAdjoint(A)
 # True data (recall A takes as input wavelet coefficients)
 yim         = A.eval(wim, 1);
 # Noisy data
-nlevel      = 0.05
+nlevel      = 0.1
 imNrm       = np.linalg.norm(im.ravel(), ord=2)
 imNrmAvg    = imNrm / np.sqrt(2 * im.size)
 wimNrm      = np.linalg.norm(wim.ravel(), ord=2)
