@@ -146,7 +146,7 @@ def add_noise(kspace, noise_percent, num_realizations):
     for v in range(4):
         nrm[v] = la.norm(kspace[0,v])
     noise, snr = get_noise(imsz, nrm, noise_percent, num_realizations)
-    for n in range(num_realizations): 
+    for n in range(num_realizations):
         for v in range(4):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
