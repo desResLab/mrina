@@ -154,6 +154,25 @@ def OperatorNorm( A, maxItns=1E3, dsAbsTol=1E-6 ):
         s       = sk;
     return s;
 
+def OperatorTestAdjoint(A, ntrials=100):
+    insz    = A.input_size()
+    x       = np.random.normal(size=insz) + 1j * np.random.normal(size=insz)
+    Ax      = A.eval(x, 1)
+    outsz   = Ax.shape
+    err     = np.zeros((ntrials,))
+    for It in range(0, ntrials):
+        x       = np.random.normal(size=insz) + 1j * np.random.normal(size=insz)
+        y       = np.random.normal(size=outsz) + 1j * np.random.normal(size=outsz)
+        Ax      = A.eval(x, 1)
+        Aty     = A.eval(y, 2)
+        yAx     = np.sum(np.conjugate(y.ravel()) * Ax.ravel())
+        Atyx    = np.sum(np.conjugate(Aty.ravel()) * x.ravel())
+        err[It] = np.absolute( yAx - Atyx )
+    print('Inner product')
+    print('    Avg. Error', np.mean(err))
+    print('    St. Dev.', np.std(err))
+
+
 def LSSolver( y, A, w0, maxItns=1E4, dwAbsTol=1E-5, dfwAbsTol=1E-6 ):
     # Find lipschitz constant
     smax        = OperatorNorm( A );
