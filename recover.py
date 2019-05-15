@@ -1,4 +1,5 @@
 from CSRecoverySuite import CSRecovery, Operator4dFlow, pywt2array, array2pywt, crop
+#from dbtransforms import pywt2array, array2pywt
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
@@ -24,19 +25,19 @@ def get_eta(im, imNrm, noise_percent, m):
     print('eta: ', eta)
     return eta
 
-def recover(noisy, original, pattern, wsz, processnum, return_dict):
+def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt):
     def recover(kspace,imsz,eta,omega):
         print('shape',kspace.shape)
         #im = crop(im)      #crop for multilevel wavelet decomp. array transform
-        wim          = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet='haar', mode='periodic'), imsz)
+        wim          = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet=wvlt, mode='periodic'), imsz)
         wsz = wim.shape
-        A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName='haar', waveletMode='periodic' )
+        A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName=wvlt, waveletMode='periodic' )
         yim          = A.eval( wim, 1 )
         print('l2 norm of yim: ', np.linalg.norm(yim.ravel(), 2))
         cswim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1')
         if isinstance(cswim, tuple):
             cswim = cswim[0] #for the case where ynrm is less than eta
-        csim    = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic')
+        csim    = pywt.waverec2(array2pywt( cswim ), wavelet=wvlt, mode='periodic')
         return csim
     imsz = crop(noisy[0,0,0]).shape
     cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
@@ -55,7 +56,7 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict):
     return_dict[processnum] = cs
     return cs
 
-def recoverAll(fourier_file, orig_file, pattern, c=1):
+def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar'):
 	# Load data
     data = np.load(fourier_file)
     original = np.load(orig_file)
@@ -69,9 +70,9 @@ def recoverAll(fourier_file, orig_file, pattern, c=1):
     jobs = []
     imsz = crop(original[0,0,0]).shape
     first = original[0,0,0]
-    wsz = pywt2array(pywt.wavedec2(crop(first), wavelet='haar', mode='periodic'), imsz).shape
+    wsz = pywt2array(pywt.wavedec2(crop(first), wavelet=wvlt, mode='periodic'), imsz).shape
     for n in range(0, data.shape[0], interval):
-        p = Process(target=recover, args=(data[n:n+interval], original, pattern, wsz, int(n/interval), return_dict))
+        p = Process(target=recover, args=(data[n:n+interval], original, pattern, wsz, int(n/interval), return_dict, wvlt))
         jobs.append(p)
         p.start()
     print('num of processes:', len(jobs))
@@ -117,13 +118,13 @@ if __name__ == '__main__':
         p=0.75 #percent not sampled
         type='bernoulli'
         num_samples = 100
-    dir = home + '/apps/undersampled/modelflow/aorta_orig/npy/'
+    dir = home + '/Documents/undersampled/poiseuille/npy/'#'/apps/undersampled/modelflow/aorta_orig/npy/'
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = dir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
     omega = pattern[0]
     orig_file = dir+'imgs_n1' +  '.npy'
-    recovered = recoverAll(fourier_file, orig_file, pattern, c=2)
+    recovered = recoverAll(fourier_file, orig_file, pattern, c=2, wvlt='haar')
     np.save(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type  + '_n' + str(num_samples), recovered)
     #recovered = np.load(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy')
     print(recovered.shape)
@@ -133,6 +134,6 @@ if __name__ == '__main__':
     csimgs = recover_vel(recovered, venc)
     orig = np.load(orig_file)
     new_shape = crop(orig[0,0,0]).shape
-    
+
     print('mse between original and recovered images: ', (np.square(csimgs[0] - orig[0,:,:,:new_shape[0], :new_shape[1]])).mean())
     print('mse between original and linear reconstructed images: ', (np.square(imgs[0,:,:,:new_shape[0], :new_shape[1]] - orig[0,:,:,:new_shape[0], :new_shape[1]])).mean())
