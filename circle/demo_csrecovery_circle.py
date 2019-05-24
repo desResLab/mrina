@@ -6,6 +6,9 @@ import pywt
 import numpy as np
 import os
 
+# Set Wavelet Padding Mode
+waveMode = 'periodization'
+
 # Load data
 im      = cv2.imread('circle.jpg', cv2.IMREAD_GRAYSCALE)
 im      = im[0::2, 0::2]
@@ -14,24 +17,26 @@ imsz    = im.shape
 print('Image size:', imsz)
 
 # Wavelet Parameters
-wim         = pywt2array(pywt.wavedec2(im, wavelet='haar', mode='periodic'), imsz);
+wim         = pywt2array(pywt.wavedec2(im, wavelet='haar', mode=waveMode), imsz)
 wsz         = wim.shape
 print('Non-zero coefficients:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1, 0)))
 print('Non-zero fraction:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1, 0)) / np.prod(imsz))
 # Create undersampling pattern
 #   Sampling fraction
-delta       = 0.4;
+delta       = 0.4
 #   Sampling set
-omega       = np.where(np.random.uniform(0, 1, imsz) < delta, True, False);
+omega       = np.where(np.random.uniform(0, 1, imsz) < delta, True, False)
 nsamp       = np.sum(np.where( omega, 1, 0 ).ravel())
 print('Samples:', nsamp)
 print('Sampling ratio:', nsamp/im.size)
+
 # 4dFlow Operator
-A           = Operator4dFlow(imsz=imsz, insz=wsz, samplingSet=omega, waveletName='haar', waveletMode='periodic');
+A           = Operator4dFlow(imsz=imsz, insz=wsz, samplingSet=omega, waveletName='haar', waveletMode=waveMode)
 print('Operator norm:', OperatorNorm(A))
 OperatorTestAdjoint(A)
+
 # True data (recall A takes as input wavelet coefficients)
-yim         = A.eval(wim, 1);
+yim         = A.eval(wim, 1)
 # Noisy data
 nlevel      = 0.1
 imNrm       = np.linalg.norm(im.ravel(), ord=2)
@@ -51,23 +56,29 @@ print('PSNR', imNrmAvg ** 2 / sigma ** 2 )
 print('PSNR (dB)', 10 * np.log10(imNrmAvg ** 2 / sigma ** 2) )
 # Recovery via orthogonal projection
 #   FOURIER TRANSFORM NEEDS TO BE NORMALIZED
-fim             = (im.size ** -1/2) * fft.fft2( im );
-fim[~omega]     = 0;
-fim             = (im.size ** -1/2) * fft.ifft2( fim );
+fim             = (im.size ** -1/2) * fft.fft2( im )
+fim[~omega]     = 0
+fim             = (im.size ** -1/2) * fft.ifft2( fim )
 
 # Recovery via CSRecovery
 #   Here we choose \eta as a fraction of the true image. In general it is
 #   proportional to the noise variance
-eta             = sigma * (np.sqrt(2 * nsamp) + 1.6);
+eta             = sigma * (np.sqrt(2 * nsamp) + 1.6)
 print('Error bound (eta):', eta)
 print('Norm of error:', np.linalg.norm(y - yim, ord=2))
-#   Recovery via CS
-cswim, fcwim    = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=3);
-csim            = pywt.waverec2(array2pywt(cswim), wavelet='haar', mode='periodic');
-#   Debiasing CS reconstruction
-deb_cswim, deb_fcwim  = CSRecoveryDebiasing(yim, A, cswim)
-deb_csim        = pywt.waverec2(array2pywt(deb_cswim), wavelet='haar', mode='periodic');
 
+# --- Recovery via CS
+cswim, fcwim    = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=3)
+csim            = pywt.waverec2(array2pywt(cswim), wavelet='haar', mode=waveMode)
+
+# --- Debiasing CS reconstruction
+deb_cswim, deb_fcwim  = CSRecoveryDebiasing(yim, A, cswim)
+deb_csim        = pywt.waverec2(array2pywt(deb_cswim), wavelet='haar', mode=waveMode)
+
+
+# --- OMP reconstruction
+omp_cswim, omp_fcwim  = OMPRecovery(yim, A, cswim)
+omp_csim        = pywt.waverec2(array2pywt(omp_cswim), wavelet='haar', mode=waveMode)
 
 # Summary statistics
 print('l1-norm (true)', np.linalg.norm(wim.ravel(), 1))
@@ -82,25 +93,25 @@ print('Residual (recovered):', np.linalg.norm((A.eval(cswim, 1) - yim).ravel() ,
 print('Residual (recovered+debiased):', np.linalg.norm((A.eval(deb_cswim, 1) - yim).ravel() , 2))
 
 # Show recovered picture
-plt.figure();
+plt.figure()
 plt.imshow(np.absolute(csim), cmap='gray', vmin=0, vmax=np.linalg.norm( csim.ravel(), np.inf))
 plt.title('reconstructed image')
-plt.draw()
+plt.show()
 
 # Show debiased picture
-plt.figure();
+plt.figure()
 plt.imshow(np.absolute(deb_csim), cmap='gray', vmin=0, vmax=np.linalg.norm( csim.ravel(), np.inf))
 plt.title('reconstructed image (debiased)')
-plt.draw()
+plt.show()
 
 # Reconstruction error
 plt.figure()
 plt.imshow(np.absolute( csim - im ), cmap='gray')
 plt.title('reconstruction error')
-plt.draw()
+plt.show()
 
 # Reconstruction error
 plt.figure()
 plt.imshow(np.absolute( deb_csim - im ), cmap='gray')
 plt.title('reconstruction error (debiased)')
-plt.draw()
+plt.show()

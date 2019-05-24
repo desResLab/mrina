@@ -6,6 +6,13 @@ import numpy.linalg as la
 import scipy.optimize as sciopt
 import math
 import time
+from   lsqr import lsQR
+
+def toSlice(idx):
+  if idx == None:
+    return slice(None)
+  else:
+    return idx
 
 #methods for cropping in the case the dimensions aren't a power of 2
 def powerof2(num):
@@ -92,8 +99,48 @@ def project_l1_ball( x, t ):
         # If the input is within the l1-ball we do nothing.
         return x
 
+class genericOperator(object):
+  pass
+
+class OperatorLinear(genericOperator):
+  def __init__(self, mat):
+    self.__mat = mat
+    self.__shape = mat.shape
+
+  @property
+  def shape(self):
+    "The shape of the operator."
+    return self.__shape
+
+  @property
+  def matrix(self):
+    "The shape of the operator."
+    return self.__mat
+
+  @property
+  def T(self):
+    "Transposed of the operator."
+    return OperatorLinear(self.__mat.T)
+
+  def __mul_scalar(self,x):
+    return self.__mat * x
+
+  def __mul_vector(self,x):
+    return np.dot(self.__mat,x)
+
+  def __mul__(self, x):
+    "Multiplication"
+    if np.isscalar(x):
+      return self.__mul_scalar(x)
+    if isinstance(x, np.ndarray):
+      return self.__mul_vector(x)
+    raise ValueError('Cannot multiply')
+
+  def restrict(self,rIdx=None,cIdx=None):
+    return OperatorLinear(self.__mat[toSlice(rIdx),toSlice(cIdx)])
+
 # Defines a class for linear transforms
-class Operator4dFlow(object):
+class Operator4dFlow(genericOperator):
     def __init__(self, insz=None, imsz=None, samplingSet=None, waveletName='haar', waveletMode='periodic'):
         # insz is the size of the array used as input
         self.insz           = insz;
@@ -339,3 +386,74 @@ def CSRecoveryDebiasing(y, A, x, maxItns=1E4, dwAbsTol=1E-5, dfwAbsTol=1E-6, xth
         w           = wk;
         fw          = fwk;
     return w, fw
+
+def OMPRecovery(A, b, tol=1E-6):
+
+  #gives the OMP solution x given the matrix A and vector b and error 
+  #parameter, Tr, to find a stopping point
+  m,n = A.shape
+
+  # Create a new vector for the residual starting from b
+  curr_res = b.copy()
+
+  # Intialize Empty index set
+  indexSet = []
+  notIndexSet = [loopA for loopA in range(n)]
+
+  # Initialize Solution to Zero
+  ompSol = np.zeros(n) 
+  
+  # Determine Column Norms
+  Anorm = np.zeros(n)
+  print('Computing Operator Column Norms...')
+  for loopA in range(n):
+    unit = np.zeros(n)
+    unit[loopA] = 1.0
+    Anorm[loopA] = np.sum((A * unit)**2)
+
+  count = 0 # Init Counter
+
+  Finished = False
+  while (not(Finished)):
+    count += 1
+    mincol = 0
+    # Start with the Norm of b
+    minepsilon = np.linalg.norm(b, ord=2)**2
+
+    # Compute vector z
+    z = (A.T * curr_res)/Anorm
+
+    # Compute the vector e
+    e = np.zeros(n)
+    for loopA in range(n):
+      unit = np.zeros(n)
+      unit[loopA] = z[loopA]
+      e[loopA] = np.linalg.norm((A * unit) - curr_res)**2
+
+    # Get the minimum of e restricted to the indices not in the support
+    e[indexSet] = np.inf
+    mincol = np.argmin(e)
+              
+    # Add index to index set
+    indexSet.append(mincol)
+
+    # Remove from not index set
+    notIndexSet.remove(mincol)
+
+    # Initialize lsQR
+    B = A.restrict(rIdx=None, cIdx=indexSet)
+    lsqr = lsQR(B)
+    # Solve least Squares    
+    # lsqr.solve(b, show=True)
+    lsqr.solve(b)
+    ompSol[indexSet] = lsqr.x
+
+    # Update residual    
+    curr_res = b - A * ompSol
+    
+    # Check finished
+    if (np.linalg.norm(curr_res, ord = 2) < tol or count > m):
+      Finished = True
+    
+  # Return Result
+  return ompSol
