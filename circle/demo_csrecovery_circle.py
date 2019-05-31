@@ -1,4 +1,4 @@
-from CSRecoverySuite import crop, CSRecovery, OperatorNorm, OperatorTestAdjoint, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing
+from CSRecoverySuite import crop, CSRecovery, OperatorNorm, OperatorTestAdjoint, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing, VardensFourierSampling
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
@@ -19,10 +19,18 @@ wsz         = wim.shape
 print('Non-zero coefficients:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1, 0)))
 print('Non-zero fraction:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1, 0)) / np.prod(imsz))
 # Create undersampling pattern
-#   Sampling fraction
+#   Sampling fraction (for Bernoulli sampling)
 delta       = 0.4;
-#   Sampling set
+#   Density function (does not need to be normalized)
+rho         = lambda x: np.exp(-(x[0]**2 + x[1]**2) / (2 * 0.1))
+#   Sampling set (Bernoulli sampling)
 omega       = np.where(np.random.uniform(0, 1, imsz) < delta, True, False);
+#   Sampling set (density)
+omega       = VardensFourierSampling(imsz, rho)
+#   Show sampling pattern
+plt.imshow(np.absolute(np.fft.fftshift(omega)), cmap='gray', vmin=0, vmax=1)
+
+
 nsamp       = np.sum(np.where( omega, 1, 0 ).ravel())
 print('Samples:', nsamp)
 print('Sampling ratio:', nsamp/im.size)
@@ -82,25 +90,13 @@ print('Residual (recovered):', np.linalg.norm((A.eval(cswim, 1) - yim).ravel() ,
 print('Residual (recovered+debiased):', np.linalg.norm((A.eval(deb_cswim, 1) - yim).ravel() , 2))
 
 # Show recovered picture
-plt.figure();
 plt.imshow(np.absolute(csim), cmap='gray', vmin=0, vmax=np.linalg.norm( csim.ravel(), np.inf))
-plt.title('reconstructed image')
-plt.draw()
 
 # Show debiased picture
-plt.figure();
 plt.imshow(np.absolute(deb_csim), cmap='gray', vmin=0, vmax=np.linalg.norm( csim.ravel(), np.inf))
-plt.title('reconstructed image (debiased)')
-plt.draw()
 
 # Reconstruction error
-plt.figure()
 plt.imshow(np.absolute( csim - im ), cmap='gray')
-plt.title('reconstruction error')
-plt.draw()
 
 # Reconstruction error
-plt.figure()
 plt.imshow(np.absolute( deb_csim - im ), cmap='gray')
-plt.title('reconstruction error (debiased)')
-plt.draw()
