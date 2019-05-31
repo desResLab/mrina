@@ -339,3 +339,14 @@ def CSRecoveryDebiasing(y, A, x, maxItns=1E4, dwAbsTol=1E-5, dfwAbsTol=1E-6, xth
         w           = wk;
         fw          = fwk;
     return w, fw
+
+def VardensFourierSampling(shape, f):
+    x = np.linspace(-1, 1, num=shape[1])
+    y = np.linspace(-1, 1, num=shape[0])
+    omega = np.full(shape, False)
+    for Ix in range(0, shape[1]):
+        for Iy in range(0, shape[0]):
+            u = np.random.uniform(0, 1)
+            if( u < f([ x[Ix], y[Iy] ]) ):
+                omega[Ix, Iy] = True
+    return np.fft.fftshift(omega)
