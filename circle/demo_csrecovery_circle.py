@@ -1,4 +1,5 @@
-from CSRecoverySuite import crop, CSRecovery, OperatorNorm, OperatorTestAdjoint, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing, VardensFourierSampling
+from CSRecoverySuite import crop, CSRecovery, OperatorNorm, OperatorTestAdjoint, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing
+from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
@@ -20,13 +21,15 @@ print('Non-zero coefficients:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1,
 print('Non-zero fraction:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1, 0)) / np.prod(imsz))
 # Create undersampling pattern
 #   Sampling fraction (for Bernoulli sampling)
-delta       = 0.4;
+delta       = 0.10;
 #   Density function (does not need to be normalized)
 rho         = lambda x: np.exp(-(x[0]**2 + x[1]**2) / (2 * 0.1))
 #   Sampling set (Bernoulli sampling)
 omega       = np.where(np.random.uniform(0, 1, imsz) < delta, True, False);
-#   Sampling set (density)
-omega       = VardensFourierSampling(imsz, rho)
+#   Sampling set (central square region and linear decay)
+omega       = VardensTriangleSampling(imsz, delta)
+#   Sampling set (Gaussian density)
+omega       = VardensGaussianSampling(imsz, delta)
 #   Show sampling pattern
 plt.imshow(np.absolute(np.fft.fftshift(omega)), cmap='gray', vmin=0, vmax=1)
 
