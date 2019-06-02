@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import numpy.linalg as la
 import scipy.optimize as sciopt
+import scipy
 import math
 import time
 
@@ -340,7 +341,7 @@ def CSRecoveryDebiasing(y, A, x, maxItns=1E4, dwAbsTol=1E-5, dfwAbsTol=1E-6, xth
         fw          = fwk;
     return w, fw
 
-def VardensFourierSampling(shape, f):
+def VardensSampling(shape, f):
     x = np.linspace(-1, 1, num=shape[1])
     y = np.linspace(-1, 1, num=shape[0])
     omega = np.full(shape, False)
@@ -348,5 +349,45 @@ def VardensFourierSampling(shape, f):
         for Iy in range(0, shape[0]):
             u = np.random.uniform(0, 1)
             if( u < f([ x[Ix], y[Iy] ]) ):
+                omega[Ix, Iy] = True
+    return np.fft.fftshift(omega)
+
+def VardensTriangleSampling(shape, delta):
+    if( delta < 0.25 ):
+        c = delta / 0.25
+        a = 0
+    else:
+        c = 1
+        a = 2 * np.sqrt(delta) - 1
+    x = np.linspace(-1, 1, num=shape[1])
+    y = np.linspace(-1, 1, num=shape[0])
+    omega = np.full(shape, False)
+    for Ix in range(0, shape[1]):
+        for Iy in range(0, shape[0]):
+            if( np.max([ np.abs(x[Ix]), np.abs(y[Iy]) ]) < a ):
+                omega[Ix, Iy] = True
+            else:
+                p = c
+                if( np.abs(x[Ix]) > a ):
+                    p = p * (1 - (np.abs(x[Ix]) - a) / (1 - a))
+                if( np.abs(y[Iy]) > a ):
+                    p = p * (1 - (np.abs(y[Iy]) - a) / (1 - a))
+                u = np.random.uniform(0, 1)
+                if( u < p ):
+                    omega[Ix, Iy] = True
+    return np.fft.fftshift(omega)
+
+def VardensGaussianSampling(shape, delta):
+    c = 2 * np.sqrt(delta / np.pi)
+    s, rnfo = sciopt.toms748(lambda t: scipy.special.erf(t) - c * t, 1E-6, 1/c, xtol=1E-3, full_output=True, disp=True)
+    s = 1 / (s * np.sqrt(2))
+    x = np.linspace(-1, 1, num=shape[1])
+    y = np.linspace(-1, 1, num=shape[0])
+    omega = np.full(shape, False)
+    for Ix in range(0, shape[1]):
+        for Iy in range(0, shape[0]):
+            p = np.exp( -(x[Ix]**2 + y[Iy]**2) / (2 * s**2) )
+            u = np.random.uniform(0, 1)
+            if( u < p ):
                 omega[Ix, Iy] = True
     return np.fft.fftshift(omega)
