@@ -391,3 +391,17 @@ def VardensGaussianSampling(shape, delta):
             if( u < p ):
                 omega[Ix, Iy] = True
     return np.fft.fftshift(omega)
+
+def VardensExponentialSampling(shape, delta):
+    c = np.sqrt(delta)
+    a, rnfo = sciopt.toms748(lambda t: np.exp(-t) - 1 + c * t, 1E-6, 1/c, xtol=1E-3, full_output=True, disp=True)
+    x = np.linspace(-1, 1, num=shape[1])
+    y = np.linspace(-1, 1, num=shape[0])
+    omega = np.full(shape, False)
+    for Ix in range(0, shape[1]):
+        for Iy in range(0, shape[0]):
+            p = np.exp( -a * (np.abs(x[Ix]) + np.abs(y[Iy])) )
+            u = np.random.uniform(0, 1)
+            if( u < p ):
+                omega[Ix, Iy] = True
+    return np.fft.fftshift(omega)
