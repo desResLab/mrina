@@ -1,5 +1,5 @@
 from CSRecoverySuite import crop, CSRecovery, OperatorNorm, OperatorTestAdjoint, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing
-from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling
+from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
@@ -9,7 +9,7 @@ import os
 
 # Load data
 im      = cv2.imread('circle.jpg', cv2.IMREAD_GRAYSCALE)
-im      = im[0::2, 0::2]
+#im      = im[0::2, 0::2]
 im      = crop(im) # Crop for multilevel wavelet decomp. array transform
 imsz    = im.shape
 print('Image size:', imsz)
@@ -30,6 +30,8 @@ omega       = np.where(np.random.uniform(0, 1, imsz) < delta, True, False);
 omega       = VardensTriangleSampling(imsz, delta)
 #   Sampling set (Gaussian density)
 omega       = VardensGaussianSampling(imsz, delta)
+#   Sampling set (Exponential density)
+omega       = VardensExponentialSampling(imsz, delta)
 #   Show sampling pattern
 plt.imshow(np.absolute(np.fft.fftshift(omega)), cmap='gray', vmin=0, vmax=1)
 
