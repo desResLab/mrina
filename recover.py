@@ -32,9 +32,9 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, debias
     def recover(kspace,imsz,eta,omega):
         print('shape',kspace.shape)
         #im = crop(im)      #crop for multilevel wavelet decomp. array transform
-        wim          = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet=wvlt, mode='periodic'), imsz)
+        wim          = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet=wvlt, mode='periodization'), imsz)
         wsz = wim.shape
-        A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName=wvlt, waveletMode='periodic' )
+        A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName=wvlt, waveletMode='periodization' )
         yim          = A.eval( wim, 1 )
         print('l2 norm of yim: ', np.linalg.norm(yim.ravel(), 2))
         cswim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1')
@@ -44,7 +44,7 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, debias
             cswim =  CSRecoveryDebiasing( yim, A, cswim)
             if isinstance(cswim, tuple):
                 cswim = cswim[0] #for the case where ynrm is less than eta
-        csim    = pywt.waverec2(array2pywt( cswim ), wavelet=wvlt, mode='periodic')
+        csim    = pywt.waverec2(array2pywt( cswim ), wavelet=wvlt, mode='periodization')
         return csim
     imsz = crop(noisy[0,0,0]).shape
     cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
@@ -77,7 +77,7 @@ def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar'):
     jobs = []
     imsz = crop(original[0,0,0]).shape
     first = original[0,0,0]
-    wsz = pywt2array(pywt.wavedec2(crop(first), wavelet=wvlt, mode='periodic'), imsz).shape
+    wsz = pywt2array(pywt.wavedec2(crop(first), wavelet=wvlt, mode='periodization'), imsz).shape
     for n in range(0, data.shape[0], interval):
         p = Process(target=recover, args=(data[n:n+interval], original, pattern, wsz, int(n/interval), return_dict, wvlt))
         jobs.append(p)
@@ -130,14 +130,15 @@ if __name__ == '__main__':
         num_samples = 100
     save_img = False
     dir = home + '/Documents/undersampled/poiseuille/npy/'#'/apps/undersampled/modelflow/aorta_orig/npy/'
+    recdir = dir #where to save recovered imgs
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = dir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
     omega = pattern[0]
     orig_file = dir+'imgs_n1' +  '.npy'
     recovered = recoverAll(fourier_file, orig_file, pattern, c=2, wvlt='haar')
-    np.save(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type  + '_n' + str(num_samples), recovered)
-    #recovered = np.load(dir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy')
+    np.save(recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type  + '_n' + str(num_samples), recovered)
+    #recovered = np.load(recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy')
     print(recovered.shape)
     linrec = linear_reconstruction(fourier_file, omega)
     venc = np.load(dir + 'venc_n1' + '.npy')
