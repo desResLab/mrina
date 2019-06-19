@@ -1,4 +1,7 @@
-from CSRecoverySuite import CSRecovery, Operator4dFlow, pywt2array, array2pywt, crop
+import sys
+sys.path.append('./circle/')
+#from CSRecoverySuite import CSRecovery, Operator4dFlow, pywt2array, array2pywt, crop
+from circle.CSRecoverySuite import CSRecovery,CSRecoveryDebiasing, Operator4dFlow, pywt2array, array2pywt, crop
 #from dbtransforms import pywt2array, array2pywt
 import cv2
 import matplotlib.pyplot as plt
@@ -25,7 +28,7 @@ def get_eta(im, imNrm, noise_percent, m):
     print('eta: ', eta)
     return eta
 
-def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt):
+def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, debias=False):
     def recover(kspace,imsz,eta,omega):
         print('shape',kspace.shape)
         #im = crop(im)      #crop for multilevel wavelet decomp. array transform
@@ -37,6 +40,10 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt):
         cswim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1')
         if isinstance(cswim, tuple):
             cswim = cswim[0] #for the case where ynrm is less than eta
+        if debias:
+            cswim =  CSRecoveryDebiasing( yim, A, cswim)
+            if isinstance(cswim, tuple):
+                cswim = cswim[0] #for the case where ynrm is less than eta
         csim    = pywt.waverec2(array2pywt( cswim ), wavelet=wvlt, mode='periodic')
         return csim
     imsz = crop(noisy[0,0,0]).shape
@@ -92,6 +99,9 @@ def recover_vel(recovered, venc):
                 v = recovered[n,k,j]
                 v = venc/(2*math.pi)*np.log(np.divide(v,m)).imag
                 vel[n,k-1,j] = v
+                #set velocity = 0 wherever mag is close enough to 0
+                mask = (np.abs(mag[n,j]) < 1E-1)
+                vel[n,k-1,j, mask] = 0
     mag = np.abs(mag)
     return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
 
@@ -118,6 +128,7 @@ if __name__ == '__main__':
         p=0.75 #percent not sampled
         type='bernoulli'
         num_samples = 100
+    save_img = False
     dir = home + '/Documents/undersampled/poiseuille/npy/'#'/apps/undersampled/modelflow/aorta_orig/npy/'
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = dir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
@@ -134,6 +145,21 @@ if __name__ == '__main__':
     csimgs = recover_vel(recovered, venc)
     orig = np.load(orig_file)
     new_shape = crop(orig[0,0,0]).shape
-
-    print('mse between original and recovered images: ', (np.square(csimgs[0] - orig[0,:,:,:new_shape[0], :new_shape[1]])).mean())
-    print('mse between original and linear reconstructed images: ', (np.square(imgs[0,:,:,:new_shape[0], :new_shape[1]] - orig[0,:,:,:new_shape[0], :new_shape[1]])).mean())
+    
+    if save_img:
+        scipy.misc.imsave(recdir + 'csmag.jpg', np.abs(csimgs[0,0,0]))
+        scipy.misc.imsave(recdir+'linmag.jpg', np.abs(imgs[0,0,0]))
+        scipy.misc.imsave(recdir+'origmag.jpg', np.abs(orig[0,0,0]))
+        for k in range(1,4):
+            scipy.misc.imsave(recdir+'csvel'+str(k) + '.jpg', np.abs(csimgs[0,k,0]))
+            scipy.misc.imsave(recdir+'linvel'+str(k) + '.jpg', np.abs(imgs[0,k,0]))
+            scipy.misc.imsave(recdir+'origvel'+str(k) + '.jpg', np.abs(orig[0,k,0]))
+    
+    o = np.zeros(csimgs.shape, dtype=complex)
+    for k in range(0,num_samples):
+        o[k] = orig[0,:, :new_shape[0], :new_shape[1]]
+    print(o.shape)
+    print(csimgs.shape)
+    print(linrec.shape)
+    print('mse between original and recovered images: ', (np.square(csimgs - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
+    print('mse between original and linear reconstructed images: ', (np.square(imgs - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())

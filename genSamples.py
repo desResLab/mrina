@@ -10,7 +10,8 @@ import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
 import sigpy.mri as mri
-
+sys.path.append('./circle/')
+from circle.CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling
 home = os.getenv('HOME')
 #home = 'C:/Users/Lauren/'
 
@@ -100,6 +101,7 @@ def getKspace(sample, venc, sliceIndex=0):
 
 def undersamplingMask(num_patterns, imsz, p,type='bernoulli'):
     mask = np.empty((num_patterns, ) + imsz, dtype=np.bool)
+    delta = 1-p #delta is sampling fraction, p is fraction NOT sampled
     for k in range(num_patterns):
         #to keep undersampling the same for each slice
         if type=='bernoulli':
@@ -107,6 +109,12 @@ def undersamplingMask(num_patterns, imsz, p,type='bernoulli'):
         elif type =='poisson': #poisson
             accel =  1/p  #accel: Target acceleration factor. Greater than 1.
             indices = mri.poisson(imsz, accel)
+        elif type =='vardentri':
+            indices = ~VardensTriangleSampling(imsz, delta)
+        elif type =='vardengauss': #gaussian density
+            indices = ~VardensGaussianSampling(imsz, delta)
+        elif type == 'vardenexp': #exponential density
+            indices = ~VardensExponentialSampling(imsz, delta)
         else: #halton sequence
             numPts = int(p*imsz[0]*imsz[1])
             pts = np.transpose(np.asarray(halton_sequence(numPts, 2)))

@@ -105,28 +105,28 @@ for v in range(0,4):
     #plt.draw()
 #plt.show()
 
-# noise_percent=0.1
-# p=0.5
-# for v in range(0,4):
-#     plt.figure(figsize=(4,3))
-#     for samptype in ['bernoulli', 'poisson', 'halton']:
-#         coeff = np.load(dir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype +'_n'+str(n) + '.npy')
-#         coeff = coeff[v]
-#         corravg = np.mean(coeff, axis=1)
-#         corrmin = np.percentile(coeff, 10, axis=1)
-#         corrmax = np.percentile(coeff, 90, axis=1)
-#         size = len(corravg)
-#         plt.plot(range(start+1,end+1), np.abs(corravg)[start:end])
-#         plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2)
-#     lgd = ['Bernoulli undersampling', 'Poisson undersampling', 'Halton undersampling']
-#     plt.legend(lgd)
-#     plt.xlabel('Distance',fontsize=fs)
-#     plt.ylabel('Correlation Coefficient ($R^2$)',fontsize=fs)
-#     plt.tick_params(labelsize=fs)
-#     plt.ylim(top=max)
-#     #plt.xticks(np.arange(start, end+1, 50))
-#     plt.xticks(np.arange(start+1, end+1,interval))
-#     plt.tight_layout()
-#     plt.savefig(dir + 'results/diffsamptype' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + '_v' + str(v) + '.png')
+noise_percent=0.05
+p=0.75
+for v in range(0,4):
+    plt.figure(figsize=(4,3))
+    for samptype in ['bernoulli', 'bpoisson', 'halton', 'vardengauss','vardentri', 'vardenexp']:
+        coeff = np.load(dir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype +'_n'+str(n) + '.npy')
+        coeff = coeff[v]
+        corravg = np.mean(coeff, axis=1)
+        corrmin = np.percentile(coeff, 10, axis=1)
+        corrmax = np.percentile(coeff, 90, axis=1)
+        size = len(corravg)
+        plt.plot(range(start+1,end+1), np.abs(corravg)[start:end])
+        plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2)
+    lgd = ['Bernoulli undersampling','Poisson undersampling', 'Halton undersampling', 'Gauss density undersampling', 'Tri density undersampling','Exp density undersampling']
+    plt.legend(lgd)
+    plt.xlabel('Distance',fontsize=fs)
+    plt.ylabel('Correlation Coefficient ($R^2$)',fontsize=fs)
+    plt.tick_params(labelsize=fs)
+    plt.ylim(top=max)
+    #plt.xticks(np.arange(start, end+1, 50))
+    plt.xticks(np.arange(start+1, end+1,interval))
+    plt.tight_layout()
+    plt.savefig(dir + 'results/diffsamptype' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + '_v' + str(v) + '.png')
 #     #plt.draw()
 # plt.show()
