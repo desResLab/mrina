@@ -9,13 +9,12 @@ Dominique Orban, Ecole Polytechnique de Montreal
 """
 import sys
 import numpy as np
-from   math import sqrt
 
 __docformat__ = 'restructuredtext'
 
 # Simple shortcuts---linalg.norm is too slow for small vectors
-def normof2(x,y): return sqrt(x*x + y*y)
-def normof4(x1,x2,x3,x4): return sqrt(x1*x1 + x2*x2 + x3*x3 + x4*x4)
+def normof2(x,y): return np.sqrt(x*x + y*y)
+def normof4(x1,x2,x3,x4): return np.sqrt(x1*x1 + x2*x2 + x3*x3 + x4*x4)
 
 class lsQR(object):
     r"""
@@ -160,10 +159,10 @@ class lsQR(object):
         # Set up the first vectors u and v for the bidiagonalization.
         # These satisfy  beta*M*u = b,  alpha*N*v = A'u.
 
-        x = np.zeros(n)
-        xNrgNorm2 = 0.0          # Squared energy norm of final solution.
-        dErr = np.zeros(window)     # Truncated direct error terms.
-        trncDirErr = 0           # Truncated direct error.
+        x = np.zeros(n,dtype=np.complex)
+        xNrgNorm2 = 0.0                          # Squared energy norm of final solution.
+        dErr = np.zeros(window,dtype=np.complex) # Truncated direct error terms.
+        trncDirErr = 0                           # Truncated direct error.
 
         if store_iterates:
             self.iterates.append(x.copy())
@@ -175,7 +174,7 @@ class lsQR(object):
             u = Mu
 
         alpha = 0.
-        beta = sqrt(np.dot(u,Mu))       # norm(u)
+        beta = np.sqrt(np.dot(u,Mu))       # norm(u)
         if beta > 0:
             u /= beta
             if M is not None: Mu /= beta
@@ -185,7 +184,7 @@ class lsQR(object):
                 v = N(Nv)
             else:
                 v = Nv
-            alpha = sqrt(np.dot(v,Nv))   # norm(v)
+            alpha = np.sqrt(np.dot(v,Nv))   # norm(v)
 
         if alpha > 0:
             v /= alpha
@@ -211,9 +210,9 @@ class lsQR(object):
             print(head1+head2)
             test1  = 1.0
             test2  = alpha / beta if not x_is_zero else 1.0
-            str1   = '%6g %12.5e'     % (itn,    x[0])
-            str2   = ' %10.3e %10.3e' % (r1norm, r2norm)
-            str3   = '  %8.1e %8.1e'  % (test1,  test2)
+            str1   = '%6g %12.5e'     % (itn,    np.abs(x[0]))
+            str2   = ' %10.3e %10.3e' % (np.abs(r1norm), np.abs(r2norm))
+            str3   = '  %8.1e %8.1e'  % (np.abs(test1),  np.abs(test2))
             print(str1+str2+str3)
 
         if store_resids:
@@ -237,7 +236,7 @@ class lsQR(object):
                 u = M(Mu)
             else:
                 u = Mu
-            beta = sqrt(np.dot(u,Mu))   # norm(u)
+            beta = np.sqrt(np.dot(u,Mu))   # norm(u)
             if beta > 0:
                 u /= beta
                 if M is not None: Mu /= beta
@@ -249,7 +248,7 @@ class lsQR(object):
                     v = N(Nv)
                 else:
                     v = Nv
-                alpha = sqrt(np.dot(v,Nv))  # norm(v)
+                alpha = np.sqrt(np.dot(v,Nv))  # norm(v)
                 if alpha > 0:
                     v /= alpha
                     if N is not None: Nv /= alpha
@@ -280,7 +279,10 @@ class lsQR(object):
             t1      =   phi   / rho;
             t2      = - theta / rho;
             dk      =   (1.0/rho)*w;
-
+            # print('x ',x.dtype)
+            # print('t1 ',t1.dtype)
+            # print('w ',w.dtype)
+            # sys.exit(-1)
             x      += t1*w
             w      *= t2 ; w += v
 
@@ -295,7 +297,7 @@ class lsQR(object):
             dErr[itn % window] = phi
             if itn > window:
                 trncDirErr = np.linalg.norm(dErr)
-                xNrgNorm = sqrt(xNrgNorm2)
+                xNrgNorm = np.sqrt(xNrgNorm2)
                 self.dir_errors_window.append(trncDirErr / xNrgNorm)
                 if trncDirErr < etol * xNrgNorm:
                     istop = 8
@@ -308,7 +310,7 @@ class lsQR(object):
             gambar  = - cs2 * rho
             rhs     =   phi  -  delta * z
             zbar    =   rhs / gambar
-            xnorm   =   sqrt(xxnorm + zbar**2)
+            xnorm   =   np.sqrt(xxnorm + zbar**2)
             gamma   =   normof2(gambar, theta)
             cs2     =   gambar / gamma
             sn2     =   theta  / gamma
@@ -319,10 +321,10 @@ class lsQR(object):
             # First, estimate the condition of the matrix  Abar,
             # and the norms of  rbar  and  Abar'rbar.
 
-            Acond   =   Anorm * sqrt(ddnorm)
+            Acond   =   Anorm * np.sqrt(ddnorm)
             res1    =   phibar**2
             res2    =   res2  +  psi**2
-            rnorm   =   sqrt(res1 + res2)
+            rnorm   =   np.sqrt(res1 + res2)
             Arnorm  =   alpha * abs(tau)
 
             # 07 Aug 2002:
@@ -335,7 +337,7 @@ class lsQR(object):
             # Although there is cancellation, it might be accurate enough.
 
             r1sq    =   rnorm**2  -  dampsq * xxnorm
-            r1norm  =   sqrt(abs(r1sq))
+            r1norm  =   np.sqrt(abs(r1sq))
             if r1sq < 0: r1norm = - r1norm
             r2norm  =   rnorm
 
@@ -388,10 +390,10 @@ class lsQR(object):
             if istop !=  0       : prnt = True
 
             if prnt and show:
-                str1 = '%6g %12.5e'     % (  itn,   x[0])
-                str2 = ' %10.3e %10.3e' % (r1norm, r2norm)
-                str3 = '  %8.1e %8.1e'  % (test1,  test2)
-                str4 = ' %8.1e %8.1e'   % (Anorm,  Acond)
+                str1 = '%6g %12.5e'     % (  itn,   np.abs(x[0]))
+                str2 = ' %10.3e %10.3e' % (np.abs(r1norm), np.abs(r2norm))
+                str3 = '  %8.1e %8.1e'  % (np.abs(test1),  np.abs(test2))
+                str4 = ' %8.1e %8.1e'   % (np.abs(Anorm),  np.abs(Acond))
                 print(str1+str2+str3+str4)
 
             if istop > 0: break
@@ -404,13 +406,13 @@ class lsQR(object):
             print('LSQR finished')
             print(self.msg[istop])
             print(' ')
-            str1 = 'istop =%8g   r1norm =%8.1e'   % (istop, r1norm)
-            str2 = 'Anorm =%8.1e   Arnorm =%8.1e' % (Anorm, Arnorm)
-            str3 = 'itn   =%8g   r2norm =%8.1e'   % ( itn, r2norm)
-            str4 = 'Acond =%8.1e   xnorm  =%8.1e' % (Acond, xnorm )
-            str5 = '                  bnorm  =%8.1e'    % bnorm
+            str1 = 'istop =%8g   r1norm =%8.1e'   % (istop, np.abs(r1norm))
+            str2 = 'Anorm =%8.1e   Arnorm =%8.1e' % (np.abs(Anorm), np.abs(Arnorm))
+            str3 = 'itn   =%8g   r2norm =%8.1e'   % ( itn, np.abs(r2norm))
+            str4 = 'Acond =%8.1e   xnorm  =%8.1e' % (np.abs(Acond), np.abs(xnorm))
+            str5 = '                  bnorm  =%8.1e'    % np.abs(bnorm)
             str6 = 'xNrgNorm2 = %7.1e   trnDirErr = %7.1e' % \
-                    (xNrgNorm2, trncDirErr)
+                    (np.abs(xNrgNorm2), np.abs(trncDirErr))
             print(str1 + '   ' + str2)
             print(str3 + '   ' + str4)
             print(str5)

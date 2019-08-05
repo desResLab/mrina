@@ -14,90 +14,90 @@ def toSlice(idx):
   else:
     return idx
 
-#methods for cropping in the case the dimensions aren't a power of 2
+# Methods for cropping in the case the dimensions aren't a power of 2
 def powerof2(num):
-    #return the highest power of 2 less than or equal to number
-    return int(math.pow(2,math.floor(math.log(num, 2))))
+  #return the highest power of 2 less than or equal to number
+  return int(math.pow(2,math.floor(math.log(num, 2))))
 
 def crop(x):
-    if x.shape[1] > x.shape[0]:
-        dim1= powerof2(x.shape[0])
-        #max between power of 2 or multiple of other dimension
-        dim2 = max(powerof2(x.shape[1]), math.floor(x.shape[1]/dim1)*dim1)
-    else:
-        dim2= powerof2(x.shape[1])
-        dim1 = max(powerof2(x.shape[0]), math.floor(x.shape[0]/dim2)*dim2)
-    return x[0:dim1, 0:dim2]
+  if x.shape[1] > x.shape[0]:
+    dim1 = powerof2(x.shape[0])
+    #max between power of 2 or multiple of other dimension
+    dim2 = max(powerof2(x.shape[1]), math.floor(x.shape[1]/dim1)*dim1)
+  else:
+    dim2 = powerof2(x.shape[1])
+    dim1 = max(powerof2(x.shape[0]), math.floor(x.shape[0]/dim2)*dim2)
+  return x[0:dim1, 0:dim2]
 
 def pywt2array( x, shape ):
-    #essentially a breadth-first traversal
-    y = np.zeros((0,1))
-    for sublist in x:
-        for z in sublist:
-            y = np.concatenate((y, np.expand_dims(z.ravel(), axis=1)),axis=0)
-    y = y.reshape(shape)
-    return y
+  # Essentially a breadth-first traversal
+  y = np.zeros((0,1))
+  for sublist in x:
+    for z in sublist:
+      y = np.concatenate((y, np.expand_dims(z.ravel(), axis=1)),axis=0)
+  y = y.reshape(shape)
+  return y
 
 def array2pywt( x ):
-    shape = x.shape
-    #assuming both dims power of 2 or one dim is multiple of other (which is power of 2)
-    maxlevel = int(math.log(min(shape),2))
-    x = x.ravel()
-    coeffs = [None]*(maxlevel+1)
-    i = len(x)
-    if shape[0] > shape[1]:
-        initdim1 = int(shape[0]/shape[1])
-        initdim2 = 1
-    else:
-        initdim1 = 1
-        initdim2 = int(shape[1]/shape[0])
-    coeffs[0] = np.reshape(x[0:initdim1*initdim2],(initdim1,initdim2))
-    for k in reversed(range(1,maxlevel+1)):
-        dim1 = int(initdim1*math.pow(2, k-1))
-        dim2 = int(initdim2*math.pow(2, k-1))
-        coeffs[k] = (np.reshape(x[(i-dim1*dim2*3):(i-dim1*dim2*2)], (dim1,dim2)),
-                    np.reshape(x[(i-dim1*dim2*2):(i-dim1*dim2)], (dim1,dim2)),
-                    np.reshape(x[(i-dim1*dim2):i], (dim1,dim2)))
-        i = i - dim1*dim2*3
-    return coeffs
+  shape = x.shape
+  # Assuming both dims power of 2 or one dim is multiple of other (which is power of 2)
+  maxlevel = int(math.log(min(shape),2))
+  x = x.ravel()
+  coeffs = [None]*(maxlevel+1)
+  i = len(x)
+  if shape[0] > shape[1]:
+    initdim1 = int(shape[0]/shape[1])
+    initdim2 = 1
+  else:
+    initdim1 = 1
+    initdim2 = int(shape[1]/shape[0])
+  coeffs[0] = np.reshape(x[0:initdim1*initdim2],(initdim1,initdim2))
+  for k in reversed(range(1,maxlevel+1)):
+    dim1 = int(initdim1*math.pow(2, k-1))
+    dim2 = int(initdim2*math.pow(2, k-1))
+    coeffs[k] = (np.reshape(x[(i-dim1*dim2*3):(i-dim1*dim2*2)], (dim1,dim2)),
+                 np.reshape(x[(i-dim1*dim2*2):(i-dim1*dim2)], (dim1,dim2)),
+                 np.reshape(x[(i-dim1*dim2):i], (dim1,dim2)))
+    i = i - dim1*dim2*3
+  return coeffs
 
 # Added the soft-thresholding function
-def sft( x, t ):
-    # Soft-thresholding
-    return x * ( 1 - np.minimum( t / np.maximum( np.abs(x), 1E-32 ), 1 ) )
+def sft(x,t):
+  # Soft-thresholding
+  return x * ( 1 - np.minimum( t / np.maximum( np.abs(x), 1E-32 ), 1 ) )
 
 # Changed the name to project_l1_ball for clarity
 def project_l1_ball( x, t ):
-    xL1Nrm  = la.norm( x.ravel(), 1 );
-    if xL1Nrm > t:
-        # If the input is outside the l1-ball we project.
-        nx      = x.size;
-        # Sort magnitudes in decreasing order
-        mx      = np.flip( np.sort( np.absolute( x.ravel() ), kind='mergesort' ) );
-        # Obtain unique values (this is needed for some borderline cases)
-        umx     = np.flip( np.unique( mx ) );
-        if( t <= umx[0] - umx[1] ):
-            # If the radius of the l1-ball is small and the input is far away
-            # and the shrinkage is large.
-            vp      = umx[0];
-            sroot   = vp - t;
-            return sft( x, sroot )
-        else:
-            # This is the average case
-            cmx     = np.cumsum( mx );
-            smx     = cmx - np.array( range(1, nx+1) ) * mx;
-            if( smx[nx - 1] < t ):
-                # This condition handles some cases when the input is close to
-                # the boundary and the shrinkage is small.
-                sroot   = (xL1Nrm - t) / nx;
-                return sft( x, sroot )
-            idp,    = np.where( smx > t );
-            idp     = idp[0];
-            sroot   = (cmx[idp - 1] - t) / idp;
-            return sft( x, sroot )
+  xL1Nrm  = la.norm( x.ravel(), 1 );
+  if xL1Nrm > t:
+    # If the input is outside the l1-ball we project.
+    nx  = x.size;
+    # Sort magnitudes in decreasing order
+    mx  = np.flip( np.sort( np.absolute( x.ravel() ), kind='mergesort' ) );
+    # Obtain unique values (this is needed for some borderline cases)
+    umx = np.flip( np.unique( mx ) );
+    if( t <= umx[0] - umx[1] ):
+      # If the radius of the l1-ball is small and the input is far away
+      # and the shrinkage is large.
+      vp      = umx[0];
+      sroot   = vp - t;
+      return sft( x, sroot )
     else:
-        # If the input is within the l1-ball we do nothing.
-        return x
+      # This is the average case
+      cmx = np.cumsum( mx );
+      smx = cmx - np.array( range(1, nx+1) ) * mx;
+      if( smx[nx - 1] < t ):
+        # This condition handles some cases when the input is close to
+        # the boundary and the shrinkage is small.
+        sroot   = (xL1Nrm - t) / nx;
+        return sft( x, sroot )
+      idp,    = np.where( smx > t );
+      idp     = idp[0];
+      sroot   = (cmx[idp - 1] - t) / idp;
+      return sft( x, sroot )
+  else:
+    # If the input is within the l1-ball we do nothing.
+    return x
 
 class genericOperator(object):
   pass
@@ -141,103 +141,218 @@ class OperatorLinear(genericOperator):
 
 # Defines a class for linear transforms
 class Operator4dFlow(genericOperator):
-    def __init__(self, insz=None, imsz=None, samplingSet=None, waveletName='haar', waveletMode='periodic'):
-        # insz is the size of the array used as input
-        self.insz           = insz;
-        self.imsz           = imsz;
-        self.waveletName    = waveletName;
-        self.waveletMode    = waveletMode;
-        # samplingSet is the set of indices that are measured after the mapping
-        #             has been applied
-        self.samplingSet    = samplingSet;
-        if( samplingSet is None ):
-            self.outsz          = imsz;
-            self._buffer        = None;
-        else:
-            self.outsz          = ( np.count_nonzero( samplingSet ), );
-            self._buffer        = np.zeros( self.imsz ) + 1j * np.zeros( self.imsz );
-        self._cst           = math.pow( np.prod( insz ), -1/2 );
-    #  The method eval implements
-    #   obj.eval(x, 1) returns A * x
-    #   obj.eval(x, 2) returns A' * x where A' is the adjoint
-    def eval(self, x, mode):
-        if( mode == 1 ): # the forward map
-            if( self.samplingSet is None ):
-                return self._cst * fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode));
-            else:
-                y = self._cst * fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode));
-                return y[ self.samplingSet ];
-        if( mode == 2 ): # the adjoint map
-            if( self.samplingSet is None ):
-                arr = np.conj( fft.fft2( np.conj(x) ) )
-                return self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode), arr.shape);
-            else:
-                #y = np.zeros( self.imsz ) + 1j * np.zeros( self.imsz );
-                self._buffer[ self.samplingSet ] = x[ : ];
-                arr = np.conj( fft.fft2( np.conj(self._buffer) ) )
-                return self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape);
+  
+  def __init__(self, insz=None, imsz=None, samplingSet=None, basisSet=None, isTransposed=False,waveletName='haar', waveletMode='periodic'):
+    # insz is the size of the array used as input
+    self.insz           = insz
+    self.imsz           = imsz
+    self.waveletName    = waveletName
+    self.waveletMode    = waveletMode
+    self.isTransposed   = isTransposed
+    # SamplingSet is the set of indices that are measured after the mapping
+    # has been applied
+    self.samplingSet    = samplingSet
+    if( samplingSet is None ):
+      self.outsz          = imsz
+      self._buffer        = None
+    else:
+      self.outsz          = ( np.count_nonzero( samplingSet ), )
+      self._buffer        = np.zeros( self.imsz ) + 1j * np.zeros( self.imsz )
+    # Restrict the set of wavelet basis
+    self.basisSet = basisSet
+    # Constant
+    self._cst           = math.pow( np.prod( insz ), -1/2 );
 
-    #  The method returns the shape of the input array
-    def input_size(self):
-        return self.insz;
+  def eval(self, x, mode):
+    '''
+    The method eval implements
+      obj.eval(x, 1) returns A * x
+      obj.eval(x, 2) returns A' * x where A' is the adjoint
+    '''
+    if( mode == 1 ): # FORWARD MAP
+      if( self.samplingSet is None ):
+        return self._cst * fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode));
+      else:
+        y = self._cst * fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode));
+        return y[ self.samplingSet ];
+    if( mode == 2 ): # ADJOINT MAP
+      if( self.samplingSet is None ):
+        arr = np.conj( fft.fft2( np.conj(x) ) )
+        return self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode), arr.shape);
+      else:
+        #y = np.zeros( self.imsz ) + 1j * np.zeros( self.imsz );
+        self._buffer[ self.samplingSet ] = x[ : ];
+        arr = np.conj( fft.fft2( np.conj(self._buffer) ) )
+        return self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape);
+
+  #  The method returns the shape of the input array
+  def input_size(self):
+    if(self.samplingSet is None):
+      return self.insz
+    else:
+      return self.samplingSet.shape
+
+  @property
+  def shape(self):
+    "The shape of the operator."
+    if(self.samplingSet is None):
+      shapeX = np.prod(self.outsz)
+    else:
+      # CHECK !!! it doesn't seem right
+      shapeX = np.prod(self.samplingSet.shape)
+
+    if(self.basisSet is None):
+      shapeY = np.prod(self.insz)
+    else:
+      shapeY = len(self.basisSet)
+
+    if(self.isTransposed == False):
+      return shapeX,shapeY
+    else:
+      return shapeY,shapeX
+
+  def __mul__(self, x):
+    "Multiplication"
+    # Convert x from 1D to 2D
+    if(not(self.isTransposed)):
+      
+      # FORWARD OPERATOR
+      # print("FORWARD OPERATOR MULTIPLICATION")
+      
+      # Create zero vector
+      inV = np.zeros(np.prod(self.insz),dtype=np.complex)
+      
+      # Restrict the set of basis on the input vector x
+      if(not( self.basisSet is None)):
+        inV[self.basisSet] = x[:]
+      else:
+        inV[:] = x[:]
+
+      # Create a 2D Wavelet Representation
+      inV = inV.reshape(self.insz)
+
+      # Compute the vector y
+      y = self._cst * fft.fft2(pywt.waverec2(array2pywt(inV), wavelet=self.waveletName, mode=self.waveletMode))
+
+      # Select frequencies as per sampling set
+      if( self.samplingSet is None ):
+        return y
+      else:
+        return y[ self.samplingSet ]
+    
+    else:
+      
+      # ADJOINT OPERATOR
+      # print("ADJOINT OPERATOR MULTIPLICATION")
+
+      # Apply Fourier Transform Only for frequencies in the sampling set
+      if( self.samplingSet is None ):
+        arr = np.conj( fft.fft2( np.conj(x) ) )
+      else:
+        self._buffer[ self.samplingSet ] = x[ : ];
+        arr = np.conj( fft.fft2( np.conj(self._buffer) ) )
+
+      # print('ARR ',arr)
+
+      # Perform wavelet transform
+      res = self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape)
+
+      # Filter wavelet coefficients as per basisSet
+      # print(res.dtype)
+      if( self.basisSet is None ):
+        return res.ravel()
+      else:
+        return res.ravel()[self.basisSet]
+
+  @property
+  def T(self):
+    "Transposed of the operator."
+    return Operator4dFlow(insz=self.insz, imsz=self.imsz, samplingSet=self.samplingSet, basisSet=self.basisSet, isTransposed=not(self.isTransposed), waveletName=self.waveletName, waveletMode=self.waveletMode)
+
+  # Computes leading singular value of the linear mapping A via power iteration
+  def getNorm(self, maxItns=1E3, dsAbsTol=1E-6 ):
+    # Initialize variables
+    b   = np.random.normal( size = self.input_size() )
+    b   = b / la.norm(b)
+    s   = 0
+    ds  = np.inf
+    itn = 0
+    # Power iteration loop
+    while( ds > dsAbsTol and itn <= maxItns ):
+      # Evaluate xk = A'A x
+      bk = self.eval(self.eval(b, 1), 2)
+      # Evaluate xk' A'Ax to estimate sigma_max^2
+      sk = np.sqrt( np.real( np.vdot( bk.flatten(), b.flatten() ) ) )
+      ds = np.abs( sk - s )
+      # Normalize singular vector
+      b  = bk / la.norm(bk)
+      s  = sk
+    return s
+
+  # Create An operator with a 
+  def colRestrict(self,idxSet=None):
+    "Restrict operator column set."
+    return Operator4dFlow(insz=self.insz, imsz=self.imsz, samplingSet=self.samplingSet, basisSet=idxSet, isTransposed=self.isTransposed, waveletName=self.waveletName, waveletMode=self.waveletMode)
 
 # Computes leading singular value of the linear mapping A via power iteration
 def OperatorNorm( A, maxItns=1E3, dsAbsTol=1E-6 ):
-    # Initialize variables
-    b       = np.random.normal( size = A.input_size() );
-    b       = b / la.norm(b)
-    s       = 0;
-    ds      = np.inf;
-    itn     = 0;
-    # Power iteration loop
-    while( ds > dsAbsTol and itn <= maxItns ):
-        # Evaluate xk = A'A x
-        bk      = A.eval(A.eval(b, 1), 2);
-        # Evaluate xk' A'Ax to estimate sigma_max^2
-        sk      = np.sqrt( np.real( np.vdot( bk.flatten(), b.flatten() ) ) );
-        ds      = np.abs( sk - s );
-        # Normalize singular vector
-        b       = bk / la.norm(bk);
-        s       = sk;
-    return s;
+  # Initialize variables
+  b   = np.random.normal( size = A.input_size() );
+  b   = b / la.norm(b)
+  s   = 0;
+  ds  = np.inf
+  itn = 0
+  # Power iteration loop
+  while( ds > dsAbsTol and itn <= maxItns ):
+    # Evaluate xk = A'A x
+    bk = A.eval(A.eval(b, 1), 2)
+    # Evaluate xk' A'Ax to estimate sigma_max^2
+    sk = np.sqrt( np.real( np.vdot( bk.flatten(), b.flatten() ) ) )
+    ds = np.abs( sk - s )
+    # Normalize singular vector
+    b  = bk / la.norm(bk)
+    s  = sk
+  return s
 
 def OperatorTestAdjoint(A, ntrials=100):
-    insz    = A.input_size()
+  insz    = A.input_size()
+  x       = np.random.normal(size=insz) + 1j * np.random.normal(size=insz)
+  Ax      = A.eval(x, 1)
+  outsz   = Ax.shape
+  err     = np.zeros((ntrials,))
+  for It in range(0, ntrials):
     x       = np.random.normal(size=insz) + 1j * np.random.normal(size=insz)
+    y       = np.random.normal(size=outsz) + 1j * np.random.normal(size=outsz)
     Ax      = A.eval(x, 1)
-    outsz   = Ax.shape
-    err     = np.zeros((ntrials,))
-    for It in range(0, ntrials):
-        x       = np.random.normal(size=insz) + 1j * np.random.normal(size=insz)
-        y       = np.random.normal(size=outsz) + 1j * np.random.normal(size=outsz)
-        Ax      = A.eval(x, 1)
-        Aty     = A.eval(y, 2)
-        yAx     = np.sum(np.conjugate(y.ravel()) * Ax.ravel())
-        Atyx    = np.sum(np.conjugate(Aty.ravel()) * x.ravel())
-        err[It] = np.absolute( yAx - Atyx )
-    print('Inner product')
-    print('    Avg. Error', np.mean(err))
-    print('    St. Dev.', np.std(err))
+    Aty     = A.eval(y, 2)
+    yAx     = np.sum(np.conjugate(y.ravel()) * Ax.ravel())
+    Atyx    = np.sum(np.conjugate(Aty.ravel()) * x.ravel())
+    err[It] = np.absolute( yAx - Atyx )
+  print('--- ADJOINT TEST')
+  print('Inner product')
+  print(' Avg. Error:', np.mean(err))
+  print(' St. Dev.:', np.std(err))
+  print('----------------')
 
 
 def LSSolver( y, A, w0, maxItns=1E4, dwAbsTol=1E-5, dfwAbsTol=1E-6 ):
     # Find lipschitz constant
-    smax        = OperatorNorm( A );
-    L           = 1.01 * math.pow(smax, 2);
+    smax        = OperatorNorm( A )
+    L           = 1.01 * math.pow(smax, 2)
     # Initialize variables
-    w           = w0;
-    dwNrm       = np.inf;
-    itn         = 0;
-    fw          = 0.5 * math.pow(la.norm((y - A.eval(w, 1)).ravel(), 2), 2);
+    w           = w0
+    dwNrm       = np.inf
+    itn         = 0
+    fw          = 0.5 * math.pow(la.norm((y - A.eval(w, 1)).ravel(), 2), 2)
     # Optimization loop
     while( ( dwNrm > dwAbsTol or np.abs(dfw) > dfwAbsTol ) and itn <= maxItns):
-        itn         = itn + 1;
-        wk          = w - (1/L) * A.eval(A.eval(w, 1) - y, 2);
-        fwk         = 0.5 * math.pow(la.norm((y - A.eval(wk, 1)).ravel(), 2), 2);
-        dfw         = fwk - fw;
-        dwNrm       = la.norm( (wk - w).ravel(), 2 );
-        w           = wk;
-        fw          = fwk;
+        itn         = itn + 1
+        wk          = w - (1/L) * A.eval(A.eval(w, 1) - y, 2)
+        fwk         = 0.5 * math.pow(la.norm((y - A.eval(wk, 1)).ravel(), 2), 2)
+        dfw         = fwk - fw
+        dwNrm       = la.norm( (wk - w).ravel(), 2 )
+        w           = wk
+        fw          = fwk
     return w, fw
 
 def pgdl1( t, x0, L, f, df, maxItns=1E4, dwAbsTol=1E-4, dfwAbsTol=1E-5, disp=0, printEvery=10 ):
@@ -313,43 +428,43 @@ def f( y, A, alpha ):
   return 0.5 * math.pow(la.norm((y - A.eval(alpha, 1)).ravel(), 2), 2)
 
 def f_grad( y, A, alpha ):
-  return A.eval(A.eval(alpha, 1) - y, 2);
+  return A.eval(A.eval(alpha, 1) - y, 2)
 
 def CSRecovery(eta, y, A, x0, disp=0, printEvery=0):
     # Parameters
     if( disp == 0 ):
-        root_disp = 0;
+        root_disp = 0
     else:
-        root_disp = 1;
-    yNrm        = la.norm( y.ravel(), 2 );
+        root_disp = 1
+    yNrm        = la.norm( y.ravel(), 2 )
     if( disp > 0 ):
-        print(' [CS RECOVERY]' );
-        print('      Error level:        {:5.3E}'.format(eta) );
-        print('      l2-norm of y:       {:5.3E}'.format(yNrm) );
+        print(' [CS RECOVERY]' )
+        print('      Error level:        {:5.3E}'.format(eta) )
+        print('      l2-norm of y:       {:5.3E}'.format(yNrm) )
     if( yNrm <= eta ):
-        return 0, np.zeros( x0.shape );
-        print('  Summary');
-        print('      Optimal value:      {:5.3E}'.format(yNrm) );
-        print('      Elapsed time:       {:8.4f} seconds'.format(0.0) );
+        return 0, np.zeros( x0.shape )
+        print('  Summary')
+        print('      Optimal value:      {:5.3E}'.format(yNrm) )
+        print('      Elapsed time:       {:8.4f} seconds'.format(0.0) )
     # Find lipschitz constant
-    smax        = OperatorNorm( A );
-    L           = 1.05 * math.pow(smax, 2);
+    smax        = OperatorNorm( A )
+    L           = 1.05 * math.pow(smax, 2)
     # Least-squares solution
-    wtls, rmax  = LSSolver( y, A, x0 );
+    wtls, rmax  = LSSolver( y, A, x0 )
     # Lower bound variables
     tmin        = 0
-    ftmin       = yNrm;
-    wtmin       = np.zeros( x0.shape );
+    ftmin       = yNrm
+    wtmin       = np.zeros( x0.shape )
     # Find upper bound variables
-    wtmax       = wtls;
-    tmax        = la.norm( wtmax.ravel(), 1 );
-    ftmax       = 0;
+    wtmax       = wtls
+    tmax        = la.norm( wtmax.ravel(), 1 )
+    ftmax       = 0
     # Initialize variables
-    dt          = tmax - tmin;
-    dft         = np.abs( ftmin - ftmax );
+    dt          = tmax - tmin
+    dft         = np.abs( ftmin - ftmax )
     if( disp > 0 ):
-        print('      Initial tmin:       {:5.3E}'.format(tmin) );
-        print('      Initial tmax:       {:5.3E}'.format(tmax) );
+        print('      Initial tmin:       {:5.3E}'.format(tmin) )
+        print('      Initial tmax:       {:5.3E}'.format(tmax) )
     # Root finding via TOMS748
     tend        = time.time()
     froot = RootPGDL1(eta=eta, f=lambda x: f(y, A, x), df=lambda x: f_grad(y, A, x), L=L, tmin=tmin, xmin=wtmin, tmax=tmax, xmax=wtmax, maxItns=1E4, dwAbsTol=1E-4, dfwAbsTol=1E-5, disp=root_disp)
@@ -358,33 +473,33 @@ def CSRecovery(eta, y, A, x0, disp=0, printEvery=0):
     tend        = time.time() - tend
     if( disp > 0 ):
         print('  Summary');
-        print('      Iterations:          {:d}'.format(rnfo.iterations) );
-        print('      Function calls:      {:d}'.format(rnfo.function_calls) );
-        print('      Optimal value:       {:5.3E}'.format(topt) );
-        print('      Elapsed time:        {:8.4f} seconds'.format(tend) );
+        print('      Iterations:          {:d}'.format(rnfo.iterations) )
+        print('      Function calls:      {:d}'.format(rnfo.function_calls) )
+        print('      Optimal value:       {:5.3E}'.format(topt) )
+        print('      Elapsed time:        {:8.4f} seconds'.format(tend) )
     return wopt, la.norm( wopt.ravel(), 1 )
 
 def CSRecoveryDebiasing(y, A, x, maxItns=1E4, dwAbsTol=1E-5, dfwAbsTol=1E-6, xthr=1E-6):
     # Find lipschitz constant
-    smax        = OperatorNorm( A );
-    L           = 1.01 * math.pow(smax, 2);
+    smax        = OperatorNorm( A )
+    L           = 1.01 * math.pow(smax, 2)
     # Find support of the input signal
     xsupp       = np.where( np.absolute(x) > xthr, 1, 0)
     # Initialize variables
-    w           = x;
-    dwNrm       = np.inf;
-    itn         = 0;
-    fw          = 0.5 * math.pow(la.norm((y - A.eval(w, 1)).ravel(), 2), 2);
+    w           = x
+    dwNrm       = np.inf
+    itn         = 0
+    fw          = 0.5 * math.pow(la.norm((y - A.eval(w, 1)).ravel(), 2), 2)
     # Optimization loop
     while( ( dwNrm > dwAbsTol or np.abs(dfw) > dfwAbsTol ) and itn <= maxItns):
-        itn         = itn + 1;
-        wk          = w - (1/L) * A.eval(A.eval(w, 1) - y, 2);
+        itn         = itn + 1
+        wk          = w - (1/L) * A.eval(A.eval(w, 1) - y, 2)
         wk          = np.where(xsupp > 0, wk, 0)
-        fwk         = 0.5 * math.pow(la.norm((y - A.eval(wk, 1)).ravel(), 2), 2);
-        dfw         = fwk - fw;
-        dwNrm       = la.norm( (wk - w).ravel(), 2 );
-        w           = wk;
-        fw          = fwk;
+        fwk         = 0.5 * math.pow(la.norm((y - A.eval(wk, 1)).ravel(), 2), 2)
+        dfw         = fwk - fw
+        dwNrm       = la.norm( (wk - w).ravel(), 2 )
+        w           = wk
+        fw          = fwk
     return w, fw
 
 def OMPRecovery(A, b, tol=1E-6):
@@ -395,25 +510,32 @@ def OMPRecovery(A, b, tol=1E-6):
 
   # Create a new vector for the residual starting from b
   curr_res = b.copy()
+  iniResNorm = np.linalg.norm(curr_res, ord=2)
 
   # Intialize Empty index set
   indexSet = []
   notIndexSet = [loopA for loopA in range(n)]
 
   # Initialize Solution to Zero
-  ompSol = np.zeros(n) 
+  ompSol = np.zeros(n,dtype=np.complex) 
   
   # Determine Column Norms
-  Anorm = np.zeros(n)
+  Anorm = np.zeros(n,dtype=np.complex)
   print('Computing Operator Column Norms...')
   for loopA in range(n):
-    unit = np.zeros(n)
-    unit[loopA] = 1.0
-    Anorm[loopA] = np.sum((A * unit)**2)
+    unit = np.zeros(n,dtype=np.complex)
+    unit[loopA] = 1.0 + 0.0j
+    Anorm[loopA] = np.linalg.norm(A * unit)**2
+    # print('%15d %15f' % (loopA,Anorm[loopA]))
+  Anorm[0] = 1.0 + 0.0j
 
   count = 0 # Init Counter
 
   Finished = False
+
+  print('%15s %15s' % ('OMP Iter.','Res. Norm'))
+
+  # OMP Main Loop 
   while (not(Finished)):
     count += 1
     mincol = 0
@@ -421,12 +543,12 @@ def OMPRecovery(A, b, tol=1E-6):
     minepsilon = np.linalg.norm(b, ord=2)**2
 
     # Compute vector z
-    z = (A.T * curr_res)/Anorm
+    z    = (A.T * curr_res)/Anorm
 
     # Compute the vector e
     e = np.zeros(n)
     for loopA in range(n):
-      unit = np.zeros(n)
+      unit = np.zeros(n,dtype=np.complex)
       unit[loopA] = z[loopA]
       e[loopA] = np.linalg.norm((A * unit) - curr_res)**2
 
@@ -441,8 +563,9 @@ def OMPRecovery(A, b, tol=1E-6):
     notIndexSet.remove(mincol)
 
     # Initialize lsQR
-    B = A.restrict(rIdx=None, cIdx=indexSet)
+    B = A.colRestrict(indexSet)
     lsqr = lsQR(B)
+    
     # Solve least Squares    
     # lsqr.solve(b, show=True)
     lsqr.solve(b)
@@ -450,10 +573,16 @@ def OMPRecovery(A, b, tol=1E-6):
 
     # Update residual    
     curr_res = b - A * ompSol
+
+    # Compute relative residual norm
+    resNorm = np.linalg.norm(curr_res, ord = 2)/iniResNorm
+
+    # Print Message
+    print('%15d %15e' % (count,resNorm))
     
     # Check finished
-    if (np.linalg.norm(curr_res, ord = 2) < tol or count > m):
+    if (resNorm < tol or count > m):
       Finished = True
     
   # Return Result
-  return ompSol
+  return ompSol, la.norm(ompSol.ravel(),1)
