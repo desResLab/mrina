@@ -120,7 +120,8 @@ class OperatorLinear(genericOperator):
   @property
   def T(self):
     "Transposed of the operator."
-    return OperatorLinear(self.__mat.T)
+    # return OperatorLinear(self.__mat.T)
+    return OperatorLinear(np.conjugate(self.__mat.T))
 
   def __mul_scalar(self,x):
     return self.__mat * x
@@ -136,8 +137,8 @@ class OperatorLinear(genericOperator):
       return self.__mul_vector(x)
     raise ValueError('Cannot multiply')
 
-  def restrict(self,rIdx=None,cIdx=None):
-    return OperatorLinear(self.__mat[toSlice(rIdx),toSlice(cIdx)])
+  def colRestrict(self,idxSet=None):
+    return OperatorLinear(self.__mat[:,idxSet])
 
 # Defines a class for linear transforms
 class Operator4dFlow(genericOperator):

@@ -9,12 +9,22 @@ Dominique Orban, Ecole Polytechnique de Montreal
 """
 import sys
 import numpy as np
+from math import sqrt
 
 __docformat__ = 'restructuredtext'
 
 # Simple shortcuts---linalg.norm is too slow for small vectors
-def normof2(x,y): return np.sqrt(x*x + y*y)
-def normof4(x1,x2,x3,x4): return np.sqrt(x1*x1 + x2*x2 + x3*x3 + x4*x4)
+def normof2(x,y): 
+  # print('x ', x)
+  # print('y ', y)
+  return sqrt(x*x + y*y)
+
+def normof4(x1,x2,x3,x4): 
+  # print('x1 ', x1)
+  # print('x2 ', x2)
+  # print('x3 ', x3)
+  # print('x4 ', x4)
+  return sqrt(x1*x1 + x2*x2 + x3*x3 + x4*x4)
 
 class lsQR(object):
     r"""
@@ -37,6 +47,16 @@ class lsQR(object):
        problems, ACM TOMS 8(2), 195-209.
     3. M. A. Saunders (1995).  Solution of sparse rectangular systems using
        LSQR and CRAIG, BIT 35, 588-604.
+
+
+    integer(ip),  intent(in)  :: m, n, itnlim, nout
+    integer(ip),  intent(out) :: istop, itn
+    logical,  intent(in)  :: wantse
+    complex(dp), intent(in)  :: b(m)
+    complex(dp), intent(out) :: x(n)
+    real(dp), intent(out) :: se(*)
+    real(dp), intent(in)  :: atol, btol, conlim, damp
+    real(dp), intent(out) :: Anorm, Acond, rnorm, Arnorm, xnorm       
     """
 
     def __init__(self, A, **kwargs):
@@ -71,14 +91,14 @@ class lsQR(object):
         self.iterates = []
         return
 
-    def solve(self, rhs, itnlim=0, damp=0.0, M=None, N=None, atol=1.0e-9,
+    def solve(self, b, itnlim=0, damp=0.0, M=None, N=None, atol=1.0e-9,
               btol=1.0e-9, conlim=1.0e+8, show=False, wantvar=False, **kwargs):
         """
         Solve the linear system, linear least-squares problem or regularized
         linear least-squares problem with specified parameters. All return
         values below are stored in members of the same name.
         :parameters:
-           :rhs:    right-hand side vector.
+           :b:    right-hand side vector.
            :itnlim: is an explicit limit on iterations (for safety).
            :damp:   damping/regularization parameter.
         :keywords:
@@ -152,7 +172,7 @@ class lsQR(object):
             print('LSQR            Least-squares solution of  Ax = b')
             str1='The matrix A has %8d rows and %8d cols' % (m, n)
             str2='damp = %20.14e     wantvar = %-5s' % (damp, repr(wantvar))
-            str3='atol = %8.2e                 conlim = %8.2e' % (atol,conlim)
+            str3='atol = %8.2e                 conlim = %8.2e' % (atol, conlim)
             str4='btol = %8.2e                 itnlim = %8g' % (btol, itnlim)
             print(str1); print(str2); print(str3); print(str4);
 
@@ -161,20 +181,21 @@ class lsQR(object):
 
         x = np.zeros(n,dtype=np.complex)
         xNrgNorm2 = 0.0                          # Squared energy norm of final solution.
-        dErr = np.zeros(window,dtype=np.complex) # Truncated direct error terms.
+        dErr = np.zeros(window)                  # Truncated direct error terms.
         trncDirErr = 0                           # Truncated direct error.
 
         if store_iterates:
             self.iterates.append(x.copy())
 
-        Mu = rhs[:m].copy()
+        Mu = b[:m].copy()
         if M is not None:
             u = M(Mu)
         else:
             u = Mu
 
         alpha = 0.
-        beta = np.sqrt(np.dot(u,Mu))       # norm(u)
+        # beta = np.sqrt(np.dot(u,Mu))       # norm(u)
+        beta = np.linalg.norm(u)
         if beta > 0:
             u /= beta
             if M is not None: Mu /= beta
@@ -184,7 +205,8 @@ class lsQR(object):
                 v = N(Nv)
             else:
                 v = Nv
-            alpha = np.sqrt(np.dot(v,Nv))   # norm(v)
+            # alpha = np.sqrt(np.dot(v,Nv))   # norm(v)
+            alpha = np.linalg.norm(v)
 
         if alpha > 0:
             v /= alpha
@@ -192,14 +214,18 @@ class lsQR(object):
             w = v.copy()     # Should this be Nv ???
 
         x_is_zero = False   # Is x=0 the solution to the least-squares prob?
+
         Arnorm = alpha * beta
         if Arnorm == 0.0:
             if show: print(self.msg[0])
             x_is_zero = True
             istop = 0
 
-        rhobar = alpha ; phibar = beta ; bnorm = beta
+        rhobar = alpha
+        phibar = beta
+        bnorm  = beta
         rnorm  = beta
+
         r1norm = rnorm
         r2norm = rnorm
         head1  = '   Itn      x(1)       r1norm     r2norm '
@@ -211,8 +237,8 @@ class lsQR(object):
             test1  = 1.0
             test2  = alpha / beta if not x_is_zero else 1.0
             str1   = '%6g %12.5e'     % (itn,    np.abs(x[0]))
-            str2   = ' %10.3e %10.3e' % (np.abs(r1norm), np.abs(r2norm))
-            str3   = '  %8.1e %8.1e'  % (np.abs(test1),  np.abs(test2))
+            str2   = ' %10.3e %10.3e' % (r1norm, r2norm)
+            str3   = '  %8.1e %8.1e'  % (test1,  test2)
             print(str1+str2+str3)
 
         if store_resids:
@@ -236,19 +262,20 @@ class lsQR(object):
                 u = M(Mu)
             else:
                 u = Mu
-            beta = np.sqrt(np.dot(u,Mu))   # norm(u)
+            # beta = np.sqrt(np.dot(u,Mu))   # norm(u)
+            beta = np.linalg.norm(u)
+
             if beta > 0:
                 u /= beta
                 if M is not None: Mu /= beta
-
                 Anorm = normof4(Anorm, alpha, beta, damp)
-
                 Nv = A.T*u - beta*Nv
                 if N is not None:
                     v = N(Nv)
                 else:
                     v = Nv
-                alpha = np.sqrt(np.dot(v,Nv))  # norm(v)
+                # alpha = np.sqrt(np.dot(v,Nv))  # norm(v)
+                alpha = np.linalg.norm(v)
                 if alpha > 0:
                     v /= alpha
                     if N is not None: Nv /= alpha
@@ -276,15 +303,12 @@ class lsQR(object):
 
             # Update x and w.
 
-            t1      =   phi   / rho;
-            t2      = - theta / rho;
-            dk      =   (1.0/rho)*w;
-            # print('x ',x.dtype)
-            # print('t1 ',t1.dtype)
-            # print('w ',w.dtype)
-            # sys.exit(-1)
+            t1      =   phi   / rho
+            t2      = - theta / rho
+            dk      =   (1.0/rho)*w
             x      += t1*w
-            w      *= t2 ; w += v
+            w      *= t2
+            w      += v
 
             ddnorm  = ddnorm + np.linalg.norm(dk)**2
             if wantvar: var += dk*dk
@@ -297,7 +321,7 @@ class lsQR(object):
             dErr[itn % window] = phi
             if itn > window:
                 trncDirErr = np.linalg.norm(dErr)
-                xNrgNorm = np.sqrt(xNrgNorm2)
+                xNrgNorm = sqrt(xNrgNorm2)
                 self.dir_errors_window.append(trncDirErr / xNrgNorm)
                 if trncDirErr < etol * xNrgNorm:
                     istop = 8
@@ -309,22 +333,26 @@ class lsQR(object):
             delta   =   sn2 * rho
             gambar  = - cs2 * rho
             rhs     =   phi  -  delta * z
+            # print(phi)
+            # sys.exit(-1)
             zbar    =   rhs / gambar
-            xnorm   =   np.sqrt(xxnorm + zbar**2)
+            xnorm   =   sqrt(xxnorm + zbar**2)
             gamma   =   normof2(gambar, theta)
             cs2     =   gambar / gamma
             sn2     =   theta  / gamma
             z       =   rhs    / gamma
+            # print(rhs)
+            # sys.exit(-1)
             xxnorm +=   z*z
 
             # Test for convergence.
             # First, estimate the condition of the matrix  Abar,
             # and the norms of  rbar  and  Abar'rbar.
 
-            Acond   =   Anorm * np.sqrt(ddnorm)
+            Acond   =   Anorm * sqrt(ddnorm)
             res1    =   phibar**2
             res2    =   res2  +  psi**2
-            rnorm   =   np.sqrt(res1 + res2)
+            rnorm   =   sqrt(res1 + res2)
             Arnorm  =   alpha * abs(tau)
 
             # 07 Aug 2002:
@@ -337,9 +365,13 @@ class lsQR(object):
             # Although there is cancellation, it might be accurate enough.
 
             r1sq    =   rnorm**2  -  dampsq * xxnorm
-            r1norm  =   np.sqrt(abs(r1sq))
+            r1norm  =   sqrt(abs(r1sq))
             if r1sq < 0: r1norm = - r1norm
             r2norm  =   rnorm
+
+            # print('res1 ',r1norm)
+            # print('resNorm ',np.linalg.norm(b-A*x))
+            # sys.exit(-1)
 
             # Now use these norms to estimate certain other quantities,
             # some of which will be small near a solution.
@@ -349,6 +381,7 @@ class lsQR(object):
                 test2 = inf
             else:
                 test2 = Arnorm/(Anorm * rnorm)
+
             if Acond == 0.0:
                 test3 = inf
             else:
@@ -391,9 +424,9 @@ class lsQR(object):
 
             if prnt and show:
                 str1 = '%6g %12.5e'     % (  itn,   np.abs(x[0]))
-                str2 = ' %10.3e %10.3e' % (np.abs(r1norm), np.abs(r2norm))
-                str3 = '  %8.1e %8.1e'  % (np.abs(test1),  np.abs(test2))
-                str4 = ' %8.1e %8.1e'   % (np.abs(Anorm),  np.abs(Acond))
+                str2 = ' %10.3e %10.3e' % (r1norm, r2norm)
+                str3 = '  %8.1e %8.1e'  % (test1,  test2)
+                str4 = ' %8.1e %8.1e'   % (Anorm,  Acond)
                 print(str1+str2+str3+str4)
 
             if istop > 0: break
@@ -406,13 +439,13 @@ class lsQR(object):
             print('LSQR finished')
             print(self.msg[istop])
             print(' ')
-            str1 = 'istop =%8g   r1norm =%8.1e'   % (istop, np.abs(r1norm))
-            str2 = 'Anorm =%8.1e   Arnorm =%8.1e' % (np.abs(Anorm), np.abs(Arnorm))
-            str3 = 'itn   =%8g   r2norm =%8.1e'   % ( itn, np.abs(r2norm))
-            str4 = 'Acond =%8.1e   xnorm  =%8.1e' % (np.abs(Acond), np.abs(xnorm))
-            str5 = '                  bnorm  =%8.1e'    % np.abs(bnorm)
+            str1 = 'istop =%8g   r1norm =%8.1e'   % (istop, r1norm)
+            str2 = 'Anorm =%8.1e   Arnorm =%8.1e' % (Anorm, Arnorm)
+            str3 = 'itn   =%8g   r2norm =%8.1e'   % (itn,   r2norm)
+            str4 = 'Acond =%8.1e   xnorm  =%8.1e' % (Acond, xnorm)
+            str5 = '                  bnorm  =%8.1e'    % bnorm
             str6 = 'xNrgNorm2 = %7.1e   trnDirErr = %7.1e' % \
-                    (np.abs(xNrgNorm2), np.abs(trncDirErr))
+                    (xNrgNorm2, trncDirErr)
             print(str1 + '   ' + str2)
             print(str3 + '   ' + str4)
             print(str5)
