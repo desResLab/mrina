@@ -14,7 +14,7 @@ import cv2
 im = cv2.imread(fileName, cv2.IMREAD_GRAYSCALE)
 im = crop(im)
 ```
-The *crop()* function crops the image so its dimensions are a power of 2 so the wavelet transform provided by the *pywt* is orthogonal. 
+The *crop()* function crops the image to power of 2 dimensions, so the wavelet transform provided by the *pywt* is orthogonal.
 We then generate a Gaussian undersampling mask, using the *generateSamplingMask()* function, where *delta* is the undersampling ratio
 ```
 from CSRecoverySuite import generateSamplingMask
@@ -31,53 +31,60 @@ and compute the 2D Haar wavelet transform using
 wim = pywt2array(pywt.wavedec2(im, wavelet='haar', mode=waveMode), im.shape)
 ```
 #### Definition of the measurement operator
-
-
-
+Non linear reconstruction is achieved with the solution of the following problem
 
 ```
 A = Operator4dFlow(imsz=imsz, insz=wim.shape, samplingSet=omega, waveletName='haar', waveletMode=waveMode)
 ```
 
 
+```
+A.input_size():
+```
 
-# True data (recall A takes as input wavelet coefficients)
+```
+A.shape():
+```
+
+Once the operator is defined we can apply to any wavelet image using the overloaded ```*``` multiplication. 
+```
+c = A*b
+```
+
+```
+b = A.T*c
+```
+
+```
+A.getNorm()
+```
+
+```
+B = A.colRestrict(idxSet)
+```
+
+#### Add noise to the Fourier data
 ```
 yim = A*wim
 ```
-
-
+We then define the noise level as
 ```
 # Noisy data
 nlevel      = nlevelVal
 imNrm       = np.linalg.norm(im.ravel(), ord=2)
-imNrmAvg    = imNrm / np.sqrt(2 * im.size)
-wimNrm      = np.linalg.norm(wim.ravel(), ord=2)
-wimNrmAvg   = wimNrm / np.sqrt(2 * wim.size)
 sigma       = nlevel * (imNrm / np.sqrt(2 * im.size))
 y           = yim + sigma * (np.random.normal(size=yim.shape) + 1j * np.random.normal(size=yim.shape))
 ```
 
-# Write Messages
-print('Largest image entry:', np.max(im.ravel()))
-print('Largest magnitude wavelet coefficient:', np.max(wim.ravel()))
-print('Image root mean-squared:', imNrmAvg)
-print('Wavelet root mean-squared:', wimNrmAvg)
-print('Norm of error:', np.linalg.norm(y - yim, ord=2))
-print('Error estimate:', sigma * np.sqrt(2 * nsamp))
-print('Noise variance:', sigma)
-print('PSNR', imNrmAvg ** 2 / sigma ** 2 )
-print('PSNR (dB)', 10 * np.log10(imNrmAvg ** 2 / sigma ** 2) )
-
-
-
 #### Reconstruct original image from undersampled noisy Fourier measurements *yim*
 
+```
 # Recovery via orthogonal projection
 #   FOURIER TRANSFORM NEEDS TO BE NORMALIZED
 fim             = (im.size ** -1/2) * fft.fft2( im )
 fim[~omega]     = 0
 fim             = (im.size ** -1/2) * fft.ifft2( fim )
+```
 
 
 
