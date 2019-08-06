@@ -1,20 +1,40 @@
 import os,sys
+sys.path.append('../../')
 from CSRecoverySuite import crop, CSRecovery, OperatorNorm, OperatorTestAdjoint, Operator4dFlow, pywt2array, array2pywt, CSRecoveryDebiasing, OMPRecovery
-from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling
+from CSRecoverySuite import generateSamplingMask
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
 import pywt
 import numpy as np
 
+# Read command-line parameters
+if(len(sys.argv) < 4):
+  print('Recontruction of a complex image with various approaches:')
+  print('- CS Iterative thresholding')
+  print('- CS Iterative thresholding + Debiasing')
+  print('- Orthogonal Matching Pursuit')
+  print('')
+  print('usage: python3 csrecovery.py fileName uRatio NoiseInt')
+  print('where:')
+  print('fileName - name of the image file. Both image dimensions should be ')
+  print('           a power of 2 for orthogonality in the wavelet transform.')
+  print('uRatio   - undersampling ratio. This is the ratio of the available ')
+  print('           k-space frequency measurements.')
+  print('NoiseInt - noise intensity. This is used to set the noise standard ')
+  print('           deviation to sigma = NoiseInt * imNrmAvg, where imNrmAvg')
+  print('           is the average norm in image space.')
+  sys.exit(-1)
+else:
+  fileName  = sys.argv[1]
+  deltaVal  = float(sys.argv[2])
+  nlevelVal = float(sys.argv[3])
+
 # Set Wavelet Padding Mode
 waveMode = 'periodization'
-samplingType = 'gaussian'
 
 # Load data
-im      = cv2.imread('circle.jpg', cv2.IMREAD_GRAYSCALE)
-# im      = cv2.imread('circle_red.jpg', cv2.IMREAD_GRAYSCALE)
-im      = im[0::2, 0::2]
+im      = cv2.imread(fileName, cv2.IMREAD_GRAYSCALE)
 im      = crop(im) # Crop for multilevel wavelet decomp. array transform
 imsz    = im.shape
 print('Image size:', imsz)
@@ -27,34 +47,10 @@ print('Non-zero fraction:', np.sum(np.where(np.absolute(wim.ravel()) > 0, 1, 0))
 
 # Create undersampling pattern
 #   Sampling fraction (for Bernoulli sampling)
-delta       = 0.50;
-
-if(samplingType == 'bernoulli'):
-  
-  # Sampling set (Bernoulli sampling)
-  omega = np.where(np.random.uniform(0, 1, imsz) < delta, True, False)
-
-elif(samplingType == 'triangle'):
-
-  # Sampling set (central square region and linear decay)
-  omega = VardensTriangleSampling(imsz, delta)
-
-elif(samplingType == 'gaussian'):
-
-  # Sampling set (Gaussian density)
-  omega = VardensGaussianSampling(imsz, delta)
-
-elif(samplingType == 'exponential'):
-
-  # Sampling set (Exponential density)
-  omega = VardensExponentialSampling(imsz, delta)
-
-else:
-  print('ERROR: Invalid Sampling Type')
-  sys.exit(-1)
+delta = deltaVal
+omega = generateSamplingMask(imsz, delta, 'gaussian')
 
 plt.imshow(np.absolute(np.fft.fftshift(omega)), cmap='gray', vmin=0, vmax=1)
-plt.title(samplingType)
 plt.show()
 
 nsamp       = np.sum(np.where( omega, 1, 0 ).ravel())
@@ -72,7 +68,7 @@ OperatorTestAdjoint(A)
 yim         = A.eval(wim, 1)
 
 # Noisy data
-nlevel      = 0.1
+nlevel      = nlevelVal
 imNrm       = np.linalg.norm(im.ravel(), ord=2)
 imNrmAvg    = imNrm / np.sqrt(2 * im.size)
 wimNrm      = np.linalg.norm(wim.ravel(), ord=2)
