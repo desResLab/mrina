@@ -13,16 +13,19 @@ from multiprocessing import Process, cpu_count, Manager
 home = os.getenv('HOME')
 
 # Show figures all together or incrementally
-showAtTheEnd = False
-num_samples = 100
+showAtTheEnd  = True
+num_samples   = 10
 noise_percent = 0.1
-dir = home + "/Documents/undersampled/npy/"
-generate = False #whether to generate noisy realizations or not
-csrecover=False #whether to recover the noisy realizations or not
+
+# dir = home + "/Documents/undersampled/npy/"
+dir = home + "/Documents/01_Development/01_PythonApps/03_Reconstruction/test/02_TestImage/"
+
+generate  = True # whether to generate noisy realizations or not
+csrecover = True # whether to recover the noisy realizations or not
 
 def add_noise(im, imNrm, num_samples,noise_percent):
     avgnorm = imNrm/math.sqrt(im.size)
-    stdev = noise_percent * avgnorm
+    stdev   = noise_percent * avgnorm
     samples = np.zeros((num_samples,) + imsz, dtype=complex)
     for n in range(num_samples):
         noise        = np.random.normal(scale=stdev, size=im.shape) + 1j*np.random.normal(scale=stdev, size=im.shape)
@@ -162,7 +165,6 @@ wim          = pywt2array( pywt.wavedec2(imnoise, wavelet='haar', mode='periodic
 yim          = A.eval( wim, 1 )
 cswim, fcwim = CSRecovery(eta, yim, A, np.zeros( wsz ), disp=2, method='pgdl1')
 csimnoise    = pywt.waverec2(array2pywt( cswim ), wavelet='haar', mode='periodic')
-
 
 # Summary statistics
 print('l1-norm (true)', np.linalg.norm(wim.ravel(), 1))
