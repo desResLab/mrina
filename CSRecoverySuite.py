@@ -113,6 +113,9 @@ class OperatorLinear(genericOperator):
     "The shape of the operator."
     return self.__shape
 
+  def input_size(self):
+    return self.__shape[1]
+
   @property
   def matrix(self):
     "The shape of the operator."
@@ -585,7 +588,6 @@ def generateSamplingMask(shape, delta, saType):
     print('ERROR: Invalid sampling type')
     sys.exit(-1)
   return omega
-
 
 def OMPRecovery(A, b, tol=1E-6, fastAlg=True, showProgress=True, progressInt=10):
 

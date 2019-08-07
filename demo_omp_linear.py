@@ -5,7 +5,9 @@ from CSRecoverySuite import OperatorLinear
 from lsqr            import lsQR
 
 def linearTest():
+  print('')
   print('--- TEST FOR LINEAR COMPLEX SYSTEM')
+  print('')
   # Solve the SQD system
   #  [ 2  1 ] [x] = [2]
   #  [ 1 -3 ] [y]   [0]
@@ -36,7 +38,9 @@ def linearTest():
   #  print(sol[loopA], lsqr.x[loopA], lsSol[loopA])
 
 def ompTest():
+  print('')
   print('--- TEST FOR OMP')
+  print('')
 
   m = 50
   n = 200
@@ -49,13 +53,11 @@ def ompTest():
   x[index_set] = np.random.normal(loc = 6, scale = 1, size = p) + 1j * np.random.normal(loc = 6, scale = 1, size = p)
   b = np.dot(aMat,x)
 
-  print(x)
-
   # Initialize the operator
   A = OperatorLinear(aMat)
 
   # Solve with OMP
-  ompSol = OMPRecovery(A, b)[0]
+  ompSol = OMPRecovery(A, b, progressInt=1)[0]
 
   # Print the original and reconstructed solution
   for loopA in range(n):
