@@ -1,8 +1,5 @@
 import sys
-sys.path.append('./circle/')
-#from CSRecoverySuite import CSRecovery, Operator4dFlow, pywt2array, array2pywt, crop
-from circle.CSRecoverySuite import CSRecovery,CSRecoveryDebiasing, Operator4dFlow, pywt2array, array2pywt, crop
-#from dbtransforms import pywt2array, array2pywt
+from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing, Operator4dFlow, pywt2array, array2pywt, crop
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
