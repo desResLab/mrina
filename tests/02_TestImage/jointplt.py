@@ -18,6 +18,27 @@ start = 0
 end = 30 #size
 interval = int((end-start)/4)#int(math.ceil(((end-start)/4) / 10.0)) * 10))
 type='bernoulli'
+
+def formatting(lgd,max):
+    plt.legend(lgd)
+    plt.xlabel('Distance',fontsize=fs)
+    plt.ylabel('Correlation Coefficient ($R^2$)',fontsize=fs)
+    plt.tick_params(labelsize=fs)
+    #plt.xticks(np.arange(start, end+1, 50))
+    plt.ylim(top=max)
+    plt.xticks(np.arange(start+1, end+1,interval))
+    plt.tight_layout()
+        
+def plot_corr(noise_percent, p, samptype, n, num_pts):
+    coeff = np.load(dir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype +'_n'+str(n) + '.npy')
+    coeff = coeff[v]
+    corravg = np.mean(coeff, axis=1)
+    corrmin = np.percentile(coeff, 10, axis=1)
+    corrmax = np.percentile(coeff, 90, axis=1)
+    size = len(corravg)
+    plt.plot(range(start+1,end+1), np.abs(corravg)[start:end])
+    plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2)
+
 def find_max():
     mx=0.
     p=0.75
@@ -57,25 +78,9 @@ max = find_max()
 for v in range(0,4):
     plt.figure(figsize=(4,3))
     for noise_percent in [0.01,0.05,0.1,0.3]:
-        coeff = np.load(dir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type +'_n'+str(n) + '.npy')
-        coeff = coeff[v]
-        corravg = np.mean(coeff, axis=1)
-        corrmin = np.percentile(coeff, 10, axis=1)
-        corrmax = np.percentile(coeff, 90, axis=1)
-        size = len(corravg)
-        #plt.plot(range(1,size+1), np.abs(corravg))
-        #plt.fill_between(range(1,size+1), corrmin, corrmax)
-        plt.plot(range(start+1,end+1), np.abs(corravg)[start:end])
-        plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2)
+        plot_corr(noise_percent, p, samptype, n, num_pts)
     lgd = ['1\% noise', '5\% noise', '10\% noise', '30\% noise']
-    plt.legend(lgd)
-    plt.xlabel('Distance',fontsize=fs)
-    plt.ylabel('Correlation Coefficient ($R^2$)',fontsize=fs)
-    plt.tick_params(labelsize=fs)
-    #plt.xticks(np.arange(start, end+1, 50))
-    plt.ylim(top=max)
-    plt.xticks(np.arange(start+1, end+1,interval))
-    plt.tight_layout()
+    formatting(lgd, max)
     plt.savefig(dir + 'results/diffnoise' + str(start) + 'to' + str(end) + '_p' + str(int(p*100)) + '_v' + str(v) + '.png')
     #plt.draw()
 #plt.show()
@@ -84,23 +89,9 @@ noise_percent=0.1
 for v in range(0,4):
     plt.figure(figsize=(4,3))
     for p in [0.25,0.5, 0.75]:
-        coeff = np.load(dir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type +'_n'+str(n) + '.npy')
-        coeff = coeff[v]
-        corravg = np.mean(coeff, axis=1)
-        corrmin = np.percentile(coeff, 10, axis=1)
-        corrmax = np.percentile(coeff, 90, axis=1)
-        size = len(corravg)
-        plt.plot(range(start+1,end+1), np.abs(corravg)[start:end])
-        plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2)
+        plot_corr(noise_percent, p, samptype, n, num_pts) 
     lgd = ['25\% undersampling', '50\% undersampling', '75\% undersampling']
-    plt.legend(lgd)
-    plt.xlabel('Distance',fontsize=fs)
-    plt.ylabel('Correlation Coefficient ($R^2$)',fontsize=fs)
-    plt.tick_params(labelsize=fs)
-    #plt.xticks(np.arange(start, end+1, 50))
-    plt.ylim(top=max)
-    plt.xticks(np.arange(start+1, end+1,interval))
-    plt.tight_layout()
+    formatting(lgd, max)
     plt.savefig(dir + 'results/diffundersamp' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_v' + str(v) + '.png')
     #plt.draw()
 #plt.show()
@@ -110,23 +101,9 @@ p=0.75
 for v in range(0,4):
     plt.figure(figsize=(4,3))
     for samptype in ['bernoulli', 'bpoisson', 'halton', 'vardengauss','vardentri', 'vardenexp']:
-        coeff = np.load(dir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype +'_n'+str(n) + '.npy')
-        coeff = coeff[v]
-        corravg = np.mean(coeff, axis=1)
-        corrmin = np.percentile(coeff, 10, axis=1)
-        corrmax = np.percentile(coeff, 90, axis=1)
-        size = len(corravg)
-        plt.plot(range(start+1,end+1), np.abs(corravg)[start:end])
-        plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2)
+        plot_corr(noise_percent, p, samptype, n, num_pts)
     lgd = ['Bernoulli undersampling','Poisson undersampling', 'Halton undersampling', 'Gauss density undersampling', 'Tri density undersampling','Exp density undersampling']
-    plt.legend(lgd)
-    plt.xlabel('Distance',fontsize=fs)
-    plt.ylabel('Correlation Coefficient ($R^2$)',fontsize=fs)
-    plt.tick_params(labelsize=fs)
-    plt.ylim(top=max)
-    #plt.xticks(np.arange(start, end+1, 50))
-    plt.xticks(np.arange(start+1, end+1,interval))
-    plt.tight_layout()
+    formatting(lgd, max)
     plt.savefig(dir + 'results/diffsamptype' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + '_v' + str(v) + '.png')
 #     #plt.draw()
 # plt.show()
