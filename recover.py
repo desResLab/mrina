@@ -41,7 +41,7 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver
         if solver_mode == OMP_MODE:
           wim = OMPRecovery(A, yim, showProgress=False)[0]
         else:
-          wim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1')
+          wim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1)
         if isinstance(wim, tuple):
             wim = wim[0] #for the case where ynrm is less than eta
         if solver_mode == DEBIAS_MODE:
