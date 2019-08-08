@@ -10,8 +10,7 @@ import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
 import sigpy.mri as mri
-sys.path.append('./circle/')
-from circle.CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling
+from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling
 home = os.getenv('HOME')
 #home = 'C:/Users/Lauren/'
 

@@ -1,5 +1,5 @@
 import sys
-from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing, Operator4dFlow, pywt2array, array2pywt, crop
+from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing,OMPRecovery, Operator4dFlow, pywt2array, array2pywt, crop
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
@@ -14,6 +14,10 @@ from scipy.stats import norm,bernoulli
 import scipy.misc
 home = os.getenv('HOME')
 
+CS_MODE = 0
+DEBIAS_MODE = 1
+OMP_MODE = 2
+
 def get_eta(im, imNrm, noise_percent, m):
     avgnorm = imNrm/math.sqrt(im.size)
     stdev = noise_percent * avgnorm
@@ -25,7 +29,7 @@ def get_eta(im, imNrm, noise_percent, m):
     print('eta: ', eta)
     return eta
 
-def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, debias=False):
+def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver_mode=CS_MODE):
     def recover(kspace,imsz,eta,omega):
         print('shape',kspace.shape)
         #im = crop(im)      #crop for multilevel wavelet decomp. array transform
@@ -34,19 +38,25 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, debias
         A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName=wvlt, waveletMode='periodization' )
         yim          = A.eval( wim, 1 )
         print('l2 norm of yim: ', np.linalg.norm(yim.ravel(), 2))
-        cswim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1')
-        if isinstance(cswim, tuple):
-            cswim = cswim[0] #for the case where ynrm is less than eta
-        if debias:
-            cswim =  CSRecoveryDebiasing( yim, A, cswim)
-            if isinstance(cswim, tuple):
-                cswim = cswim[0] #for the case where ynrm is less than eta
-        csim    = pywt.waverec2(array2pywt( cswim ), wavelet=wvlt, mode='periodization')
+        if solver_mode == OMP_MODE:
+          wim = OMPRecovery(A, yim, showProgress=False)[0]
+        else:
+          wim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1, method='pgdl1')
+        if isinstance(wim, tuple):
+            wim = wim[0] #for the case where ynrm is less than eta
+        if solver_mode == DEBIAS_MODE:
+            wim =  CSRecoveryDebiasing( yim, A, wim)
+            if isinstance(wim, tuple):
+                wim = wim[0] #for the case where ynrm is less than eta
+        csim    = pywt.waverec2(array2pywt( wim ), wavelet=wvlt, mode='periodization')
         return csim
     imsz = crop(noisy[0,0,0]).shape
     cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
     print('recov shape', cs.shape)
-    omega = crop(pattern[0]);
+    if len(pattern.shape) > 2:
+        omega = crop(pattern[0])
+    else:
+        omega = crop(pattern)
     print('omega', omega.shape)
     print('original',original.shape)
     for n in range(0,noisy.shape[0]):
@@ -60,7 +70,7 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, debias
     return_dict[processnum] = cs
     return cs
 
-def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar'):
+def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar', mode=CS_MODE):
 	# Load data
     data = np.load(fourier_file)
     original = np.load(orig_file)
@@ -76,7 +86,7 @@ def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar'):
     first = original[0,0,0]
     wsz = pywt2array(pywt.wavedec2(crop(first), wavelet=wvlt, mode='periodization'), imsz).shape
     for n in range(0, data.shape[0], interval):
-        p = Process(target=recover, args=(data[n:n+interval], original, pattern, wsz, int(n/interval), return_dict, wvlt))
+        p = Process(target=recover, args=(data[n:n+interval], original, pattern, wsz, int(n/interval), return_dict, wvlt, mode))
         jobs.append(p)
         p.start()
     print('num of processes:', len(jobs))
@@ -125,18 +135,23 @@ if __name__ == '__main__':
         p=0.75 #percent not sampled
         type='bernoulli'
         num_samples = 100
-    save_img = False
-    dir = home + '/Documents/undersampled/poiseuille/npy/'#'/apps/undersampled/modelflow/aorta_orig/npy/'
+    save_img = False #whether to save example image files
+    dir = home + '/apps/undersampled/poiseuille/npy/'#where the kspace data is
     recdir = dir #where to save recovered imgs
+    patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
+    num_processes = 2
+    wavelet_type = 'haar'
+    solver_mode = CS_MODE    
+ 
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
-    undersample_file = dir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
+    undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
     omega = pattern[0]
     orig_file = dir+'imgs_n1' +  '.npy'
-    recovered = recoverAll(fourier_file, orig_file, pattern, c=2, wvlt='haar')
+    recovered = recoverAll(fourier_file, orig_file, pattern, c=num_processes, wvlt=wavelet_type, mode=solver_mode)
     np.save(recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type  + '_n' + str(num_samples), recovered)
     #recovered = np.load(recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy')
-    print(recovered.shape)
+    print('recovered images', recovered.shape)
     linrec = linear_reconstruction(fourier_file, omega)
     venc = np.load(dir + 'venc_n1' + '.npy')
     imgs = recover_vel(linrec, venc)
