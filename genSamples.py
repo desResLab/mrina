@@ -2,15 +2,13 @@ import sys
 import os
 import math
 import pydoc
-import vtk
-from vtk.util.numpy_support import vtk_to_numpy
-from vtk.util.numpy_support import numpy_to_vtk
 from scipy.stats import bernoulli
 import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
 import sigpy.mri as mri
-from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling
+import imageio
+from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling, crop
 home = os.getenv('HOME')
 #home = 'C:/Users/Lauren/'
 
@@ -40,37 +38,6 @@ def halton_sequence(size, dim):
         base = next(primeGen)
         seq.append([vdc(i, base) for i in range(size)])
     return seq
-
-def getInput(reader, filename):
-    reader.SetFileName(filename)
-    reader.Update()
-    polyDataModel = reader.GetOutput()
-    dims = polyDataModel.GetDimensions()
-    data = polyDataModel.GetPointData()
-    velocity = vtk_to_numpy(data.GetArray('velocity'))
-    velocity = np.reshape(velocity, (dims[2], dims[1], dims[0],3))
-    velocity = np.transpose(velocity, (3,2,1,0))
-    concentration = vtk_to_numpy(data.GetScalars('concentration'))
-    concentration = np.reshape(concentration, (dims[2], dims[1], dims[0],1))
-    concentration = np.transpose(concentration, (3,2,1,0))
-    return velocity,concentration
-
-def getInputData(directory, nums):
-    reader = vtk.vtkRectilinearGridReader()#vtk.vtkStructuredPointsReader()
-    reader.SetFileName(directory + "pout0_0.vtk")
-    reader.ReadAllVectorsOn()
-    reader.ReadAllScalarsOn()
-    reader.Update()
-    velocity, concentration = getInput(reader,directory + "pout0_0.vtk")
-    data = np.concatenate((concentration,velocity),axis=0)
-    samples = np.empty((0,) + data.shape)
-    print(samples.shape)
-    for k in nums:
-        filename = directory + "pout" + str(k) + "_0.vtk"
-        velocity, concentration = getInput(reader,filename)
-        data = np.concatenate((concentration,velocity),axis=0)
-        samples =np.append(samples,np.expand_dims(data,axis=0), axis=0)
-    return samples
 
 def getVenc(vel):
     mx = np.amax(np.fabs(vel))
@@ -158,33 +125,85 @@ def add_noise(kspace, noise_percent, num_realizations):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
-def samples(directory,numRealizations, numSamples=1, uType='bernoulli', sliceIndex=0,npydir=home +'/Documents/undersampled/npy/'):
+def recover_vel(recovered, venc):
+    mag = recovered[:, 0, :]
+    vel = np.empty((recovered.shape[0],) + (3,) + recovered.shape[2:] )
+    for n in range(0,recovered.shape[0]):
+        for k in range(1,4):
+            for j in range(0, recovered.shape[2]):
+                m = mag[n,j]
+                v = recovered[n,k,j]
+                v = venc/(2*math.pi)*np.log(np.divide(v,m)).imag
+                vel[n,k-1,j] = v
+                #set velocity = 0 wherever mag is close enough to 0
+                mask = (np.abs(mag[n,j]) < 1E-1)
+                vel[n,k-1,j, mask] = 0
+    mag = np.abs(mag)
+    return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
+
+def linear_reconstruction(fourier_file, omega=None):
+    if isinstance(fourier_file, str): 
+        kspace = np.load(fourier_file)
+    else:
+        kspace = fourier_file
+    if omega != None:
+        omega = crop(omega)
+    imsz = crop(kspace[0,0,0]).shape
+    kspace = kspace[:,:,:, :imsz[0], :imsz[1]]
+    linrec = np.zeros(kspace.shape[0:3] + imsz, dtype=complex)
+    for n in range(kspace.shape[0]):
+        for k in range(kspace.shape[1]):
+            for j in range(kspace.shape[2]):
+                if omega != None:
+                    kspace[n,k,j][omega] = 0
+                linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
+    return linrec
+
+def samples(fromdir,numRealizations,imgfile='true', tosavedir=None, numSamples=1, uType='bernoulli',ext='.jpg',numpy=False ):
     #p: percent not sampled, uType: bernoulli, poisson, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
-    inp = getInputData(directory, range(0,numSamples))
-    inp = np.moveaxis(inp, 2+sliceIndex, 2)
+    if tosavedir == None:
+        tosavedir = fromdir
+    #get images
+    inp = np.expand_dims(imageio.imread(fromdir + imgfile + '_' + str(0) + ext), axis=0)
     print(inp.shape)
-    np.save(npydir + 'imgs_n' + str(numSamples) + '.npy', inp)
+    for k in range(1,4):
+        inp = np.append(inp, np.expand_dims(imageio.imread(fromdir + imgfile + '_' + str(k) + ext), axis=0), axis=0)
+    print(inp.shape)
+    inp = np.expand_dims(inp, axis=1)
+    inp = np.expand_dims(inp, axis=0)
     venc = getVenc(inp[:,1:,:])
-    np.save(npydir + 'venc_n' + str(numSamples) + '.npy', venc)
+    np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
     kspace = getKspace(inp, venc)
     print(kspace.shape)
 
     for p in [0.25, 0.5, 0.75]:
         print('undersampling', p)
         mask=undersamplingMask(1, kspace.shape[3:], p,uType)
-        np.save(npydir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations), mask)
-
+        print(mask.shape)
+        undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
+        if numpy:
+            np.save(undfile, mask)
+        else:
+            imageio.imwrite(undfile + ext, np.moveaxis(mask,0,2).astype(int))
     for noisePercent in [0.01, 0.05, 0.10, 0.30]:
         print('percent',noisePercent)
         noisy,snr = add_noise(kspace,noisePercent, numRealizations)
-        np.save(npydir + 'noisy_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), noisy)
-        np.save(npydir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
-
+        fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
+        if numpy:
+            np.save(fourier_file + '_n' + str(numRealizations), noisy)
+        else:
+            #save as image, not fourier file
+            imgs = recover_vel(linear_reconstruction(noisy), venc)    
+            print(imgs.shape)
+            imgs = np.moveaxis(imgs, 2, 4) 
+            print(imgs.shape)
+            for n in range(numRealizations):
+                for k in range(4):
+                    imageio.imwrite(fourier_file + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k])
+        np.save(tosavedir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
 
 if __name__ == '__main__':
 
-    #directory = home + '/apps/undersampled/vtk/'
-	#directory = home + "/Documents/undersampled/vtk/"
-    directory = home + "/apps/pDat/samp256/"
-    samples(directory, 100, uType='poisson',sliceIndex=2,npydir=home+"/apps/undersampled/poiseuille/npy/")
+    directory = home + "/apps/undersampled/poiseuille/img/"
+    samples(directory, 2,tosavedir=home+"/apps/undersampled/poiseuille/img/", uType='vardengauss')
