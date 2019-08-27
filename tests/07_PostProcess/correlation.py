@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import cv2
 import sys
 sys.path.append('../../')
-from recover import recover_vel
+from genSamples import recover_vel
 home = os.getenv('HOME')
 num_samples = 100 #number of samples in file
 noise_percent = 0.01
@@ -16,7 +16,6 @@ ptsdir = home + "/apps/undersampled/poiseuille/npy/" #where location of points c
 kspacedir = ptsdir #where noisy kspace 
 EPSILON = 0.5
 n=100 #number of samples to include
-plotExamples = False 
 
 fs=8
 plt.rc('font',  family='serif')
@@ -47,7 +46,7 @@ def select_points(dist, imsz):
     return pt2, pt1
 
 def get_points(size, num_pts,imsz):
-    print('getting points...')
+    print('getting points of size ' + str(size) + ' and ' + str(num_pts) + ' points...')
     points = np.zeros((size, num_pts, 2, 2), dtype=int)
     for k in range(1,size+1):
         print(k)
@@ -62,7 +61,7 @@ def get_points(size, num_pts,imsz):
             points[k-1, j, 1, 1] = pt2[1]
     np.save(ptsdir+'points_s' + str(size) + '_n' + str(num_pts),points)
 
-def get_samples(noise_percent, p, samptype, num_samples):
+def get_samples(noise_percent, p, samptype, num_samples, recdir, kspacedir):
     samples = np.load(recdir + 'rec_noise'+str(int(noise_percent*100))+'_p' + str(int(p*100)) + samptype +'_n'+str(num_samples) + '.npy')
     venc = np.load(kspacedir + 'venc_n1' + '.npy')
     samples = recover_vel(samples, venc)
@@ -72,37 +71,7 @@ def get_samples(noise_percent, p, samptype, num_samples):
     samples = samples[0:n]
     return samples
 
-def plot(samples):
-    plt.figure()
-    plt.imshow(np.abs(samples[0,3]), cmap='gray')
-    plt.title('recovered 1')
-    plt.colorbar()
-    plt.draw()
-    plt.figure()
-    plt.imshow(np.abs(samples[1,3]), cmap='gray')
-    plt.title('recovered 2')
-    plt.colorbar()
-    plt.draw()
-    plt.figure()
-    plt.imshow(np.abs(samples[1,3]-samples[0,3,0]), cmap='gray')
-    plt.title('diff between recovered')
-    plt.colorbar()
-    plt.draw()
-    #actual   = cv2.imread('nd_small.jpg', cv2.IMREAD_GRAYSCALE)
-    actual   = np.load(dir + 'imgs_n1.npy')
-    print(actual.shape)
-    plt.figure()
-    plt.imshow(np.abs(actual[0,3,0]), cmap='gray')
-    plt.title('actual')
-    plt.colorbar()
-    plt.draw()
-    plt.figure()
-    plt.imshow(np.abs(actual[0,3,0]-samples[0,3]), cmap='gray')
-    plt.title('diff between actual')
-    plt.colorbar()
-    plt.show()
-
-def get_saved_points(samples, size, num_pts):
+def get_saved_points(samples, size, num_pts, ptsdir):
     imsz = samples.shape[2:]
     if not os.path.isfile(ptsdir+'points_s' + str(size) + '_n' + str(num_pts) + '.npy'):
         get_points(size,num_pts,imsz)
@@ -126,11 +95,12 @@ def get_coeff(size, num_pts, samples, points):
             corravg[v, k-1] = np.mean(coeff[v, k-1])
     return coeff
 
-def get_vals(noise_percent, p, samptype, num_samples, size, num_pts):
-    samples = get_samples(noise_percent, p, samptype, num_samples)
-    points = get_saved_points(samples, size, num_pts)
+def get_vals(noise_percent, p, samptype, num_samples, size, num_pts, save_numpy=True, recdir=recdir, kspacedir=kspacedir, ptsdir=ptsdir):
+    samples = get_samples(noise_percent, p, samptype, num_samples, recdir, kspacedir)
+    points = get_saved_points(samples, size, num_pts, ptsdir)
     coeff = get_coeff(size, num_pts, samples, points)
-    np.save(recdir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type +'_n'+str(n), coeff)
+    if save_numpy:
+        np.save(recdir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type +'_n'+str(n), coeff)
     return coeff
 
 def get_all(size, num_pts):
@@ -148,12 +118,14 @@ def get_all(size, num_pts):
                     continue
 
 if __name__ == '__main__':
-    size = 100
-    num_pts = 50
+    if len(sys.argv) > 1:
+        size = int(sys.argv[1])
+        num_pts=int(sys.argv[2])
+    else:
+        size = 100 #max dist from point
+        num_pts = 50 # number of points at each distance
     #to save only one correlation average:
     #get_vals(noise_percent, p, samptype, num_samples, size, num_pts)
-    if plotExamples:
-        plot(get_samples(noise_percent, p, num_samples))
     #calculate correlations for all noise levels, undersampling levels, and sampling types bernoulli and vardengauss
     # and save to numpy files
     get_all(size, num_pts)
