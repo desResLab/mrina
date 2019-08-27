@@ -7,7 +7,7 @@ import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
 import sigpy.mri as mri
-import imageio
+import cv2
 from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling, crop
 home = os.getenv('HOME')
 #home = 'C:/Users/Lauren/'
@@ -159,19 +159,19 @@ def linear_reconstruction(fourier_file, omega=None):
                 linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
     return linrec
 
-def samples(fromdir,numRealizations,imgfile='true', tosavedir=None, numSamples=1, uType='bernoulli',ext='.jpg',numpy=False ):
+def samples(fromdir,numRealizations,imgfile='true', tosavedir=None, numSamples=1, uType='bernoulli',ext='.png',numpy=False ):
     #p: percent not sampled, uType: bernoulli, poisson, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
     if tosavedir == None:
         tosavedir = fromdir
     #get images
-    inp = np.expand_dims(imageio.imread(fromdir + imgfile + '_' + str(0) + ext), axis=0)
+    inp = np.expand_dims(cv2.imread(fromdir + imgfile + '_' + str(0) + ext, 0), axis=0)
     print(inp.shape)
     for k in range(1,4):
-        inp = np.append(inp, np.expand_dims(imageio.imread(fromdir + imgfile + '_' + str(k) + ext), axis=0), axis=0)
-    print(inp.shape)
+        inp = np.append(inp, np.expand_dims(cv2.imread(fromdir + imgfile + '_' + str(k) + ext, 0), axis=0), axis=0)
     inp = np.expand_dims(inp, axis=1)
     inp = np.expand_dims(inp, axis=0)
+    print('input',inp.shape)
     venc = getVenc(inp[:,1:,:])
     np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
     kspace = getKspace(inp, venc)
@@ -185,7 +185,7 @@ def samples(fromdir,numRealizations,imgfile='true', tosavedir=None, numSamples=1
         if numpy:
             np.save(undfile, mask)
         else:
-            imageio.imwrite(undfile + ext, np.moveaxis(mask,0,2).astype(int))
+            cv2.imwrite(undfile + ext, np.moveaxis(mask,0,2).astype(int))
     for noisePercent in [0.01, 0.05, 0.10, 0.30]:
         print('percent',noisePercent)
         noisy,snr = add_noise(kspace,noisePercent, numRealizations)
@@ -195,12 +195,11 @@ def samples(fromdir,numRealizations,imgfile='true', tosavedir=None, numSamples=1
         else:
             #save as image, not fourier file
             imgs = recover_vel(linear_reconstruction(noisy), venc)    
-            print(imgs.shape)
             imgs = np.moveaxis(imgs, 2, 4) 
             print(imgs.shape)
             for n in range(numRealizations):
                 for k in range(4):
-                    imageio.imwrite(fourier_file + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k])
+                    cv2.imwrite(fourier_file + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k])
         np.save(tosavedir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
 
 if __name__ == '__main__':

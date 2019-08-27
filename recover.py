@@ -9,7 +9,7 @@ import os
 import math
 import sys
 from multiprocessing import Process, cpu_count, Manager
-from genSamples import getKspace,getVenc
+from genSamples import getKspace,getVenc, linear_reconstruction, recover_vel
 from scipy.stats import norm,bernoulli
 import scipy.misc
 home = os.getenv('HOME')
@@ -95,34 +95,6 @@ def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar', mode=CS_MODE)
     recovered = np.concatenate([v for k,v in sorted(return_dict.items())], axis=0)
     print('recovered shape', recovered.shape)
     return recovered
-
-def recover_vel(recovered, venc):
-    mag = recovered[:, 0, :]
-    vel = np.empty((recovered.shape[0],) + (3,) + recovered.shape[2:] )
-    for n in range(0,recovered.shape[0]):
-        for k in range(1,4):
-            for j in range(0, recovered.shape[2]):
-                m = mag[n,j]
-                v = recovered[n,k,j]
-                v = venc/(2*math.pi)*np.log(np.divide(v,m)).imag
-                vel[n,k-1,j] = v
-                #set velocity = 0 wherever mag is close enough to 0
-                mask = (np.abs(mag[n,j]) < 1E-1)
-                vel[n,k-1,j, mask] = 0
-    mag = np.abs(mag)
-    return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
-
-def linear_reconstruction(fourier_file, omega):
-    kspace = np.load(fourier_file)
-    omega = crop(omega)
-    kspace = kspace[:,:,:, :omega.shape[0], :omega.shape[1]]
-    linrec = np.zeros(kspace.shape[0:3] + omega.shape, dtype=complex)
-    for n in range(kspace.shape[0]):
-        for k in range(kspace.shape[1]):
-            for j in range(kspace.shape[2]):
-                kspace[n,k,j][omega] = 0
-                linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
-    return linrec
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:

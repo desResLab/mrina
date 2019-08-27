@@ -1,9 +1,9 @@
 import vtk
 from vtk.util.numpy_support import vtk_to_numpy
 from vtk.util.numpy_support import numpy_to_vtk
-import imageio
 import os
 import numpy as np
+import cv2
 home = os.getenv('HOME')
 
 def getInput(reader, filename):
@@ -30,16 +30,16 @@ def getInputData(directory, vtkfile):
     data = np.concatenate((concentration,velocity),axis=0)
     return data
 
-def saveImage(fromdir, vtkfile, todir, imagefile, sliceIndex, ext='.jpg', numpy=False):
+def saveImage(fromdir, vtkfile, todir, imagefile, sliceIndex, ext='.png', numpy=False):
     inp = getInputData(directory, vtkfile)
     print(inp.shape)
     #inp = np.moveaxis(inp, 1+sliceIndex, 1)
     print(inp.shape)
     if numpy:
-        np.save(todir + 'imgs_n' + str(numSamples) + '.npy', inp)
+        np.save(todir + imagefile + '.npy', inp)
     else:
         for k in range(4):
-            imageio.imwrite(todir + imagefile + '_' + str(k) + ext, inp[k]) 
+            cv2.imwrite(todir + imagefile + '_' + str(k) + ext, inp[k]) 
 
 if __name__ == '__main__':
     #directory = home + '/apps/undersampled/vtk/'
