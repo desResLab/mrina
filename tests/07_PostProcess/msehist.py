@@ -83,7 +83,7 @@ def formatting(ax, lgd):
     ax.yaxis.set_major_formatter(PercentFormatter(xmax=1))
     x_formatter = ScalarFormatter(useOffset=False)
     ax.xaxis.set_major_formatter(x_formatter)
-    plt.legend(['1\% noise', '5\% noise', '10\% noise', '30\% noise'])
+    plt.legend(lgd)
 
 def plotpdiff(dir, recdir, noise_percent, p, type, use_complex, use_truth, useCS):
     folder = get_folder(use_complex)
