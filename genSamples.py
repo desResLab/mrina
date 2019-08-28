@@ -146,7 +146,7 @@ def linear_reconstruction(fourier_file, omega=None):
         kspace = np.load(fourier_file)
     else:
         kspace = fourier_file
-    if omega != None:
+    if omega is not None:
         omega = crop(omega)
     imsz = crop(kspace[0,0,0]).shape
     kspace = kspace[:,:,:, :imsz[0], :imsz[1]]
@@ -154,7 +154,7 @@ def linear_reconstruction(fourier_file, omega=None):
     for n in range(kspace.shape[0]):
         for k in range(kspace.shape[1]):
             for j in range(kspace.shape[2]):
-                if omega != None:
+                if omega is not None:
                     kspace[n,k,j][omega] = 0
                 linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
     return linrec

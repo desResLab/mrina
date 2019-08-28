@@ -1,10 +1,10 @@
-import matplotlib.pyplot as plt
+import sys
+import os
 sys.path.append('../../')
 from genSamples import linear_reconstruction, recover_vel #threshold for zero mag
 from genSamples import getKspace
 import numpy as np
-import sys
-import os
+import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter, ScalarFormatter
 from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing, Operator4dFlow, pywt2array, array2pywt, crop
 home = os.getenv('HOME')
@@ -14,6 +14,7 @@ plt.rc('xtick', labelsize='x-small')
 plt.rc('ytick', labelsize='x-small')
 plt.rc('text',  usetex=True)
 num_samples = 100
+
 def get_files(dir, recdir, noise_percent, p, type):
     patterndir = home + "/apps/undersampled/poiseuille/npy/"
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
@@ -33,14 +34,8 @@ def get_complex(dir, recdir, noise_percent, p, type):
     orig = np.load(orig_file)
     new_shape = crop(orig[0,0,0]).shape
     kspace = getKspace(orig, venc)
-    temp_save = './kspace_temp.npy'
-    print('kspace',kspace.shape)
-    np.save(temp_save, kspace)
-    orig = linear_reconstruction(temp_save, np.zeros(new_shape, dtype=bool))
-    o = np.zeros(recovered.shape, dtype=complex)
-    for k in range(0,num_samples):
-        o[k] = orig[0,:,:, :new_shape[0], :new_shape[1]]
-    return recovered, linrec, o
+    orig = linear_reconstruction(kspace, np.zeros(new_shape, dtype=bool))
+    return recovered, linrec, orig[0,:,:,:new_shape[0], :new_shape[1]] 
 
 def get_final(dir,recdir,noise_percent, p, type):
     fourier_file, orig_file, omega, recovered = get_files(dir, recdir, noise_percent, p, type)
@@ -50,27 +45,29 @@ def get_final(dir,recdir,noise_percent, p, type):
     venc = np.load(dir + 'venc_n1' + '.npy')
     imgs = recover_vel(linrec, venc)
     csimgs = recover_vel(recovered, venc)
-    o = np.zeros(csimgs.shape, dtype=complex)
-    for k in range(0,num_samples):
-        o[k] = orig[0,:,:, :new_shape[0], :new_shape[1]]
-    return csimgs, imgs, o
+    return csimgs, imgs, orig[0,:,:,:new_shape[0], :new_shape[1]]
 
-def get_error(dir, recdir, noise_percent, p, type,  use_complex):
+def get_error(dir, recdir, noise_percent, p, type,  use_complex, use_truth):
     if use_complex:
         csimgs, linimgs, o = get_complex(dir,recdir, noise_percent, p, type)
     else:
         csimgs, linimgs, o = get_final(dir,recdir, noise_percent, p, type) 
     print('orig', o.shape)
     print('cs', csimgs.shape) 
-   # msecs = ((o-csimgs)**2).mean(axis=0)
-   # mselin = ((o-imgs)**2).mean(axis=0)
+    avgcs = csimgs.mean(axis=0)
+    avglin = linimgs.mean(axis=0)
     msecs = np.zeros(csimgs.shape[0])
     mselin = np.zeros(csimgs.shape[0])
     for k in range(csimgs.shape[0]):
-        msecs[k] = np.abs(((o[k]-csimgs[k])**2).mean(axis=None))
-        mselin[k] = np.abs(((o[k]-linimgs[k])**2).mean(axis=None))
+        if use_truth:
+            msecs[k] = np.abs(((o-csimgs[k])**2).mean(axis=None))
+            mselin[k] = np.abs(((o-linimgs[k])**2).mean(axis=None))
+        else: #compare against average recovered
+            msecs[k] = np.abs(((avgcs-csimgs[k])**2).mean(axis=None))
+            mselin[k] = np.abs(((avglin-linimgs[k])**2).mean(axis=None))
     print('mse',msecs.shape, mselin.shape)
     return msecs, mselin
+
 def get_folder(use_complex):    
     if use_complex:
         folder = 'histcomplex'
@@ -88,44 +85,48 @@ def formatting(ax, lgd):
     ax.xaxis.set_major_formatter(x_formatter)
     plt.legend(['1\% noise', '5\% noise', '10\% noise', '30\% noise'])
 
-def plotpdiff(dir, recdir, noise_percent, p, type, use_complex, useCS):
+def plotpdiff(dir, recdir, noise_percent, p, type, use_complex, use_truth, useCS):
     folder = get_folder(use_complex)
     fig, ax = plt.subplots(figsize=(4,3))
     i = 0
     colors = ['blue','orange','green', 'red']
     alpha = 1
     for noise_percent in [0.01, 0.05, 0.1, 0.3]:#
-        msecs, mselin = get_error(dir, recdir, noise_percent, p, type, use_complex)
+        msecs, mselin = get_error(dir, recdir, noise_percent, p, type, use_complex, use_truth)
         if useCS:
             toplot = msecs
-            msg = 'hist_debias'
+            msg = 'hist'
         else:
             toplot = mselin
-            msg = 'hist_debias_lin'
+            msg = 'hist_lin'
+        if not use_truth:
+            msg = msg + 'avg'
         plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i],alpha=alpha)#, ec='black')
         i = i + 1
         alpha = alpha - 0.25
-    formatting(['1\% noise', '5\% noise', '10\% noise', '30\% noise'])
+    formatting(ax, ['1\% noise', '5\% noise', '10\% noise', '30\% noise'])
     plt.savefig(recdir + folder + '/' + msg + '_p' + str(int(p*100)) + type + '.png')
     print(recdir + folder + '/' + msg + '_p' + str(int(p*100)) + type + '.png')
     #plt.savefig(recdir + 'histnonzero/hist_debias'+ '_noise' + str(int(noise_percent*100)) + type + '.png')
     #plt.draw()
     plt.close('all')
 
-def plotnoisediff(dir, recdir, noise_percent, p, type, use_complex, useCS):
+def plotnoisediff(dir, recdir, noise_percent, p, type, use_complex, use_truth, useCS):
     folder = get_folder(use_complex)
     colors = ['blue','orange','green', 'red']
     fig, ax = plt.subplots(figsize=(4,3))
     i = 0
     alpha = 1
     for p in [0.25, 0.5, 0.75]: 
-        msecs, mselin = get_error(dir, recdir, noise_percent, p, type, use_complex)
+        msecs, mselin = get_error(dir, recdir, noise_percent, p, type, use_complex, use_truth)
         if useCS:
             toplot = msecs
-            msg = 'hist_debias'
+            msg = 'hist'
         else:
             toplot = mselin
-            msg = 'hist_debias_lin'
+            msg = 'hist_lin'
+        if not use_truth:
+            msg = msg + 'avg'
         plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i], alpha=alpha)# ec='black')
         i = i + 1
     formatting(ax, ['25\% undersampling', '50\% undersampling', '75\% undersampling'])
@@ -135,13 +136,29 @@ def plotnoisediff(dir, recdir, noise_percent, p, type, use_complex, useCS):
     #plt.show()
     plt.close('all')
 
-def plthist(dir,recdir, noise_percent, p, type, use_complex):
-   
-    msecs, mselin = get_error(dir, recdir, noise_percent, p, type, use_complex)
-    plotnoisediff(dir, recdir, noise_percent, p, type, use_complex, True)
-    plotnoisediff(dir, recdir, noise_percent, p, type, use_complex, False)
-    #plotpdiff(dir, recdir, noise_percent, p, type, use_complex, True)
-    #plotpdiff(dir, recdir, noise_percent, p, type, use_complex, False)
+def plthist(dir, recdir, use_complex, use_truth):
+    #use_complex: compare against complex images or final recovered velocity images
+    #use_truth: compare against true values or the average recovered images 
+    for p in [0.25]:
+        for type in ['vardengauss']:#'bernoulli', 'bpoisson']:
+            for noise in [0.01, 0.05, 0.1, 0.3]:
+                try: #plot comparison of undersampling % for CS and linear rec. images
+                    plotnoisediff(dir, recdir, noise, p, type, use_complex, use_truth, True)
+                    plotnoisediff(dir, recdir, noise, p, type, use_complex, use_truth, False)
+                except Exception as e:
+                    print(e)
+                    print('missing', noise, 'noise', p, 'p', type, 'type')
+                    continue
+    for p in [0.25, 0.5, 0.75]:
+        for type in ['vardengauss']:#'bernoulli', 'bpoisson']:
+            for noise in [0.01]:
+                try:
+                    plotpdiff(dir, recdir, noise, p, type, use_complex, use_truth, True)
+                    plotpdiff(dir, recdir, noise, p, type, use_complex, use_truth, False)
+                except Exception as e:
+                    print(e)
+                    print('missing', noise, 'noise', p, 'p', type, 'type')
+                    continue
     
 
 if __name__ == '__main__':
@@ -149,13 +166,7 @@ if __name__ == '__main__':
     #dir = home + "/apps/undersampled/poiseuille/npy/"
     #recdir = home + "/apps/undersampled/poiseuille/debiasing/"
     recdir = dir
-    #plthist(dir, recdir, 0.01, 0.25, 'bernoulli',use_complex=False) 
-    for p in [0.25]:#, 0.5, 0.75]:
-        for type in ['vardengauss']:#'bernoulli', 'bpoisson']:
-            for noise in [0.01, 0.05, 0.1, 0.3]:
-                try:
-                    plthist(dir, recdir, noise, p, type, use_complex=False) 
-                except Exception as e:
-                    print(e)
-                    print('missing', noise, 'noise', p, 'p', type, 'type')
-                    continue
+    #to plot a single histogram, use plotnoisediff or plotpdiff
+    #plotnoisediff(dir, recdir, 0.1, 0.5, 'bernoulli', use_complex=True, use_truth=True, useCS=True)
+    #to plot all combinations: 
+    plthist(dir, recdir, use_complex=False, use_truth=False)
