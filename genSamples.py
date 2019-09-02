@@ -7,7 +7,6 @@ import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
 import sigpy.mri as mri
-import cv2
 from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling, crop
 home = os.getenv('HOME')
 #home = 'C:/Users/Lauren/'
@@ -125,52 +124,13 @@ def add_noise(kspace, noise_percent, num_realizations):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
-def recover_vel(recovered, venc):
-    mag = recovered[:, 0, :]
-    vel = np.empty((recovered.shape[0],) + (3,) + recovered.shape[2:] )
-    for n in range(0,recovered.shape[0]):
-        for k in range(1,4):
-            for j in range(0, recovered.shape[2]):
-                m = mag[n,j]
-                v = recovered[n,k,j]
-                v = venc/(2*math.pi)*np.log(np.divide(v,m)).imag
-                vel[n,k-1,j] = v
-                #set velocity = 0 wherever mag is close enough to 0
-                mask = (np.abs(mag[n,j]) < 1E-1)
-                vel[n,k-1,j, mask] = 0
-    mag = np.abs(mag)
-    return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
-
-def linear_reconstruction(fourier_file, omega=None):
-    if isinstance(fourier_file, str): 
-        kspace = np.load(fourier_file)
-    else:
-        kspace = fourier_file
-    if omega is not None:
-        omega = crop(omega)
-    imsz = crop(kspace[0,0,0]).shape
-    kspace = kspace[:,:,:, :imsz[0], :imsz[1]]
-    linrec = np.zeros(kspace.shape[0:3] + imsz, dtype=complex)
-    for n in range(kspace.shape[0]):
-        for k in range(kspace.shape[1]):
-            for j in range(kspace.shape[2]):
-                if omega is not None:
-                    kspace[n,k,j][omega] = 0
-                linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
-    return linrec
-
-def samples(fromdir,numRealizations,imgfile='true', tosavedir=None, numSamples=1, uType='bernoulli',ext='.png',numpy=False ):
+def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSamples=1, uType='bernoulli',ext='.png',numpy=False ):
     #p: percent not sampled, uType: bernoulli, poisson, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
     if tosavedir == None:
         tosavedir = fromdir
     #get images
-    inp = np.expand_dims(cv2.imread(fromdir + imgfile + '_' + str(0) + ext, 0), axis=0)
-    print(inp.shape)
-    for k in range(1,4):
-        inp = np.append(inp, np.expand_dims(cv2.imread(fromdir + imgfile + '_' + str(k) + ext, 0), axis=0), axis=0)
-    inp = np.expand_dims(inp, axis=1)
-    inp = np.expand_dims(inp, axis=0)
+    inp = np.load(tosavedir + truefile + '.npy', inp)
     print('input',inp.shape)
     venc = getVenc(inp[:,1:,:])
     np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
@@ -182,24 +142,13 @@ def samples(fromdir,numRealizations,imgfile='true', tosavedir=None, numSamples=1
         mask=undersamplingMask(1, kspace.shape[3:], p,uType)
         print(mask.shape)
         undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
-        if numpy:
-            np.save(undfile, mask)
-        else:
-            cv2.imwrite(undfile + ext, np.moveaxis(mask,0,2).astype(int))
+        np.save(undfile, mask)
+    
     for noisePercent in [0.01, 0.05, 0.10, 0.30]:
         print('percent',noisePercent)
         noisy,snr = add_noise(kspace,noisePercent, numRealizations)
         fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
-        if numpy:
-            np.save(fourier_file + '_n' + str(numRealizations), noisy)
-        else:
-            #save as image, not fourier file
-            imgs = recover_vel(linear_reconstruction(noisy), venc)    
-            imgs = np.moveaxis(imgs, 2, 4) 
-            print(imgs.shape)
-            for n in range(numRealizations):
-                for k in range(4):
-                    cv2.imwrite(fourier_file + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k])
+        np.save(fourier_file + '_n' + str(numRealizations), noisy)
         np.save(tosavedir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
 
 if __name__ == '__main__':

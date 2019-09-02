@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append('../../')
-from genSamples import linear_reconstruction, recover_vel #threshold for zero mag
+from recover import linear_reconstruction, recover_vel #threshold for zero mag
 from genSamples import getKspace
 import numpy as np
 import matplotlib.pyplot as plt

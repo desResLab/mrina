@@ -1,6 +1,5 @@
 import sys
 from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing,OMPRecovery, Operator4dFlow, pywt2array, array2pywt, crop
-import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
 import pywt
@@ -9,7 +8,7 @@ import os
 import math
 import sys
 from multiprocessing import Process, cpu_count, Manager
-from genSamples import getKspace,getVenc, linear_reconstruction, recover_vel
+from genSamples import getKspace,getVenc
 from scipy.stats import norm,bernoulli
 import scipy.misc
 home = os.getenv('HOME')
@@ -96,6 +95,40 @@ def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar', mode=CS_MODE)
     print('recovered shape', recovered.shape)
     return recovered
 
+def recover_vel(recovered, venc):
+    mag = recovered[:, 0, :]
+    vel = np.empty((recovered.shape[0],) + (3,) + recovered.shape[2:] )
+    for n in range(0,recovered.shape[0]):
+        for k in range(1,4):
+            for j in range(0, recovered.shape[2]):
+                m = mag[n,j]
+                v = recovered[n,k,j]
+                v = venc/(2*math.pi)*np.log(np.divide(v,m)).imag
+                vel[n,k-1,j] = v
+                #set velocity = 0 wherever mag is close enough to 0
+                mask = (np.abs(mag[n,j]) < 1E-1)
+                vel[n,k-1,j, mask] = 0
+    mag = np.abs(mag)
+    return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
+
+def linear_reconstruction(fourier_file, omega=None):
+    if isinstance(fourier_file, str): 
+        kspace = np.load(fourier_file)
+    else:
+        kspace = fourier_file
+    if omega is not None:
+        omega = crop(omega)
+    imsz = crop(kspace[0,0,0]).shape
+    kspace = kspace[:,:,:, :imsz[0], :imsz[1]]
+    linrec = np.zeros(kspace.shape[0:3] + imsz, dtype=complex)
+    for n in range(kspace.shape[0]):
+        for k in range(kspace.shape[1]):
+            for j in range(kspace.shape[2]):
+                if omega is not None:
+                    kspace[n,k,j][omega] = 0
+                linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
+    return linrec
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         noise_percent = float(sys.argv[1])
@@ -113,32 +146,26 @@ if __name__ == '__main__':
     patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
     num_processes = 2
     wavelet_type = 'haar'
-    solver_mode = CS_MODE    
- 
+    solver_mode = CS_MODE 
+    
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
     omega = pattern[0]
     orig_file = dir+'imgs_n1' +  '.npy'
-    recovered = recoverAll(fourier_file, orig_file, pattern, c=num_processes, wvlt=wavelet_type, mode=solver_mode)
-    np.save(recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type  + '_n' + str(num_samples), recovered)
-    #recovered = np.load(recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy')
+    venc = np.load(dir + 'venc_n1' + '.npy')
+    savednpy = recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy' 
+    if not os.path.exists(savednpy):
+        recovered = recoverAll(fourier_file, orig_file, pattern, c=num_processes, wvlt=wavelet_type, mode=solver_mode)
+        save(recovered, noise_percent, p, samptype, recdir, venc)
+    else:
+        csimgs = np.load(savednpy)
     print('recovered images', recovered.shape)
     linrec = linear_reconstruction(fourier_file, omega)
-    venc = np.load(dir + 'venc_n1' + '.npy')
     imgs = recover_vel(linrec, venc)
     csimgs = recover_vel(recovered, venc)
     orig = np.load(orig_file)
     new_shape = crop(orig[0,0,0]).shape
-    
-    if save_img:
-        scipy.misc.imsave(recdir + 'csmag.jpg', np.abs(csimgs[0,0,0]))
-        scipy.misc.imsave(recdir+'linmag.jpg', np.abs(imgs[0,0,0]))
-        scipy.misc.imsave(recdir+'origmag.jpg', np.abs(orig[0,0,0]))
-        for k in range(1,4):
-            scipy.misc.imsave(recdir+'csvel'+str(k) + '.jpg', np.abs(csimgs[0,k,0]))
-            scipy.misc.imsave(recdir+'linvel'+str(k) + '.jpg', np.abs(imgs[0,k,0]))
-            scipy.misc.imsave(recdir+'origvel'+str(k) + '.jpg', np.abs(orig[0,k,0]))
     
     o = np.zeros(csimgs.shape, dtype=complex)
     for k in range(0,num_samples):
