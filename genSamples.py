@@ -124,7 +124,7 @@ def add_noise(kspace, noise_percent, num_realizations):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
-def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSamples=1, uType='bernoulli',ext='.png',numpy=False ):
+def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSamples=1, uType='bernoulli',ext='.png',genNoise=False):
     #p: percent not sampled, uType: bernoulli, poisson, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
     if tosavedir == None:
@@ -144,14 +144,19 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
         undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
         np.save(undfile, mask)
     
-    for noisePercent in [0.01, 0.05, 0.10, 0.30]:
-        print('percent',noisePercent)
-        noisy,snr = add_noise(kspace,noisePercent, numRealizations)
-        fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
-        np.save(fourier_file + '_n' + str(numRealizations), noisy)
-        np.save(tosavedir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
+    if genNoise or (not os.path.exists(tosavedir + 'noisy_noise1_n' + str(numRealizations) + '.npy')):
+        for noisePercent in [0.01, 0.05, 0.10, 0.30]:
+            print('percent',noisePercent)
+            noisy,snr = add_noise(kspace,noisePercent, numRealizations)
+            fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
+            np.save(fourier_file + '_n' + str(numRealizations), noisy)
+            np.save(tosavedir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
 
 if __name__ == '__main__':
-
-    directory = home + "/apps/undersampled/poiseuille/img/"
-    samples(directory, 2,tosavedir=home+"/apps/undersampled/poiseuille/img/", uType='vardengauss')
+    if len(sys.argv) > 1:
+        samptype = sys.argv[1]
+        directory = sys.argv[2] #options: bernoulli, vardengauss, bpoisson, halton, vardentri, vardenexp
+    else:
+        samptype = 'vardengauss'
+        directory = home + "/apps/undersampled/poiseuille/img/"
+    samples(directory, 2, uType=samptype)

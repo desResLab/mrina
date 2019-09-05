@@ -162,10 +162,13 @@ def plthist(dir, recdir, use_complex, use_truth):
     
 
 if __name__ == '__main__':
-    dir =home + '/apps/undersampled/modelflow/idealmodel/npy/'
-    #dir = home + "/apps/undersampled/poiseuille/npy/"
-    #recdir = home + "/apps/undersampled/poiseuille/debiasing/"
-    recdir = dir
+    if len(sys.argv) > 1:
+        dir = sys.argv[1]
+        recdir = sys.argv[2]
+    else:
+        dir = home + "/apps/undersampled/poiseuille/npy/"
+        #recdir = home + "/apps/undersampled/poiseuille/debiasing/"
+        recdir = dir
     #to plot a single histogram, use plotnoisediff or plotpdiff
     #plotnoisediff(dir, recdir, 0.1, 0.5, 'bernoulli', use_complex=True, use_truth=True, useCS=True)
     #to plot all combinations: 

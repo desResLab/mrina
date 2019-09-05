@@ -140,11 +140,17 @@ if __name__ == '__main__':
         p=0.75 #percent not sampled
         type='bernoulli'
         num_samples = 100
+    if len(sys.argv) > 5:
+        num_processes = int(sys.argv[5])
+        dir = sys.argv[6]
+        recdir = dir
+        patterndir = dir 
+    else:
+        dir = home + '/apps/undersampled/poiseuille/npy/'#where the kspace data is
+        recdir = dir #where to save recovered imgs
+        patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
+        num_processes = 2
     save_img = False #whether to save example image files
-    dir = home + '/apps/undersampled/poiseuille/npy/'#where the kspace data is
-    recdir = dir #where to save recovered imgs
-    patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
-    num_processes = 2
     wavelet_type = 'haar'
     solver_mode = CS_MODE 
     

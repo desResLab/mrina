@@ -1,26 +1,13 @@
 import os
 import random
 import numpy as np
-import matplotlib.pyplot as plt
 import sys
 sys.path.append('../../')
-from genSamples import recover_vel
+from recover import recover_vel
 home = os.getenv('HOME')
 num_samples = 100 #number of samples in file
-noise_percent = 0.01
-p= 0.5
-type='bernoulli'
-recdir = home + "/apps/undersampled/modelflow/aorta_orig/npy/" #where recovered images are
-ptsdir = home + "/apps/undersampled/poiseuille/npy/" #where location of points chosen are stored
-kspacedir = ptsdir #where noisy kspace 
 EPSILON = 0.5
 n=100 #number of samples to include
-
-fs=8
-plt.rc('font',  family='serif')
-plt.rc('xtick', labelsize='x-small')
-plt.rc('ytick', labelsize='x-small')
-plt.rc('text',  usetex=True)
 
 def circle(shape, center, dist):
     #probably a more efficient way to determine this
@@ -94,7 +81,7 @@ def get_coeff(size, num_pts, samples, points):
             corravg[v, k-1] = np.mean(coeff[v, k-1])
     return coeff
 
-def get_vals(noise_percent, p, samptype, num_samples, size, num_pts, save_numpy=True, recdir=recdir, kspacedir=kspacedir, ptsdir=ptsdir):
+def get_vals(noise_percent, p, samptype, num_samples, size, num_pts, recdir, kspacedir, ptsdir, save_numpy=True):
     samples = get_samples(noise_percent, p, samptype, num_samples, recdir, kspacedir)
     points = get_saved_points(samples, size, num_pts, ptsdir)
     coeff = get_coeff(size, num_pts, samples, points)
@@ -102,14 +89,14 @@ def get_vals(noise_percent, p, samptype, num_samples, size, num_pts, save_numpy=
         np.save(recdir + 'results/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type +'_n'+str(n), coeff)
     return coeff
 
-def get_all(size, num_pts):
+def get_all(size, num_pts, recdir, ptsdir, kspacedir):
     #size is max. distance to retrieve correlations for
     #num_pts is the number of points to average correlation across
     for noise_percent in [0.01, 0.05, 0.1, 0.3]:
         for p in [0.25, 0.5, 0.75]:
             for samptype in ['bernoulli', 'vardengauss']:
                 try:
-                    get_vals(noise_percent, p, samptype, 100, size, num_pts)
+                    get_vals(noise_percent, p, samptype, 100, size, num_pts, recdir, kspacedir, ptsdir)
                     print('saved noise %', noise_percent, 'undersampling prob', p, 'sampling type', samptype)
                 except Exception as e:
                     print(e)
@@ -123,8 +110,16 @@ if __name__ == '__main__':
     else:
         size = 100 #max dist from point
         num_pts = 50 # number of points at each distance
+    if len(sys.argv) > 3:
+        recdir = sys.argv[3]
+        ptsdir = sys.argv[4]
+        kspacedir = sys.argv[5]
+    else:
+        recdir = home + "/apps/undersampled/modelflow/aorta_orig/npy/" #where recovered images are
+        ptsdir = home + "/apps/undersampled/poiseuille/npy/" #where location of points chosen are stored
+        kspacedir = ptsdir #where noisy kspace 
     #to save only one correlation average:
     #get_vals(noise_percent, p, samptype, num_samples, size, num_pts)
     #calculate correlations for all noise levels, undersampling levels, and sampling types bernoulli and vardengauss
     # and save to numpy files
-    get_all(size, num_pts)
+    get_all(size, num_pts, recdir, ptsdir, kspacedir)

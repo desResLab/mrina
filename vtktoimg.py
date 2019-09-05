@@ -2,6 +2,7 @@ import vtk
 from vtk.util.numpy_support import vtk_to_numpy
 from vtk.util.numpy_support import numpy_to_vtk
 import os
+import sys
 import numpy as np
 home = os.getenv('HOME')
 
@@ -32,12 +33,19 @@ def getInputData(directory, vtkfile):
 def saveInput(fromdir, vtkfile, todir, imagefile, sliceIndex, ext='.png', numpy=False):
     inp = getInputData(directory, vtkfile)
     print(inp.shape)
-    #inp = np.moveaxis(inp, 1+sliceIndex, 1)
+    inp = np.moveaxis(inp, 1+sliceIndex, 1)
     np.save(todir + imagefile + '.npy', inp)
     return inp
 
 if __name__ == '__main__':
-    #directory = home + '/apps/undersampled/vtk/'
-    directory = home + "/apps/pDat/samp256/"
-    tosavedir = home + '/apps/undersampled/poiseuille/img/'
-    saveImage(directory, 'pout0_0.vtk', tosavedir, 'true', sliceIndex=2)
+    if len(sys.argv) > 1:
+        directory = sys.argv[1]
+        if len(sys.argv) == 3:
+            tosavedir = sys.argv[2]
+        else:
+            tosavedir = directory
+    else: 
+        directory = home + "/apps/pDat/samp256/"
+        tosavedir = home + '/apps/undersampled/poiseuille/img/'
+    
+    saveInput(directory, 'pout0_0.vtk', tosavedir, 'imgs_n1', sliceIndex=2)
