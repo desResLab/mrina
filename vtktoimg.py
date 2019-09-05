@@ -40,12 +40,11 @@ def saveInput(fromdir, vtkfile, todir, imagefile, sliceIndex, ext='.png', numpy=
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         directory = sys.argv[1]
-        if len(sys.argv) == 3:
-            tosavedir = sys.argv[2]
-        else:
-            tosavedir = directory
+        tosavedir = sys.argv[2]
+        sliceIndex = int(sys.argv[3])
     else: 
         directory = home + "/apps/pDat/samp256/"
         tosavedir = home + '/apps/undersampled/poiseuille/img/'
-    
-    saveInput(directory, 'pout0_0.vtk', tosavedir, 'imgs_n1', sliceIndex=2)
+        sliceIndex = 2
+
+    saveInput(directory, 'pout0_0.vtk', tosavedir, 'imgs_n1', sliceIndex=sliceIndex)

@@ -54,7 +54,7 @@ def get_max(coeff, mx, v):
     corrmax = np.percentile(coeff, 90, axis=1)
     return max(mx, np.amax(corrmax))
 
-def find_max(noise_vals, p_vals, samp_vals, noise_val, p_val, samp_val, dir, ptsdir, kspacedir):
+def find_max(noise_vals, p_vals, samp_vals, noise_val, p_val, samp_val, n, size, num_pts, dir, ptsdir, kspacedir):
     mx=0.
     for v in range(0,4):
         plt.figure(figsize=(4,3))
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     noise_vals = [0.01, 0.05, 0.1, 0.3]
     p_vals = [0.25, 0.5, 0.75]
     samp_vals = ['bernoulli', 'vardengauss']
-    max_corr = find_max(noise_vals, p_vals, samp_vals, noise_percent, p, samptype)
+    max_corr = find_max(noise_vals, p_vals, samp_vals, noise_percent, p, samptype, n, size, num_pts, dir, ptsdir, kspacedir)
     plot_noisediff(noise_vals, p, samptype, size, num_pts, max_corr, dir, ptsdir, kspacedir)
     plot_pdiff(noise_percent, p_vals, samptype, size, num_pts, max_corr, dir, ptsdir, kspacedir)
     plot_sampdiff(noise_percent, p, samp_vals, size, num_pts, max_corr, dir, ptsdir, kspacedir)
