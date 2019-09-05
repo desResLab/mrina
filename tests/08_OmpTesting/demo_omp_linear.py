@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+sys.path.append('../../')
 from CSRecoverySuite import OMPRecovery
 from CSRecoverySuite import OperatorLinear
 from lsqr            import lsQR
