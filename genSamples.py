@@ -130,7 +130,7 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
     if tosavedir == None:
         tosavedir = fromdir
     #get images
-    inp = np.load(tosavedir + truefile + '.npy', inp)
+    inp = np.load(tosavedir + truefile + '.npy')
     print('input',inp.shape)
     venc = getVenc(inp[:,1:,:])
     np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
@@ -154,7 +154,7 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        numsamples = int(sys.argv[1]
+        numsamples = int(sys.argv[1])
         samptype = sys.argv[2]
         directory = sys.argv[3] #options: bernoulli, vardengauss, bpoisson, halton, vardentri, vardenexp
     else:
