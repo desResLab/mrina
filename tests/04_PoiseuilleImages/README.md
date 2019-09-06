@@ -11,6 +11,24 @@ python3 recover.py 0.01 0.25 'vardengauss' 2 1 tests/04_PoiseuilleImages/axis1/ 
 ```
 This will recover the 1% noise case, 25% Gaussian density undersampling, with 2 realizations, using 1 process, where the noisy data is located in the first directory, the recovered images will be saved to the second directory, and the undersampling patterns are located in the third directory.
 
+To recover for different combinations, run recover multiple times.
+```
+DIR="./tests/04_PoiseuilleImages/axis1/"
+RECDIR=$DIR+"/results/"
+REALIZATIONS=2
+PROCESSES=8
+for SAMPTYPE in "vardengauss" "bernoulli"
+do
+    for P in 0.25 0.5 0.75
+    do
+        for NOISE in 0.01 0.05 0.1 0.3
+        do
+            python3 recover.py $NOISE $P $SAMPTYPE $REALIZATIONS $PROCESSES $DIR $RECDIR $DIR
+        done
+    done
+done
+```
+
 ## Post Processing
 Files located in tests/07_PostProcess/ are used to generate plots of results, such as correlation plots and recovered images.
 
