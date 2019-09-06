@@ -1,5 +1,7 @@
 ## Compressed Sensing Image Recovery Suite
 
+To generate all images from the paper, refer to the example in tests/04_PoiseuilleImages/. 
+
 ### CSRecoverySuite.py
 
 A set of tools is provided to perform image reconstruct from undersampled and noisy k-space data.
