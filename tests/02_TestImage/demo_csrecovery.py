@@ -1,6 +1,7 @@
 import sys
 sys.path.append('../../')
 from CSRecoverySuite import CSRecovery, Operator4dFlow, pywt2array, array2pywt, crop
+from recover import get_eta
 import cv2
 import matplotlib.pyplot as plt
 import numpy.fft as fft
@@ -49,17 +50,6 @@ def recover(imgs,eta, A, processnum, return_dict):
         cs[k] = recover(imgs[k], imsz, eta)
     return_dict[processnum] = cs
     return cs
-
-def get_eta(im, imNrm, noise_percent, m):
-    avgnorm = imNrm/math.sqrt(im.size)
-    stdev = noise_percent * avgnorm
-    print('stdev', stdev)
-    print('noise_percent', noise_percent)
-    rv = norm()
-    #ppf: inverse of cdf
-    eta = stdev*math.sqrt(2*m + 2*math.sqrt(m)*rv.ppf(0.95))
-    print('eta: ', eta)
-    return eta
 
 def recover_all(s, imsz, wsz, omega, c, eta, A, fcn=recover):
     interval = max(int(s.shape[0]/c),1)
