@@ -154,9 +154,11 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        samptype = sys.argv[1]
-        directory = sys.argv[2] #options: bernoulli, vardengauss, bpoisson, halton, vardentri, vardenexp
+        numsamples = int(sys.argv[1]
+        samptype = sys.argv[2]
+        directory = sys.argv[3] #options: bernoulli, vardengauss, bpoisson, halton, vardentri, vardenexp
     else:
+        numsamples = 100
         samptype = 'vardengauss'
         directory = home + "/apps/undersampled/poiseuille/img/"
-    samples(directory, 2, uType=samptype)
+    samples(directory, numsamples, uType=samptype)

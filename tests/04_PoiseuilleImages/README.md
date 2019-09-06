@@ -1,15 +1,15 @@
 Within the main directory, execute the python files. Use **genSamples.py** to generate k-space, given velocity and magnitude. Undersample and add random noise.
 
 ```
-python3 genSamples.py 1 vardengauss tests/04_PoiseuilleImages/axis1/
+python3 genSamples.py 2 vardengauss tests/04_PoiseuilleImages/axis1/
 ```
-This will generate one noise realization for each noise level (1%, 5%, 10%, 30%), and one Gaussian density undersampling pattern for each undersampling ratio (25%, 50%, 75%). 
+This will generate 2 noise realization for each noise level (1%, 5%, 10%, 30%), and one Gaussian density undersampling pattern for each undersampling ratio (25%, 50%, 75%). 
 
 ### Recovering Images
 ``` 
-python3 recover.py 0.01 0.25 'vardengauss' 1 1 tests/04_PoiseuilleImages/axis1/ tests/04_PoiseuilleImages/axis1/results/ tests/04_PoiseuilleImages/axis1/
+python3 recover.py 0.01 0.25 'vardengauss' 2 1 tests/04_PoiseuilleImages/axis1/ tests/04_PoiseuilleImages/axis1/results/ tests/04_PoiseuilleImages/axis1/
 ```
-This will recover the 1% noise case, 25% Gaussian density undersampling, with 1 realization, where the noisy data is located in the first directory, the recovered images will be saved to the second directory, and the undersampling patterns are located in the third directory.
+This will recover the 1% noise case, 25% Gaussian density undersampling, with 2 realizations, using 1 process, where the noisy data is located in the first directory, the recovered images will be saved to the second directory, and the undersampling patterns are located in the third directory.
 
 ## Post Processing
 Files located in tests/07_PostProcess/ are used to generate plots of results, such as correlation plots and recovered images.
