@@ -13,9 +13,8 @@ plt.rc('font',  family='serif')
 plt.rc('xtick', labelsize='x-small')
 plt.rc('ytick', labelsize='x-small')
 plt.rc('text',  usetex=True)
-num_samples = 100
 
-def get_files(dir, recdir, noise_percent, p, type):
+def get_files(dir, recdir, noise_percent, p, type, num_samples):
     patterndir = home + "/apps/undersampled/poiseuille/npy/"
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
@@ -27,8 +26,8 @@ def get_files(dir, recdir, noise_percent, p, type):
     recovered = np.load(recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy')
     return fourier_file, orig_file, omega, recovered
 
-def get_complex(dir, recdir, noise_percent, p, type):
-    fourier_file, orig_file, omega, recovered = get_files(dir, recdir, noise_percent, p, type)
+def get_complex(dir, recdir, noise_percent, p, type, num_samples):
+    fourier_file, orig_file, omega, recovered = get_files(dir, recdir, noise_percent, p, type, num_samples)
     linrec = linear_reconstruction(fourier_file, omega)
     venc = np.load(dir + 'venc_n1' + '.npy')
     orig = np.load(orig_file)
@@ -37,8 +36,8 @@ def get_complex(dir, recdir, noise_percent, p, type):
     orig = linear_reconstruction(kspace, np.zeros(new_shape, dtype=bool))
     return recovered, linrec, orig[0,:,:,:new_shape[0], :new_shape[1]] 
 
-def get_final(dir,recdir,noise_percent, p, type):
-    fourier_file, orig_file, omega, recovered = get_files(dir, recdir, noise_percent, p, type)
+def get_final(dir,recdir,noise_percent, p, type, num_samples):
+    fourier_file, orig_file, omega, recovered = get_files(dir, recdir, noise_percent, p, type, num_samples)
     orig = np.load(orig_file) 
     new_shape = crop(orig[0,0,0]).shape
     linrec = linear_reconstruction(fourier_file, omega)
@@ -47,11 +46,11 @@ def get_final(dir,recdir,noise_percent, p, type):
     csimgs = recover_vel(recovered, venc)
     return csimgs, imgs, orig[0,:,:,:new_shape[0], :new_shape[1]]
 
-def get_error(dir, recdir, noise_percent, p, type,  use_complex, use_truth):
+def get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth):
     if use_complex:
-        csimgs, linimgs, o = get_complex(dir,recdir, noise_percent, p, type)
+        csimgs, linimgs, o = get_complex(dir,recdir, noise_percent, p, type, num_samples)
     else:
-        csimgs, linimgs, o = get_final(dir,recdir, noise_percent, p, type) 
+        csimgs, linimgs, o = get_final(dir,recdir, noise_percent, p, type, num_samples) 
     print('orig', o.shape)
     print('cs', csimgs.shape) 
     avgcs = csimgs.mean(axis=0)
@@ -85,14 +84,14 @@ def formatting(ax, lgd):
     ax.xaxis.set_major_formatter(x_formatter)
     plt.legend(lgd)
 
-def plotpdiff(dir, recdir, noise_percent, p, type, use_complex, use_truth, useCS):
+def plotpdiff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth, useCS):
     folder = get_folder(use_complex)
     fig, ax = plt.subplots(figsize=(4,3))
     i = 0
     colors = ['blue','orange','green', 'red']
     alpha = 1
     for noise_percent in [0.01, 0.05, 0.1, 0.3]:#
-        msecs, mselin = get_error(dir, recdir, noise_percent, p, type, use_complex, use_truth)
+        msecs, mselin = get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth)
         if useCS:
             toplot = msecs
             msg = 'hist'
@@ -105,20 +104,22 @@ def plotpdiff(dir, recdir, noise_percent, p, type, use_complex, use_truth, useCS
         i = i + 1
         alpha = alpha - 0.25
     formatting(ax, ['1\% noise', '5\% noise', '10\% noise', '30\% noise'])
+    if not os.path.exists(recdir + folder):
+        os.makedirs(recdir+folder)
     plt.savefig(recdir + folder + '/' + msg + '_p' + str(int(p*100)) + type + '.png')
     print(recdir + folder + '/' + msg + '_p' + str(int(p*100)) + type + '.png')
     #plt.savefig(recdir + 'histnonzero/hist_debias'+ '_noise' + str(int(noise_percent*100)) + type + '.png')
     #plt.draw()
     plt.close('all')
 
-def plotnoisediff(dir, recdir, noise_percent, p, type, use_complex, use_truth, useCS):
+def plotnoisediff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth, useCS):
     folder = get_folder(use_complex)
     colors = ['blue','orange','green', 'red']
     fig, ax = plt.subplots(figsize=(4,3))
     i = 0
     alpha = 1
     for p in [0.25, 0.5, 0.75]: 
-        msecs, mselin = get_error(dir, recdir, noise_percent, p, type, use_complex, use_truth)
+        msecs, mselin = get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth)
         if useCS:
             toplot = msecs
             msg = 'hist'
@@ -130,21 +131,23 @@ def plotnoisediff(dir, recdir, noise_percent, p, type, use_complex, use_truth, u
         plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i], alpha=alpha)# ec='black')
         i = i + 1
     formatting(ax, ['25\% undersampling', '50\% undersampling', '75\% undersampling'])
+    if not os.path.exists(recdir + folder):
+        os.makedirs(recdir+folder)
     plt.savefig(recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + type + '.png')
     print(recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + type + '.png')
     #plt.savefig(recdir + 'hist/hist_lin'+ '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type + '.png')
     #plt.show()
     plt.close('all')
 
-def plthist(dir, recdir, use_complex, use_truth):
+def plthist(dir, recdir, num_samples, use_complex, use_truth):
     #use_complex: compare against complex images or final recovered velocity images
     #use_truth: compare against true values or the average recovered images 
     for p in [0.25]:
         for type in ['vardengauss']:#'bernoulli', 'bpoisson']:
             for noise in [0.01, 0.05, 0.1, 0.3]:
                 try: #plot comparison of undersampling % for CS and linear rec. images
-                    plotnoisediff(dir, recdir, noise, p, type, use_complex, use_truth, True)
-                    plotnoisediff(dir, recdir, noise, p, type, use_complex, use_truth, False)
+                    plotnoisediff(dir, recdir, noise, p, type, num_samples, use_complex, use_truth, True)
+                    plotnoisediff(dir, recdir, noise, p, type, num_samples, use_complex, use_truth, False)
                 except Exception as e:
                     print(e)
                     print('missing', noise, 'noise', p, 'p', type, 'type')
@@ -153,8 +156,8 @@ def plthist(dir, recdir, use_complex, use_truth):
         for type in ['vardengauss']:#'bernoulli', 'bpoisson']:
             for noise in [0.01]:
                 try:
-                    plotpdiff(dir, recdir, noise, p, type, use_complex, use_truth, True)
-                    plotpdiff(dir, recdir, noise, p, type, use_complex, use_truth, False)
+                    plotpdiff(dir, recdir, noise, p, type, num_samples, use_complex, use_truth, True)
+                    plotpdiff(dir, recdir, noise, p, type, num_samples, use_complex, use_truth, False)
                 except Exception as e:
                     print(e)
                     print('missing', noise, 'noise', p, 'p', type, 'type')
@@ -163,13 +166,18 @@ def plthist(dir, recdir, use_complex, use_truth):
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        dir = sys.argv[1]
-        recdir = sys.argv[2]
+        numsamples = int(sys.argv[1])
+        dir = sys.argv[2]
+        recdir = sys.argv[3]
     else:
+        numsamples=100
         dir = home + "/apps/undersampled/poiseuille/npy/"
         #recdir = home + "/apps/undersampled/poiseuille/debiasing/"
         recdir = dir
     #to plot a single histogram, use plotnoisediff or plotpdiff
     #plotnoisediff(dir, recdir, 0.1, 0.5, 'bernoulli', use_complex=True, use_truth=True, useCS=True)
     #to plot all combinations: 
-    plthist(dir, recdir, use_complex=False, use_truth=False)
+    plthist(dir, recdir, numsamples, use_complex=False, use_truth=False)
+    plthist(dir, recdir, numsamples, use_complex=True, use_truth=False)
+    plthist(dir, recdir, numsamples, use_complex=False, use_truth=True)
+    plthist(dir, recdir, numsamples, use_complex=True, use_truth=True)

@@ -116,12 +116,14 @@ if __name__ == '__main__':
         noise_percent = float(sys.argv[1])
         p = float(sys.argv[2]) 
         samptype = sys.argv[3] #bernoulli, vardengauss, 'bpoisson', 'halton','vardentri', 'vardenexp'
-        dir = sys.argv[4]
+        numsamples = int(sys.argv[4]
+        dir = sys.argv[5]
     else:
         dir = home + '/apps/undersampled/poiseuille/debiasing/'
         noise_percent = 0.1
         p = 0.75
         samptype = 'vardengauss'
+        numsamples = 100
     if len(sys.argv) > 5:
         ptsdir = sys.argv[5]
         kspacedir = sys.argv[6]
@@ -131,9 +133,9 @@ if __name__ == '__main__':
     noise_vals = [0.01, 0.05, 0.1, 0.3]
     p_vals = [0.25, 0.5, 0.75]
     samp_vals = ['bernoulli', 'vardengauss']
-    max_corr = find_max(noise_vals, p_vals, samp_vals, noise_percent, p, samptype, n, size, num_pts, dir, ptsdir, kspacedir)
-    plot_noisediff(noise_vals, p, samptype, size, num_pts, max_corr, dir, ptsdir, kspacedir)
-    plot_pdiff(noise_percent, p_vals, samptype, size, num_pts, max_corr, dir, ptsdir, kspacedir)
+    max_corr = find_max(noise_vals, p_vals, samp_vals, noise_percent, p, samptype, numsamples, size, num_pts, dir, ptsdir, kspacedir)
+    plot_noisediff(noise_vals, p, samptype, numsamples, size, num_pts, max_corr, dir, ptsdir, kspacedir)
+    plot_pdiff(noise_percent, p_vals, samptype, numsamples, size, num_pts, max_corr, dir, ptsdir, kspacedir)
     plot_sampdiff(noise_percent, p, samp_vals, size, num_pts, max_corr, dir, ptsdir, kspacedir)
 
     

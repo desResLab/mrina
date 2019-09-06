@@ -46,26 +46,29 @@ def save_truth(dir, ext='.png'):
 def save_all(dir, recdir, patterndir, numRealizations=100):
     save_truth(dir)
     venc = np.load(dir + 'venc_n1' + '.npy')
-    for p in [0.25]:#, 0.5, 0.75]:
-        for samptype in ['bernoulli']:#, 'vardengauss']:
+    for p in [0.25, 0.5, 0.75]:
+        for samptype in ['bernoulli', 'vardengauss']:
             save_mask(patterndir, p, samptype, numRealizations) 
-            for noise_percent in [0.01]:#, 0.05, 0.1, 0.3]:
+            for noise_percent in [0.01, 0.05, 0.1, 0.3]:
                 save_cs(noise_percent, p, samptype, recdir, venc, numRealizations)
             
     for noise_percent in [0.01]:#, 0.05, 0.1, 0.3]:
         save_noisy(noise_percent, recdir, venc, numRealizations)  
 
 if __name__ == '__main__':
-    if len(sys.argv) == 4:
-        dir = sys.argv[1]
-        recdir = sys.argv[2]
-        patterndir = sys.argv[3]
-    elif len(sys.argv) == 2:
-        dir = sys.argv[1]
+    if len(sys.argv) == 5:
+        numRealizations = int(sys.argv[1]
+        dir = sys.argv[2]
+        recdir = sys.argv[3]
+        patterndir = sys.argv[4]
+    elif len(sys.argv) == 3:
+        numRealizations = int(sys.argv[1]
+        dir = sys.argv[2]
         recdir = dir
         patterndir = dir
     elif len(sys.argv) == 1:
+        numRealizations = 100
         dir = home + '/apps/undersampled/poiseuille/npy/'#where the kspace data is
         recdir = dir #where to save recovered imgs
         patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
-    save_all(dir, recdir, patterndir)
+    save_all(dir, recdir, patterndir, numRealizations)
