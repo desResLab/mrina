@@ -38,7 +38,9 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver
         yim          = A.eval( wim, 1 )
         print('l2 norm of yim: ', np.linalg.norm(yim.ravel(), 2))
         if solver_mode == OMP_MODE:
-          wim = OMPRecovery(A, yim, showProgress=False)[0]
+          tol = eta/np.linalg.norm(yim.ravel(),2)
+          print('tol:', tol)
+          wim = OMPRecovery(A, yim, tol=tol, showProgress=False, maxItns=2000)[0]
         else:
           wim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1)
         if isinstance(wim, tuple):

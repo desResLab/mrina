@@ -94,13 +94,16 @@ def plotpdiff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use
         msecs, mselin = get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth)
         if useCS:
             toplot = msecs
-            msg = 'hist'
+            msg = 'bxplt'
+            #msg = 'hist'
         else:
             toplot = mselin
-            msg = 'hist_lin'
+            msg = 'bxplt_lin'
+            #msg = 'hist_lin'
         if not use_truth:
             msg = msg + 'avg'
-        plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i],alpha=alpha)#, ec='black')
+        #plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i],alpha=alpha)#, ec='black')
+        plt.boxplot(toplot, vert=True)
         i = i + 1
         alpha = alpha - 0.25
     formatting(ax, ['1\% noise', '5\% noise', '10\% noise', '30\% noise'])
@@ -118,18 +121,26 @@ def plotnoisediff(dir, recdir, noise_percent, p, type, num_samples, use_complex,
     fig, ax = plt.subplots(figsize=(4,3))
     i = 0
     alpha = 1
+    allplt = [None]*3
     for p in [0.25, 0.5, 0.75]: 
         msecs, mselin = get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth)
         if useCS:
             toplot = msecs
-            msg = 'hist'
+            msg = 'bxplt'
+            #msg = 'hist'
         else:
             toplot = mselin
-            msg = 'hist_lin'
+            msg = 'bxplt_lin'
+            #msg = 'hist_lin'
         if not use_truth:
             msg = msg + 'avg'
-        plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i], alpha=alpha)# ec='black')
+        #plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i], alpha=alpha)# ec='black')
         i = i + 1
+        allplt[int(p/0.25)] = toplot
+
+    bplts = plt.boxplot(allplot, vert=True, labels=['25\%', '50\%' '75\%']))
+    for patch, color in zip(bplts['boxes'], colors):
+        patch.set_facecolor(color)
     formatting(ax, ['25\% undersampling', '50\% undersampling', '75\% undersampling'])
     if not os.path.exists(recdir + folder):
         os.makedirs(recdir+folder)

@@ -108,7 +108,7 @@ def get_noise(imsz,nrm, noise_percent,num_realizations):
         for j in range(0,4):
             avgnorm = nrm[j]/math.sqrt(np.prod(imsz))
             stdev = noise_percent * avgnorm
-            snr[n,j] = math.pow(avgnorm/stdev,2)/2.0
+            snr[n,j] = math.pow(avgnorm/stdev,2)
             noise[n,j] = np.random.normal(scale=stdev, size=imsz) + 1j*np.random.normal(scale=stdev, size=imsz)
     return noise,snr
 

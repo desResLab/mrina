@@ -589,11 +589,13 @@ def generateSamplingMask(shape, delta, saType):
     sys.exit(-1)
   return omega
 
-def OMPRecovery(A, b, tol=1E-6, fastAlg=True, showProgress=True, progressInt=10):
+def OMPRecovery(A, b, tol=1E-6, fastAlg=True, showProgress=True, progressInt=10, maxItns=None):
 
   #gives the OMP solution x given the matrix A and vector b and error 
   #parameter, Tr, to find a stopping point
   m,n = A.shape
+  if maxItns is None:
+    maxItns=m
 
   # Create a new vector for the residual starting from b
   curr_res = b.copy()
@@ -680,7 +682,7 @@ def OMPRecovery(A, b, tol=1E-6, fastAlg=True, showProgress=True, progressInt=10)
         print('%10d %15e' % (count,resNorm))
     
     # Check finished
-    if (resNorm < tol or count > m):
+    if (resNorm < tol or count > maxItns):
       Finished = True
     
   # Return Result
