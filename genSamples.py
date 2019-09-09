@@ -1,42 +1,12 @@
 import sys
 import os
 import math
-import pydoc
-from scipy.stats import bernoulli
 import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
-import sigpy.mri as mri
-from CSRecoverySuite import VardensTriangleSampling, VardensGaussianSampling, VardensExponentialSampling, crop
+from CSRecoverySuite import generateSamplingMask, crop
 home = os.getenv('HOME')
 #home = 'C:/Users/Lauren/'
-
-def next_prime():
-    def is_prime(num):
-    #"Checks if num is a prime value"
-        for i in range(2,int(num**0.5)+1):
-            if(num % i)==0: return False
-            return True
-    prime = 3
-    while(1):
-        if is_prime(prime):
-            yield prime
-        prime += 2
-def vdc(n, base=2):
-    vdc, denom = 0, 1
-    while n:
-        denom *= base
-        n, remainder = divmod(n, base)
-        vdc += remainder/float(denom)
-    return vdc
-def halton_sequence(size, dim):
-    seq = []
-    primeGen = next_prime()
-    next(primeGen)
-    for d in range(dim):
-        base = next(primeGen)
-        seq.append([vdc(i, base) for i in range(size)])
-    return seq
 
 def getVenc(vel):
     mx = np.amax(np.fabs(vel))
@@ -63,33 +33,6 @@ def getKspace(sample, venc, sliceIndex=0):
         vel_samples = np.append(vel_samples, np.expand_dims(yk,axis=0), axis=0)
     kspace = np.concatenate((np.expand_dims(mag_samples, axis=1), vel_samples), axis=1)
     return kspace
-
-def undersamplingMask(num_patterns, imsz, p,type='bernoulli'):
-    mask = np.empty((num_patterns, ) + imsz, dtype=np.bool)
-    delta = 1-p #delta is sampling fraction, p is fraction NOT sampled
-    for k in range(num_patterns):
-        #to keep undersampling the same for each slice
-        if type=='bernoulli':
-            indices = bernoulli.rvs(size=(imsz), p=p)
-        elif type =='poisson': #poisson
-            accel =  1/p  #accel: Target acceleration factor. Greater than 1.
-            indices = mri.poisson(imsz, accel)
-        elif type =='vardentri':
-            indices = ~VardensTriangleSampling(imsz, delta)
-        elif type =='vardengauss': #gaussian density
-            indices = ~VardensGaussianSampling(imsz, delta)
-        elif type == 'vardenexp': #exponential density
-            indices = ~VardensExponentialSampling(imsz, delta)
-        else: #halton sequence
-            numPts = int(p*imsz[0]*imsz[1])
-            pts = np.transpose(np.asarray(halton_sequence(numPts, 2)))
-            pts[:,0] = pts[:,0]*imsz[0]
-            pts[:,1] = pts[:,1]*imsz[1]
-            pts = pts.astype(int)
-            indices = np.zeros(imsz)
-            indices[pts[:,0], pts[:,1]] = 1
-        mask[k] = np.ma.make_mask(indices)
-    return mask
 
 def undersample(kspace, mask):
     mag,vel = kspace
@@ -139,7 +82,7 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
 
     for p in [0.25, 0.5, 0.75]:
         print('undersampling', p)
-        mask=undersamplingMask(1, kspace.shape[3:], p,uType)
+        mask=generateSamplingMask(1, kspace.shape[3:], p, uType)
         print(mask.shape)
         undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
         np.save(undfile, mask)
