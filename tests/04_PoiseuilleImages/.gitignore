@@ -1,3 +1,4 @@
 # Byte-compiled files
 axis1/results/*
 axis2/results/*
+*.npy

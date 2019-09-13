@@ -137,24 +137,25 @@ if __name__ == '__main__':
         p=float(sys.argv[2])
         type=sys.argv[3]
         num_samples = int(sys.argv[4])
+        num_processes = int(sys.argv[5])
+        dir = sys.argv[6]
+        recdir = dir
+        patterndir = dir 
+        if len(sys.argv) > 8:
+            recdir = sys.argv[7] 
+            patterndir = sys.argv[8]
     else:
         noise_percent=0.01
         p=0.75 #percent not sampled
         type='bernoulli'
         num_samples = 100
-    if len(sys.argv) > 5:
-        num_processes = int(sys.argv[5])
-        dir = sys.argv[6]
-        recdir = dir
-        patterndir = dir 
-    else:
         dir = home + '/apps/undersampled/poiseuille/npy/'#where the kspace data is
         recdir = dir #where to save recovered imgs
         patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
         num_processes = 2
     save_img = False #whether to save example image files
     wavelet_type = 'haar'
-    solver_mode = CS_MODE 
+    solver_mode = OMP_MODE 
     
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
@@ -165,9 +166,11 @@ if __name__ == '__main__':
     savednpy = recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy' 
     if not os.path.exists(savednpy):
         recovered = recoverAll(fourier_file, orig_file, pattern, c=num_processes, wvlt=wavelet_type, mode=solver_mode)
-        save(recovered, noise_percent, p, samptype, recdir, venc)
+        if not os.path.exists(recdir):
+            os.makedirs(recdir)
+        np.save(savednpy, recovered)
     else:
-        csimgs = np.load(savednpy)
+        recovered = np.load(savednpy)
     print('recovered images', recovered.shape)
     linrec = linear_reconstruction(fourier_file, omega)
     imgs = recover_vel(linrec, venc)

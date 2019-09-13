@@ -5,7 +5,7 @@ import sys
 import numpy.linalg as la
 import scipy.optimize as sciopt
 from scipy.stats import bernoulli
-import sigpy.mri as mri
+from bridson import poisson_disc_samples
 import scipy
 import math
 import time
@@ -606,8 +606,22 @@ def VardensExponentialSampling(shape, delta):
             if( u < p ):
                 omega[Ix, Iy] = True
     return np.fft.fftshift(omega)
+      
+def PoissonSampling(shape, p):
+  f = lambda x: 1.0*len(poisson_disc_samples(width=shape[0], height=shape[1], r=x))/np.prod(shape)-p
+  r = scipy.optimize.bisect(f, 0.1, max(shape), xtol=0.001, rtol=0.001) #increasing function
+  pts = poisson_disc_samples(width=shape[0], height=shape[1], r=r)
+  #all samples are at least distance r apart
+  print('percent', len(pts)*1.0/np.prod(shape))
+  
+  x = [pt[0] for pt in pts]
+  y = [pt[1] for pt in pts]
+  mask = np.zeros(shape, dtype=bool)
+  for i in range(0,len(x)):
+    mask[int(x[i]), int(y[i])] = True
+  return mask 
 
-def generateSamplingMask(num_patterns, imsz, delta, saType='bernoulli'):
+def generateSamplingMask(imsz, p, saType='bernoulli'):
   # Check delta is valid
   if(p<=0.0)and(p > 1.0):
     print('ERROR: Invalid undersampling ratio delta in generateSamplingMask.')
@@ -619,8 +633,7 @@ def generateSamplingMask(num_patterns, imsz, delta, saType='bernoulli'):
     if saType=='bernoulli':
       indices = bernoulli.rvs(size=(imsz), p=p)
     elif saType =='poisson': #poisson
-      accel =  1/p  #accel: Target acceleration factor. Greater than 1.
-      indices = mri.poisson(imsz, accel)
+      indices = PoissonSampling(imsz, p)
     elif saType =='vardentri':
       indices = ~VardensTriangleSampling(imsz, delta)
     elif saType =='vardengauss': #gaussian density

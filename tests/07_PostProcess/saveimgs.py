@@ -26,8 +26,8 @@ def save_cs(noise_percent, p, samptype, recdir, venc, num_samples, ext='.png'):
         for k in range(4):        
            cv2.imwrite(directory + '/rec' + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k,0])
 
-def save_noisy(noise_percent, recdir, venc, num_samples, ext='.png'):
-    noisy = np.load(recdir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy')
+def save_noisy(noise_percent, dir, recdir, venc, num_samples, ext='.png'):
+    noisy = np.load(dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy')
     noisy = linear_reconstruction(noisy)
     imgs = recover_vel(noisy, venc)
     directory = recdir + 'noise' + str(int(noise_percent*100))
@@ -53,16 +53,16 @@ def save_all(dir, recdir, patterndir, numRealizations=100):
                 save_cs(noise_percent, p, samptype, recdir, venc, numRealizations)
             
     for noise_percent in [0.01]:#, 0.05, 0.1, 0.3]:
-        save_noisy(noise_percent, recdir, venc, numRealizations)  
+        save_noisy(noise_percent, dir, recdir, venc, numRealizations)  
 
 if __name__ == '__main__':
     if len(sys.argv) == 5:
-        numRealizations = int(sys.argv[1]
+        numRealizations = int(sys.argv[1])
         dir = sys.argv[2]
         recdir = sys.argv[3]
         patterndir = sys.argv[4]
     elif len(sys.argv) == 3:
-        numRealizations = int(sys.argv[1]
+        numRealizations = int(sys.argv[1])
         dir = sys.argv[2]
         recdir = dir
         patterndir = dir

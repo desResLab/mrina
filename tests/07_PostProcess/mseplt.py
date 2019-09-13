@@ -15,7 +15,8 @@ plt.rc('ytick', labelsize='x-small')
 plt.rc('text',  usetex=True)
 
 def get_files(dir, recdir, noise_percent, p, type, num_samples):
-    patterndir = home + "/apps/undersampled/poiseuille/npy/"
+    #patterndir = home + "/apps/undersampled/poiseuille/npy/"
+    patterndir = dir
     fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
@@ -69,19 +70,21 @@ def get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use
 
 def get_folder(use_complex):    
     if use_complex:
-        folder = 'histcomplex'
+        folder = '/plots/pltcomplex'
     else:
-        folder = 'histfinal'
+        folder = '/plots/pltfinal'
     return folder
 
 def formatting(ax, lgd):
-    plt.xlabel('MSE',fontsize=fs)
-    plt.ylabel('Percent of total samples',fontsize=fs)
+    plt.ylabel('MSE',fontsize=fs)
+    #plt.ylabel('Percent of total samples',fontsize=fs)
     plt.tick_params(labelsize=fs)
     plt.tight_layout()
-    ax.yaxis.set_major_formatter(PercentFormatter(xmax=1))
-    x_formatter = ScalarFormatter(useOffset=False)
-    ax.xaxis.set_major_formatter(x_formatter)
+    #ax.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+    #x_formatter = ScalarFormatter(useOffset=False)
+    #ax.xaxis.set_major_formatter(x_formatter)
+    ax.set_xticks(range(1, len(lgd)+1))
+    ax.set_xticklabels(["" for x in lgd])
     plt.legend(lgd)
 
 def plotpdiff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth, useCS):
@@ -90,22 +93,25 @@ def plotpdiff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use
     i = 0
     colors = ['blue','orange','green', 'red']
     alpha = 1
+    allplt = [None]*4
+    count = 0
     for noise_percent in [0.01, 0.05, 0.1, 0.3]:#
         msecs, mselin = get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth)
         if useCS:
             toplot = msecs
-            msg = 'bxplt'
-            #msg = 'hist'
+            msg = 'vplt'
         else:
             toplot = mselin
-            msg = 'bxplt_lin'
-            #msg = 'hist_lin'
+            msg = 'vplt_lin'
         if not use_truth:
             msg = msg + 'avg'
-        #plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i],alpha=alpha)#, ec='black')
-        plt.boxplot(toplot, vert=True)
         i = i + 1
         alpha = alpha - 0.25
+        allplt[count] = toplot
+        count = count + 1
+    bplts = plt.violinplot(allplt)#, ['25\%', '50\%' '75\%'])
+    for patch, color in zip(bplts['bodies'], colors):
+        patch.set_facecolor(color)
     formatting(ax, ['1\% noise', '5\% noise', '10\% noise', '30\% noise'])
     if not os.path.exists(recdir + folder):
         os.makedirs(recdir+folder)
@@ -126,20 +132,17 @@ def plotnoisediff(dir, recdir, noise_percent, p, type, num_samples, use_complex,
         msecs, mselin = get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth)
         if useCS:
             toplot = msecs
-            msg = 'bxplt'
-            #msg = 'hist'
+            msg = 'vplt'
         else:
             toplot = mselin
-            msg = 'bxplt_lin'
-            #msg = 'hist_lin'
+            msg = 'vplt_lin'
         if not use_truth:
             msg = msg + 'avg'
         #plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i], alpha=alpha)# ec='black')
         i = i + 1
-        allplt[int(p/0.25)] = toplot
-
-    bplts = plt.boxplot(allplot, vert=True, labels=['25\%', '50\%' '75\%']))
-    for patch, color in zip(bplts['boxes'], colors):
+        allplt[int(p/0.25)-1] = toplot
+    bplts = plt.violinplot(allplt)#, ['25\%', '50\%' '75\%'])
+    for patch, color in zip(bplts['bodies'], colors):
         patch.set_facecolor(color)
     formatting(ax, ['25\% undersampling', '50\% undersampling', '75\% undersampling'])
     if not os.path.exists(recdir + folder):
@@ -150,7 +153,7 @@ def plotnoisediff(dir, recdir, noise_percent, p, type, num_samples, use_complex,
     #plt.show()
     plt.close('all')
 
-def plthist(dir, recdir, num_samples, use_complex, use_truth):
+def pltviolin(dir, recdir, num_samples, use_complex, use_truth):
     #use_complex: compare against complex images or final recovered velocity images
     #use_truth: compare against true values or the average recovered images 
     for p in [0.25]:
@@ -177,18 +180,19 @@ def plthist(dir, recdir, num_samples, use_complex, use_truth):
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
+        print('params')
         numsamples = int(sys.argv[1])
         dir = sys.argv[2]
         recdir = sys.argv[3]
     else:
         numsamples=100
         dir = home + "/apps/undersampled/poiseuille/npy/"
-        #recdir = home + "/apps/undersampled/poiseuille/debiasing/"
         recdir = dir
-    #to plot a single histogram, use plotnoisediff or plotpdiff
+    print(dir, recdir)
+    #to plot a single violin plot, use plotnoisediff or plotpdiff
     #plotnoisediff(dir, recdir, 0.1, 0.5, 'bernoulli', use_complex=True, use_truth=True, useCS=True)
     #to plot all combinations: 
-    plthist(dir, recdir, numsamples, use_complex=False, use_truth=False)
-    plthist(dir, recdir, numsamples, use_complex=True, use_truth=False)
-    plthist(dir, recdir, numsamples, use_complex=False, use_truth=True)
-    plthist(dir, recdir, numsamples, use_complex=True, use_truth=True)
+    pltviolin(dir, recdir, numsamples, use_complex=False, use_truth=False)
+    pltviolin(dir, recdir, numsamples, use_complex=True, use_truth=False)
+    pltviolin(dir, recdir, numsamples, use_complex=False, use_truth=True)
+    pltviolin(dir, recdir, numsamples, use_complex=True, use_truth=True)

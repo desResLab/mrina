@@ -82,7 +82,7 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
 
     for p in [0.25, 0.5, 0.75]:
         print('undersampling', p)
-        mask=generateSamplingMask(1, kspace.shape[3:], p, uType)
+        mask=generateSamplingMask(kspace.shape[3:], p, uType)
         print(mask.shape)
         undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
         np.save(undfile, mask)

@@ -31,7 +31,7 @@ def select_points(dist, imsz):
         return pt1,pt2
     return pt2, pt1
 
-def get_points(size, num_pts,imsz):
+def get_points(size, num_pts,imsz, ptsdir):
     print('getting points of size ' + str(size) + ' and ' + str(num_pts) + ' points...')
     points = np.zeros((size, num_pts, 2, 2), dtype=int)
     for k in range(1,size+1):
@@ -60,7 +60,7 @@ def get_samples(noise_percent, p, samptype, num_samples, recdir, kspacedir):
 def get_saved_points(samples, size, num_pts, ptsdir):
     imsz = samples.shape[2:]
     if not os.path.isfile(ptsdir+'points_s' + str(size) + '_n' + str(num_pts) + '.npy'):
-        get_points(size,num_pts,imsz)
+        get_points(size,num_pts,imsz, ptsdir)
     points = np.load(ptsdir+'points_s' + str(size) + '_n' + str(num_pts) + '.npy')
     return points
 
