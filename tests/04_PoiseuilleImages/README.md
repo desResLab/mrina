@@ -37,7 +37,7 @@ Files located in tests/07_PostProcess/ are used to generate plots of results, su
 After executing recover for all the combinations, corrplt.py can be used to generate all the correlation plots.
 
 ```
-python3 tests/07_PostProcess/corrplt.py 0.01 0.25 vardengauss 2 tests/04_PoiseuilleImages/axis1/results/
+python3 tests/07_PostProcess/corrplt.py 0.01 0.25 vardengauss 2 tests/04_PoiseuilleImages/axis1/results/ tests/04_PoiseuilleImages/axis1/ tests/04_PoiseuilleImages/axis1/
 ```
 where the parameters are common values in plots (for example, compare all undersampling levels, where the noise and pattern type remain constant as 1% and gaussian density). 
 
@@ -49,12 +49,12 @@ get_vals(0.01, 0.25, 'vardengauss', 2, 100, 50, imgdir + 'results/', imgdir, img
 ``` 
 This saves correlations for 1% noise, 25% Gaussian density undersampling, 2 realizations, points of distance up to 100, averaged over 50 points.
 
-### MSE Histogram
-To generate a histogram of the mean squared error for all combinations of noise and undersampling pattern, execute
+### MSE Plot
+To generate a violin plot of the mean squared error for all combinations of noise and undersampling pattern, execute
 ```
-python3 2 tests/07_PostProcess/msehist.py ./tests/04_PoiseuilleImages/axis1/ ./tests/04_PoiseuilleImages/axis1/results/
+python3 tests/07_PostProcess/mseplt.py 2 ./tests/04_PoiseuilleImages/axis1/ ./tests/04_PoiseuilleImages/axis1/results/
 ```
-Additionally, within main, options may be changed, depending on which histograms are desired.
+Plots are generated for all combinations of complex/truth.
 
 * **use_complex**: whether to compare the MSE against the complex images, or images after velocity recovery
 * **use_truth**: whether to compare the MSE against the true original, or the average recovered image
@@ -63,5 +63,5 @@ Additionally, within main, options may be changed, depending on which histograms
 
 To save the recovered image examples, use 
 ```
-python3 saveimgs.py 2 ./tests/04_PoiseuilleImages/axis1/results/
+python3 saveimgs.py 2 ./tests/04_PoiseuilleImages/axis1/ ./tests/04_PoiseuilleImages/axis1/results/ ./tests/04_PoiseuilleImages/axis1/
 ```
