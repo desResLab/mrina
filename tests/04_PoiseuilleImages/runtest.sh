@@ -10,7 +10,7 @@ REALIZATIONS=2
 for SAMPTYPE in "vardengauss" "bernoulli"
 do
     echo $SAMPTYPE
-#    python3 ../../genSamples.py $REALIZATIONS $SAMPTYPE $DIR
+    python3 ../../genSamples.py $REALIZATIONS $SAMPTYPE $DIR
 done
 
 #python3 ../../recover.py $NOISE $P $PATTERN $REALIZATIONS $PROCESSES $DIR $RECDIR $DIR
