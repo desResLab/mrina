@@ -621,7 +621,40 @@ def PoissonSampling(shape, p):
     mask[int(x[i]), int(y[i])] = True
   return mask 
 
-def generateSamplingMask(imsz, p, saType='bernoulli'):
+def bisect(f, a, b, tol=1E-3):
+  #bisect (binary search) for function only defined for integers
+  while f(a) < f(b):
+    mid = int((a+b)/2)
+    midval = f(mid)
+    if midval < 0-tol:
+      a = mid + 1
+    elif midval > 0+tol:
+      b = mid
+    else: #midval within (-tol, tol)
+      return mid
+  #root not found, but return closest pt anyway 
+  if np.abs(f(a)) < np.abs(f(b)):
+    return a
+  return b
+
+def HaltonSampling(shape, p):
+  def getPoints(numPts):
+    pts = np.transpose(np.asarray(halton_sequence(numPts, 2)))
+    pts[:,0] = pts[:,0]*shape[0]
+    pts[:,1] = pts[:,1]*shape[1]
+    pts = pts.astype(int)
+    return pts
+  def getRatio(numPts):
+    pts = getPoints(numPts)
+    return 1.0*np.unique(pts, axis=0).shape[0]/(np.prod(shape))
+  f = lambda x: getRatio(x) - p
+  numPts = bisect(f, int(p*np.prod(shape)), 4*np.prod(shape)) #f: increasing fcn
+  pts = getPoints(numPts)
+  indices = np.zeros(shape)
+  indices[pts[:,0], pts[:,1]] = 1
+  return indices
+
+def generateSamplingMask(imsz, p, saType='bernoulli', num_patterns=1):
   # Check delta is valid
   if(p<=0.0)and(p > 1.0):
     print('ERROR: Invalid undersampling ratio delta in generateSamplingMask.')
@@ -641,13 +674,7 @@ def generateSamplingMask(imsz, p, saType='bernoulli'):
     elif saType == 'vardenexp': #exponential density
       indices = ~VardensExponentialSampling(imsz, delta)
     elif saType == 'halton': #halton sequence
-      numPts = int(p*imsz[0]*imsz[1])
-      pts = np.transpose(np.asarray(halton_sequence(numPts, 2)))
-      pts[:,0] = pts[:,0]*imsz[0]
-      pts[:,1] = pts[:,1]*imsz[1]
-      pts = pts.astype(int)
-      indices = np.zeros(imsz)
-      indices[pts[:,0], pts[:,1]] = 1
+      indices = HaltonSampling(imsz, p)
     else:
       print('ERROR: Invalid sampling type')
       sys.exit(-1)
