@@ -68,7 +68,7 @@ def add_noise(kspace, noise_percent, num_realizations):
     return samples, snr
 
 def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSamples=1, uType='bernoulli',genNoise=False):
-    #p: percent not sampled, uType: bernoulli, poisson, halton, sliceIndex= 0,1,2 where to slice in grid
+    #p: percent not sampled, uType: bernoulli, vardengauss, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
     if tosavedir == None:
         tosavedir = fromdir

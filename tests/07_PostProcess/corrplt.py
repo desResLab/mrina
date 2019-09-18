@@ -110,7 +110,7 @@ def plot_sampdiff(noise_percent, p, samp_vals, n, size, num_pts, max, dir, ptsdi
         plt.figure(figsize=(4,3))
         for samptype in ['bernoulli']:#, 'bpoisson', 'halton', 'vardengauss','vardentri', 'vardenexp']:
             plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir)
-        lgd = ['Bernoulli undersampling','Poisson undersampling', 'Halton undersampling', 'Gauss density undersampling', 'Tri density undersampling','Exp density undersampling']
+        lgd = ['Bernoulli undersampling', 'Halton undersampling', 'Gauss density undersampling', 'Tri density undersampling','Exp density undersampling']
         formatting(lgd, max)
         if save_fig:
             folder = '/plots/'

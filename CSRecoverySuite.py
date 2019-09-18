@@ -5,7 +5,6 @@ import sys
 import numpy.linalg as la
 import scipy.optimize as sciopt
 from scipy.stats import bernoulli
-from bridson import poisson_disc_samples
 import scipy
 import math
 import time
@@ -605,21 +604,7 @@ def VardensExponentialSampling(shape, delta):
             u = np.random.uniform(0, 1)
             if( u < p ):
                 omega[Ix, Iy] = True
-    return np.fft.fftshift(omega)
-      
-def PoissonSampling(shape, p):
-  f = lambda x: 1.0*len(poisson_disc_samples(width=shape[0], height=shape[1], r=x))/np.prod(shape)-p
-  r = scipy.optimize.bisect(f, 0.1, max(shape), xtol=0.001, rtol=0.001) #increasing function
-  pts = poisson_disc_samples(width=shape[0], height=shape[1], r=r)
-  #all samples are at least distance r apart
-  print('percent', len(pts)*1.0/np.prod(shape))
-  
-  x = [pt[0] for pt in pts]
-  y = [pt[1] for pt in pts]
-  mask = np.zeros(shape, dtype=bool)
-  for i in range(0,len(x)):
-    mask[int(x[i]), int(y[i])] = True
-  return mask 
+    return np.fft.fftshift(omega)   
 
 def bisect(f, a, b, tol=1E-3):
   #bisect (binary search) for function only defined for integers
@@ -665,8 +650,6 @@ def generateSamplingMask(imsz, p, saType='bernoulli', num_patterns=1):
     #to keep undersampling the same for each slice
     if saType=='bernoulli':
       indices = bernoulli.rvs(size=(imsz), p=p)
-    elif saType =='poisson': #poisson
-      indices = PoissonSampling(imsz, p)
     elif saType =='vardentri':
       indices = ~VardensTriangleSampling(imsz, delta)
     elif saType =='vardengauss': #gaussian density

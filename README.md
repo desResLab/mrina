@@ -124,7 +124,7 @@ Run main, changing parameters such that:
 
 * **numRealizations**: number of noisy images
 * **directory**: location of numpy files
-* **uType**: undersampling type. options: 'poisson','halton','bernoulli', 'vardengauss', 'vardenexp', 'vardentri'
+* **uType**: undersampling type. options: 'halton','bernoulli', 'vardengauss', 'vardenexp', 'vardentri'
 
 To generate 100 noisy realizations, execute
 ```
