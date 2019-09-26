@@ -74,22 +74,19 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
         tosavedir = fromdir
     #get images
     inp = np.load(tosavedir + truefile + '.npy')
-    print('input',inp.shape)
     venc = getVenc(inp[:,1:,:])
     np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
     kspace = getKspace(inp, venc)
-    print(kspace.shape)
-
+    print('Saving masks and noisy image to directory', tosavedir)
     for p in [0.25, 0.5, 0.75]:
-        print('undersampling', p)
+        print('Generating undersampling mask with p =', p)
         mask=generateSamplingMask(kspace.shape[3:], p, uType)
-        print(mask.shape)
         undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
         np.save(undfile, mask)
     
     if genNoise or (not os.path.exists(tosavedir + 'noisy_noise1_n' + str(numRealizations) + '.npy')):
         for noisePercent in [0.01, 0.05, 0.10, 0.30]:
-            print('percent',noisePercent)
+            print('Generating noisy images with noise percent = ',noisePercent)
             noisy,snr = add_noise(kspace,noisePercent, numRealizations)
             fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
             np.save(fourier_file + '_n' + str(numRealizations), noisy)

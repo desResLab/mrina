@@ -36,7 +36,7 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver
         if solver_mode == OMP_MODE:
           tol = eta/np.linalg.norm(yim.ravel(),2)
           print('Recovering using OMP with tol =', tol)
-          wim = OMPRecovery(A, yim, tol=tol, showProgress=False, maxItns=2000)[0]
+          wim = OMPRecovery(A, yim, tol=tol, showProgress=True, progressInt=250, maxItns=2000)[0]
         else:
           print('Recovering using CS with eta =', eta)
           wim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1)
