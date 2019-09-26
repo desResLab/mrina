@@ -20,28 +20,25 @@ OMP_MODE = 2
 def get_eta(im, imNrm, noise_percent, m):
     avgnorm = imNrm/math.sqrt(im.size)
     stdev = noise_percent * avgnorm
-    print('stdev', stdev)
-    print('noise_percent', noise_percent)
     rv = norm()
     #ppf: inverse of cdf
     eta = stdev*math.sqrt(2*m + 2*math.sqrt(m)*rv.ppf(0.95))
-    print('eta: ', eta)
+    if eta < 1E-3: #min. threshold for eta
+        eta = 1E-3
     return eta
 
 def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver_mode=CS_MODE):
     def recover(kspace,imsz,eta,omega):
-        print('shape',kspace.shape)
-        #im = crop(im)      #crop for multilevel wavelet decomp. array transform
         wim          = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet=wvlt, mode='periodization'), imsz)
         wsz = wim.shape
         A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName=wvlt, waveletMode='periodization' )
         yim          = A.eval( wim, 1 )
-        print('l2 norm of yim: ', np.linalg.norm(yim.ravel(), 2))
         if solver_mode == OMP_MODE:
           tol = eta/np.linalg.norm(yim.ravel(),2)
-          print('tol:', tol)
+          print('Recovering using OMP with tol =', tol)
           wim = OMPRecovery(A, yim, tol=tol, showProgress=False, maxItns=2000)[0]
         else:
+          print('Recovering using CS with eta =', eta)
           wim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1)
         if isinstance(wim, tuple):
             wim = wim[0] #for the case where ynrm is less than eta
@@ -53,13 +50,10 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver
         return csim
     imsz = crop(noisy[0,0,0]).shape
     cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
-    print('recov shape', cs.shape)
     if len(pattern.shape) > 2:
         omega = crop(pattern[0])
     else:
         omega = crop(pattern)
-    print('omega', omega.shape)
-    print('original',original.shape)
     for n in range(0,noisy.shape[0]):
         for k in range(0,4):
             for j in range(0, noisy.shape[2]):
@@ -77,8 +71,6 @@ def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar', mode=CS_MODE)
     original = np.load(orig_file)
     shp = data.shape[0:3] + crop(np.zeros(data.shape[3:])).shape
     recovered = np.empty(shp,dtype=np.complex64)
-    print(shp)
-    print(pattern.shape)
     interval = max(int(data.shape[0]/c),1)
     manager = Manager()
     return_dict = manager.dict()
@@ -90,11 +82,10 @@ def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar', mode=CS_MODE)
         p = Process(target=recover, args=(data[n:n+interval], original, pattern, wsz, int(n/interval), return_dict, wvlt, mode))
         jobs.append(p)
         p.start()
-    print('num of processes:', len(jobs))
     for job in jobs:
         job.join()
     recovered = np.concatenate([v for k,v in sorted(return_dict.items())], axis=0)
-    print('recovered shape', recovered.shape)
+    print('Finished recovering, with final shape', recovered.shape)
     return recovered
 
 def recover_vel(recovered, venc):
@@ -119,7 +110,10 @@ def linear_reconstruction(fourier_file, omega=None):
     else:
         kspace = fourier_file
     if omega is not None:
-        omega = crop(omega)
+        if len(pattern.shape) > 2:
+            omega = crop(omega[0])
+        else:
+            omega = crop(omega)
     imsz = crop(kspace[0,0,0]).shape
     kspace = kspace[:,:,:, :imsz[0], :imsz[1]]
     linrec = np.zeros(kspace.shape[0:3] + imsz, dtype=complex)
@@ -138,9 +132,9 @@ if __name__ == '__main__':
         type=sys.argv[3]
         num_samples = int(sys.argv[4])
         num_processes = int(sys.argv[5])
-        dir = sys.argv[6]
-        recdir = dir
-        patterndir = dir 
+        kspacedir = sys.argv[6]
+        recdir = kspacedir
+        patterndir = kspacedir 
         if len(sys.argv) > 8:
             recdir = sys.argv[7] 
             patterndir = sys.argv[8]
@@ -149,29 +143,29 @@ if __name__ == '__main__':
         p=0.75 #percent not sampled
         type='bernoulli'
         num_samples = 100
-        dir = home + '/apps/undersampled/poiseuille/npy/'#where the kspace data is
-        recdir = dir #where to save recovered imgs
+        kspacedir = home + '/apps/undersampled/poiseuille/npy/'#where the kspace data is
+        recdir = kspacedir #where to save recovered imgs
         patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
         num_processes = 2
-    save_img = False #whether to save example image files
     wavelet_type = 'haar'
     solver_mode = OMP_MODE 
     
-    fourier_file = dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
+    fourier_file = kspacedir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
     omega = pattern[0]
-    orig_file = dir+'imgs_n1' +  '.npy'
-    venc = np.load(dir + 'venc_n1' + '.npy')
+    orig_file = kspacedir+'imgs_n1' +  '.npy'
+    venc = np.load(kspacedir + 'venc_n1' + '.npy')
     savednpy = recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy' 
     if not os.path.exists(savednpy):
         recovered = recoverAll(fourier_file, orig_file, pattern, c=num_processes, wvlt=wavelet_type, mode=solver_mode)
         if not os.path.exists(recdir):
             os.makedirs(recdir)
         np.save(savednpy, recovered)
+        print('Recovered images saved as ', savednpy)
     else:
+        print('Retrieving recovered images from numpy file', savednpy)
         recovered = np.load(savednpy)
-    print('recovered images', recovered.shape)
     linrec = linear_reconstruction(fourier_file, omega)
     imgs = recover_vel(linrec, venc)
     csimgs = recover_vel(recovered, venc)
@@ -181,8 +175,5 @@ if __name__ == '__main__':
     o = np.zeros(csimgs.shape, dtype=complex)
     for k in range(0,num_samples):
         o[k] = orig[0,:, :new_shape[0], :new_shape[1]]
-    print(o.shape)
-    print(csimgs.shape)
-    print(linrec.shape)
-    print('mse between original and recovered images: ', (np.square(csimgs - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
-    print('mse between original and linear reconstructed images: ', (np.square(imgs - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
+    print('MSE between original and recovered images: ', (np.square(csimgs - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
+    print('MSE between original and linear reconstructed images: ', (np.square(imgs - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
