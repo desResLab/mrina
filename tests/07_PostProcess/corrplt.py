@@ -34,7 +34,6 @@ def get_coeff(noise_percent, p, samptype, n, size, num_pts, dir, ptsdir=None, ks
     if os.path.exists(corrfile):
         coeff = np.load(corrfile)
     else:
-        print('retrieving correlation coeff', noise_percent, p, samptype)
         coeff = get_vals(noise_percent, p, samptype, n, size, num_pts, recdir=dir, kspacedir=kspacedir, ptsdir=ptsdir, save_numpy=False)
     return coeff
 
@@ -55,6 +54,7 @@ def get_max(coeff, mx, v):
     return max(mx, np.amax(corrmax))
 
 def find_max(noise_vals, p_vals, samp_vals, noise_val, p_val, samp_val, n, size, num_pts, dir, ptsdir, kspacedir):
+    print("Finding a maximum correlation for all plots...")
     mx=0.
     for v in range(0,4):
         plt.figure(figsize=(4,3))
@@ -74,6 +74,7 @@ def find_max(noise_vals, p_vals, samp_vals, noise_val, p_val, samp_val, n, size,
     return mx
 
 def plot_noisediff(noise_vals, p, samptype, n, size, num_pts, max, dir, ptsdir, kspacedir, save_fig=True):
+    print("Plotting noise percent comparison with baseline", p, samptype)
     for v in range(0,4):
         plt.figure(figsize=(4,3))
         for noise_percent in noise_vals:#[0.01,0.05,0.1,0.3]:
@@ -90,6 +91,7 @@ def plot_noisediff(noise_vals, p, samptype, n, size, num_pts, max, dir, ptsdir, 
             plt.draw()
 
 def plot_pdiff(noise_percent, p_vals, samptype, n, size, num_pts, max, dir, ptsdir, kspacedir, save_fig=True):
+    print("Plotting undersampling percent comparison with baseline", noise_percent, samptype)
     for v in range(0,4):
         plt.figure(figsize=(4,3))
         for p in p_vals:#[0.25,0.5, 0.75]:
@@ -106,6 +108,7 @@ def plot_pdiff(noise_percent, p_vals, samptype, n, size, num_pts, max, dir, ptsd
             plt.draw()
 
 def plot_sampdiff(noise_percent, p, samp_vals, n, size, num_pts, max, dir, ptsdir, kspacedir, save_fig=True):
+    print("Plotting undersampling mask comparison with baseline", noise_percent, p)
     for v in range(0,4):
         plt.figure(figsize=(4,3))
         for samptype in ['bernoulli']:#, 'bpoisson', 'halton', 'vardengauss','vardentri', 'vardenexp']:
@@ -147,6 +150,7 @@ if __name__ == '__main__':
     noise_vals = [0.01, 0.05, 0.1, 0.3]
     p_vals = [0.25, 0.5, 0.75]
     samp_vals = ['bernoulli', 'vardengauss']
+    print("Creating correlation plots...")
     max_corr = find_max(noise_vals, p_vals, samp_vals, noise_percent, p, samptype, numsamples, size, num_pts, recdir, ptsdir, kspacedir)
     plot_noisediff(noise_vals, p, samptype, numsamples, size, num_pts, max_corr, recdir, ptsdir, kspacedir)
     plot_pdiff(noise_percent, p_vals, samptype, numsamples, size, num_pts, max_corr, recdir, ptsdir, kspacedir)

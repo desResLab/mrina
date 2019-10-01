@@ -52,8 +52,6 @@ def get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use
         csimgs, linimgs, o = get_complex(dir,recdir, noise_percent, p, type, num_samples)
     else:
         csimgs, linimgs, o = get_final(dir,recdir, noise_percent, p, type, num_samples) 
-    print('orig', o.shape)
-    print('cs', csimgs.shape) 
     avgcs = csimgs.mean(axis=0)
     avglin = linimgs.mean(axis=0)
     msecs = np.zeros(csimgs.shape[0])
@@ -65,14 +63,13 @@ def get_error(dir, recdir, noise_percent, p, type, num_samples, use_complex, use
         else: #compare against average recovered
             msecs[k] = np.abs(((avgcs-csimgs[k])**2).mean(axis=None))
             mselin[k] = np.abs(((avglin-linimgs[k])**2).mean(axis=None))
-    print('mse',msecs.shape, mselin.shape)
     return msecs, mselin
 
 def get_folder(use_complex):    
     if use_complex:
-        folder = '/plots/pltcomplex'
+        folder = '/plots/msecomplex'
     else:
-        folder = '/plots/pltfinal'
+        folder = '/plots/msefinal'
     return folder
 
 def formatting(ax, lgd):
@@ -116,10 +113,9 @@ def plotpdiff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use
     if not os.path.exists(recdir + folder):
         os.makedirs(recdir+folder)
     plt.savefig(recdir + folder + '/' + msg + '_p' + str(int(p*100)) + type + '.png')
-    print(recdir + folder + '/' + msg + '_p' + str(int(p*100)) + type + '.png')
-    #plt.savefig(recdir + 'histnonzero/hist_debias'+ '_noise' + str(int(noise_percent*100)) + type + '.png')
+    print("Saved as " + recdir + folder + '/' + msg + '_p' + str(int(p*100)) + type + '.png')
     #plt.draw()
-    plt.close('all')
+    plt.close(fig)
 
 def plotnoisediff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth, useCS):
     folder = get_folder(use_complex)
@@ -148,10 +144,9 @@ def plotnoisediff(dir, recdir, noise_percent, p, type, num_samples, use_complex,
     if not os.path.exists(recdir + folder):
         os.makedirs(recdir+folder)
     plt.savefig(recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + type + '.png')
-    print(recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + type + '.png')
-    #plt.savefig(recdir + 'hist/hist_lin'+ '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + type + '.png')
+    print("Saved as " + recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + type + '.png')
     #plt.show()
-    plt.close('all')
+    plt.close(fig)
 
 def pltviolin(dir, recdir, num_samples, use_complex, use_truth):
     #use_complex: compare against complex images or final recovered velocity images
@@ -164,7 +159,7 @@ def pltviolin(dir, recdir, num_samples, use_complex, use_truth):
                     plotnoisediff(dir, recdir, noise, p, type, num_samples, use_complex, use_truth, False)
                 except Exception as e:
                     print(e)
-                    print('missing', noise, 'noise', p, 'p', type, 'type')
+                    print('Not found: recovered images with ', noise, 'noise', p, 'p', type, 'type')
                     continue
     for p in [0.25, 0.5, 0.75]:
         for type in ['vardengauss']:#'bernoulli', 'bpoisson']:
@@ -174,13 +169,12 @@ def pltviolin(dir, recdir, num_samples, use_complex, use_truth):
                     plotpdiff(dir, recdir, noise, p, type, num_samples, use_complex, use_truth, False)
                 except Exception as e:
                     print(e)
-                    print('missing', noise, 'noise', p, 'p', type, 'type')
+                    print("Not found: recovered images with ", noise, 'noise', p, 'p', type, 'type')
                     continue
     
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        print('params')
         numsamples = int(sys.argv[1])
         dir = sys.argv[2]
         recdir = sys.argv[3]
@@ -188,10 +182,10 @@ if __name__ == '__main__':
         numsamples=100
         dir = home + "/apps/undersampled/poiseuille/npy/"
         recdir = dir
-    print(dir, recdir)
     #to plot a single violin plot, use plotnoisediff or plotpdiff
     #plotnoisediff(dir, recdir, 0.1, 0.5, 'bernoulli', use_complex=True, use_truth=True, useCS=True)
-    #to plot all combinations: 
+    #to plot all combinations:
+    print("Creating MSE violin plots...")
     pltviolin(dir, recdir, numsamples, use_complex=False, use_truth=False)
     pltviolin(dir, recdir, numsamples, use_complex=True, use_truth=False)
     pltviolin(dir, recdir, numsamples, use_complex=False, use_truth=True)

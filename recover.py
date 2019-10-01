@@ -110,7 +110,7 @@ def linear_reconstruction(fourier_file, omega=None):
     else:
         kspace = fourier_file
     if omega is not None:
-        if len(pattern.shape) > 2:
+        if len(omega.shape) > 2:
             omega = crop(omega[0])
         else:
             omega = crop(omega)
@@ -148,7 +148,7 @@ if __name__ == '__main__':
         patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
         num_processes = 2
     wavelet_type = 'haar'
-    solver_mode = OMP_MODE 
+    solver_mode = CS_MODE 
     
     fourier_file = kspacedir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'

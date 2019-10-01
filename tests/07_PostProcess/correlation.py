@@ -32,10 +32,11 @@ def select_points(dist, imsz):
     return pt2, pt1
 
 def get_points(size, num_pts,imsz, ptsdir):
-    print('getting points of size ' + str(size) + ' and ' + str(num_pts) + ' points...')
+    print('Getting points of size ' + str(size) + ' and ' + str(num_pts) + ' points...')
     points = np.zeros((size, num_pts, 2, 2), dtype=int)
     for k in range(1,size+1):
-        print(k)
+        if k % 10 == 0:
+            print(k)
         for j in range(num_pts):
             pt1, pt2 = select_points(k,imsz)
             while pt1[0] in points[k-1,:,0,0] and pt1[1] in points[k-1,:,0,1] and pt2[0] in points[k-1,:,1,0] and pt2[0] in points[k-1,:,1,1]:
@@ -51,9 +52,7 @@ def get_samples(noise_percent, p, samptype, num_samples, recdir, kspacedir):
     samples = np.load(recdir + 'rec_noise'+str(int(noise_percent*100))+'_p' + str(int(p*100)) + samptype +'_n'+str(num_samples) + '.npy')
     venc = np.load(kspacedir + 'venc_n1' + '.npy')
     samples = recover_vel(samples, venc)
-    print(samples.shape)
     samples = np.squeeze(samples)
-    print(samples.shape)
     samples = samples[0:n]
     return samples
 
@@ -72,7 +71,6 @@ def get_coeff(size, num_pts, samples, points):
         for j in range(num_pts):
             pt1 = (points[k-1, j, 0,0], points[k-1,j, 0,1])
             pt2 = (points[k-1, j, 1,0], points[k-1,j, 1,1])
-            #print(pt1,pt2)
             for v in range(0,4):
                 var1 = np.abs(samples[:, v,pt1[0], pt1[1]])
                 var2 = np.abs(samples[:, v,pt2[0], pt2[1]])
@@ -97,10 +95,10 @@ def get_all(size, num_pts, recdir, ptsdir, kspacedir):
             for samptype in ['bernoulli', 'vardengauss']:
                 try:
                     get_vals(noise_percent, p, samptype, 100, size, num_pts, recdir, kspacedir, ptsdir)
-                    print('saved noise %', noise_percent, 'undersampling prob', p, 'sampling type', samptype)
+                    print('Saved noise %', noise_percent, 'undersampling prob', p, 'sampling type', samptype)
                 except Exception as e:
                     print(e)
-                    print('may be missing noise %', noise_percent, 'undersampling prob', p, 'sampling type', samptype)
+                    print('Not found: recovered with noise %', noise_percent, 'undersampling prob', p, 'sampling type', samptype)
                     continue
 
 if __name__ == '__main__':
