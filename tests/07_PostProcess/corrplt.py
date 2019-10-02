@@ -5,6 +5,8 @@ import os
 import math
 from scipy.optimize import curve_fit
 from correlation import get_vals
+sys.path.append('../../')
+from recover import solver_folder
 home = os.getenv('HOME')
 fs=12
 plt.rc('font',  family='serif')
@@ -41,6 +43,7 @@ def plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspa
     coeff = get_coeff(noise_percent, p, samptype, n, size, num_pts, dir, ptsdir, kspacedir)
     coeff = coeff[v]
     corravg = np.mean(coeff, axis=1)
+    print(corravg)
     corrmin = np.percentile(coeff, 10, axis=1)
     corrmax = np.percentile(coeff, 90, axis=1)
     size = len(corravg)
@@ -77,9 +80,9 @@ def plot_noisediff(noise_vals, p, samptype, n, size, num_pts, max, dir, ptsdir, 
     print("Plotting noise percent comparison with baseline", p, samptype)
     for v in range(0,4):
         plt.figure(figsize=(4,3))
-        for noise_percent in noise_vals:#[0.01,0.05,0.1,0.3]:
+        for noise_percent in noise_vals:
             plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir)
-        lgd = [str(x) + '\% noise' for x in noise_vals] 
+        lgd = [str(int(x*100)) + '\% noise' for x in noise_vals] 
         formatting(lgd, max)
         if save_fig:
             folder = '/plots/'
@@ -94,9 +97,9 @@ def plot_pdiff(noise_percent, p_vals, samptype, n, size, num_pts, max, dir, ptsd
     print("Plotting undersampling percent comparison with baseline", noise_percent, samptype)
     for v in range(0,4):
         plt.figure(figsize=(4,3))
-        for p in p_vals:#[0.25,0.5, 0.75]:
+        for p in p_vals:
             plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir) 
-        lgd = [str(x) + '\% undersampling' for x in p_vals]#['25\% undersampling', '50\% undersampling', '75\% undersampling']
+        lgd = [str(int(x*100)) + '\% undersampling' for x in p_vals]#['25\% undersampling', '50\% undersampling', '75\% undersampling']
         formatting(lgd, max)
         if save_fig:
             folder = '/plots/'
@@ -111,7 +114,7 @@ def plot_sampdiff(noise_percent, p, samp_vals, n, size, num_pts, max, dir, ptsdi
     print("Plotting undersampling mask comparison with baseline", noise_percent, p)
     for v in range(0,4):
         plt.figure(figsize=(4,3))
-        for samptype in ['bernoulli']:#, 'bpoisson', 'halton', 'vardengauss','vardentri', 'vardenexp']:
+        for samptype in samp_vals: #'bernoulli', 'halton', 'vardengauss','vardentri', 'vardenexp'
             plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir)
         lgd = ['Bernoulli undersampling', 'Halton undersampling', 'Gauss density undersampling', 'Tri density undersampling','Exp density undersampling']
         formatting(lgd, max)
@@ -120,6 +123,23 @@ def plot_sampdiff(noise_percent, p, samp_vals, n, size, num_pts, max, dir, ptsdi
             if not os.path.exists(dir + folder):
                 os.makedirs(dir+folder)
             plt.savefig(dir + folder + '/diffsamptype' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + '_v' + str(v) + '.png')
+            plt.close()
+        else:
+            plt.draw()
+
+def plot_methoddiff(noise_percent, p, samptype, n, size, num_pts, max, recdir, ptsdir, kspacedir, save_fig=True):
+    print("Plotting undersampling mask comparison with baseline", noise_percent, p)
+    for v in range(0,4):
+        plt.figure(figsize=(4,3))
+        for methodfolder in [solver_folder(0), solver_folder(1), solver_folder(2)]: #'cs', 'csdebias', 'omp'
+            plot_corr(noise_percent, p, samptype, n, size, num_pts, v, recdir+methodfolder, ptsdir, kspacedir)
+        lgd = ["CS", "CSDEBIAS", "OMP"]
+        formatting(lgd, max)
+        if save_fig:
+            folder = '/plots/correlation/'
+            if not os.path.exists(recdir + folder):
+                os.makedirs(recdir+folder)
+            plt.savefig(recdir + folder + '/diffmethod' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype + '_v' + str(v) + '.png')
             plt.close()
         else:
             plt.draw()
@@ -142,18 +162,22 @@ if __name__ == '__main__':
     if len(sys.argv) > 6:
         ptsdir = sys.argv[5]
         kspacedir = sys.argv[6]
+        solver_mode = sys.argv[7]
     else:
         ptsdir = None
         kspacedir = None
+        solver_mode = 0
     size = 100
     num_pts = 50
     noise_vals = [0.01, 0.05, 0.1, 0.3]
     p_vals = [0.25, 0.5, 0.75]
     samp_vals = ['bernoulli', 'vardengauss']
     print("Creating correlation plots...")
-    max_corr = find_max(noise_vals, p_vals, samp_vals, noise_percent, p, samptype, numsamples, size, num_pts, recdir, ptsdir, kspacedir)
-    plot_noisediff(noise_vals, p, samptype, numsamples, size, num_pts, max_corr, recdir, ptsdir, kspacedir)
-    plot_pdiff(noise_percent, p_vals, samptype, numsamples, size, num_pts, max_corr, recdir, ptsdir, kspacedir)
-    plot_sampdiff(noise_percent, p, samp_vals, numsamples, size, num_pts, max_corr, recdir, ptsdir, kspacedir)
+    mf = solver_folder(solver_mode)
+    max_corr = find_max(noise_vals, p_vals, samp_vals, noise_percent, p, samptype, numsamples, size, num_pts, recdir+mf, ptsdir, kspacedir)
+    plot_noisediff(noise_vals, p, samptype, numsamples, size, num_pts, max_corr, recdir+mf, ptsdir, kspacedir)
+    plot_pdiff(noise_percent, p_vals, samptype, numsamples, size, num_pts, max_corr, recdir+mf, ptsdir, kspacedir)
+    plot_sampdiff(noise_percent, p, samp_vals, numsamples, size, num_pts, max_corr, recdir+mf, ptsdir, kspacedir)
+    plot_methoddiff(noise_percent, p, samptype, numsamples, size, num_pts, max_corr, recdir, ptsdir, kspacedir)
 
     

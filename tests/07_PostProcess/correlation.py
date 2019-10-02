@@ -64,19 +64,15 @@ def get_saved_points(samples, size, num_pts, ptsdir):
     return points
 
 def get_coeff(size, num_pts, samples, points):
-    coeff = np.zeros((4, size, num_pts))
-    corravg = np.zeros((4,size))
-
+    coeff = np.zeros((samples.shape[1], size, num_pts))
     for k in range(1, size+1):
         for j in range(num_pts):
             pt1 = (points[k-1, j, 0,0], points[k-1,j, 0,1])
             pt2 = (points[k-1, j, 1,0], points[k-1,j, 1,1])
-            for v in range(0,4):
+            for v in range(samples.shape[1]):
                 var1 = np.abs(samples[:, v,pt1[0], pt1[1]])
                 var2 = np.abs(samples[:, v,pt2[0], pt2[1]])
                 coeff[v, k-1, j] = np.corrcoef(np.asarray([var1, var2]))[0,1]**2#R^2 correlation
-        for v in range(0,4):
-            corravg[v, k-1] = np.mean(coeff[v, k-1])
     return coeff
 
 def get_vals(noise_percent, p, samptype, num_samples, size, num_pts, recdir, kspacedir, ptsdir, save_numpy=True):

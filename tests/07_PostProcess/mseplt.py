@@ -203,10 +203,13 @@ if __name__ == '__main__':
         numsamples = int(sys.argv[1])
         dir = sys.argv[2]
         recdir = sys.argv[3]
+        solver_mode = int(sys.argv[4])
     else:
         numsamples=100
         dir = home + "/apps/undersampled/poiseuille/npy/"
         recdir = dir
+        solver_mode = 0
+    recdir = recdir + solver_folder(solver_mode)
     #to plot a single violin plot, use plotnoisediff or plotpdiff
     #plotnoisediff(dir, recdir, 0.1, 0.5, 'bernoulli', use_complex=True, use_truth=True, useCS=True)
     #to plot all combinations:
