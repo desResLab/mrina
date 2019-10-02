@@ -85,7 +85,7 @@ def plot_noisediff(noise_vals, p, samptype, n, size, num_pts, max, dir, ptsdir, 
         lgd = [str(int(x*100)) + '\% noise' for x in noise_vals] 
         formatting(lgd, max)
         if save_fig:
-            folder = '/plots/'
+            folder = '/plots/correlation/'
             if not os.path.exists(dir + folder):
                 os.makedirs(dir+folder)
             plt.savefig(dir + folder+ '/diffnoise' + str(start) + 'to' + str(end) + '_p' + str(int(p*100)) + '_v' + str(v) + '.png')
@@ -102,7 +102,7 @@ def plot_pdiff(noise_percent, p_vals, samptype, n, size, num_pts, max, dir, ptsd
         lgd = [str(int(x*100)) + '\% undersampling' for x in p_vals]#['25\% undersampling', '50\% undersampling', '75\% undersampling']
         formatting(lgd, max)
         if save_fig:
-            folder = '/plots/'
+            folder = '/plots/correlation/'
             if not os.path.exists(dir + folder):
                 os.makedirs(dir+folder)
             plt.savefig(dir + folder +'/diffundersamp' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_v' + str(v) + '.png')
@@ -119,7 +119,7 @@ def plot_sampdiff(noise_percent, p, samp_vals, n, size, num_pts, max, dir, ptsdi
         lgd = ['Bernoulli undersampling', 'Halton undersampling', 'Gauss density undersampling', 'Tri density undersampling','Exp density undersampling']
         formatting(lgd, max)
         if save_fig:
-            folder = '/plots/'
+            folder = '/plots/correlation/'
             if not os.path.exists(dir + folder):
                 os.makedirs(dir+folder)
             plt.savefig(dir + folder + '/diffsamptype' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + '_v' + str(v) + '.png')
