@@ -6,11 +6,11 @@ import numpy.fft as fft
 import numpy.linalg as la
 from CSRecoverySuite import generateSamplingMask, crop
 home = os.getenv('HOME')
-#home = 'C:/Users/Lauren/'
 
 def getVenc(vel):
     mx = np.amax(np.fabs(vel))
     #less than 1/2: let it be equal to 1/3
+    # Shouldn'd be mx*1.5????
     venc = mx*3
     return venc
 
@@ -67,22 +67,31 @@ def add_noise(kspace, noise_percent, num_realizations):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
-def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSamples=1, uType='bernoulli',genNoise=False):
+def samples(fromdir         = '\.',
+            numRealizations = 1,
+            truefile        = 'imgs_n1', 
+            tosavedir       = None, 
+            uType           = 'bernoulli',
+            uVal            = 0.5,
+            uSeed           = 1234,
+            noisePercent    = 0.0):
     #p: percent not sampled, uType: bernoulli, vardengauss, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
-    if tosavedir == None:
+    if tosavedir is None:
         tosavedir = fromdir
-    #get images
+    # Get images
     inp = np.load(tosavedir + truefile + '.npy')
+    # Get velocity encoding
     venc = getVenc(inp[:,1:,:])
     np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
     kspace = getKspace(inp, venc)
+    
     print('Saving masks and noisy image to directory', tosavedir)
-    for p in [0.25, 0.5, 0.75]:
-        print('Generating undersampling mask with p =', p)
-        mask=generateSamplingMask(kspace.shape[3:], p, uType)
-        undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
-        np.save(undfile, mask)
+    
+    print('Generating undersampling mask with p =', p)
+    mask = generateSamplingMask(kspace.shape[3:], p, uType)
+    undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
+    np.save(undfile, mask)
     
     if genNoise or (not os.path.exists(tosavedir + 'noisy_noise1_n' + str(numRealizations) + '.npy')):
         for noisePercent in [0.01, 0.05, 0.10, 0.30]:
@@ -97,6 +106,7 @@ if __name__ == '__main__':
         numsamples = int(sys.argv[1])
         samptype = sys.argv[2]
         directory = sys.argv[3] #options: bernoulli, vardengauss, bpoisson, halton, vardentri, vardenexp
+        fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSamples=1, uType='bernoulli',genNoise=False
     else:
         numsamples = 100
         samptype = 'vardengauss'
