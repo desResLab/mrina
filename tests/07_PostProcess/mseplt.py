@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append('../../')
-from recover import linear_reconstruction, recover_vel #threshold for zero mag
+from recover import linear_reconstruction, recover_vel, solver_folder #threshold for zero mag
 from genSamples import getKspace
 import numpy as np
 import matplotlib.pyplot as plt
@@ -72,17 +72,13 @@ def get_folder(use_complex):
         folder = '/plots/msefinal'
     return folder
 
-def formatting(ax, lgd):
+def formatting(ax, lgd, xdesc):
     plt.ylabel('MSE',fontsize=fs)
-    #plt.ylabel('Percent of total samples',fontsize=fs)
     plt.tick_params(labelsize=fs)
-    plt.tight_layout()
-    #ax.yaxis.set_major_formatter(PercentFormatter(xmax=1))
-    #x_formatter = ScalarFormatter(useOffset=False)
-    #ax.xaxis.set_major_formatter(x_formatter)
     ax.set_xticks(range(1, len(lgd)+1))
-    ax.set_xticklabels(["" for x in lgd])
-    plt.legend(lgd)
+    ax.set_xticklabels(lgd)
+    plt.xlabel(xdesc)
+    plt.tight_layout()
 
 def plotpdiff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth, useCS):
     folder = get_folder(use_complex)
@@ -102,14 +98,13 @@ def plotpdiff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use
             msg = 'vplt_lin'
         if not use_truth:
             msg = msg + 'avg'
-        i = i + 1
         alpha = alpha - 0.25
-        allplt[count] = toplot
-        count = count + 1
-    bplts = plt.violinplot(allplt)#, ['25\%', '50\%' '75\%'])
+        allplt[i] = toplot
+        i = i + 1
+    bplts = plt.violinplot(allplt)
     for patch, color in zip(bplts['bodies'], colors):
         patch.set_facecolor(color)
-    formatting(ax, ['1\% noise', '5\% noise', '10\% noise', '30\% noise'])
+    formatting(ax, ['1\%', '5\%', '10\%', '30\%'], 'Noise')
     if not os.path.exists(recdir + folder):
         os.makedirs(recdir+folder)
     plt.savefig(recdir + folder + '/' + msg + '_p' + str(int(p*100)) + type + '.png')
@@ -134,17 +129,47 @@ def plotnoisediff(dir, recdir, noise_percent, p, type, num_samples, use_complex,
             msg = 'vplt_lin'
         if not use_truth:
             msg = msg + 'avg'
-        #plt.hist(toplot, bins=10, density=False,weights=np.ones(len(toplot)) / len(toplot),edgecolor=colors[i], alpha=alpha)# ec='black')
         i = i + 1
         allplt[int(p/0.25)-1] = toplot
     bplts = plt.violinplot(allplt)#, ['25\%', '50\%' '75\%'])
     for patch, color in zip(bplts['bodies'], colors):
         patch.set_facecolor(color)
-    formatting(ax, ['25\% undersampling', '50\% undersampling', '75\% undersampling'])
+    formatting(ax, ['25\%', '50\%', '75\%'], 'Undersampling')
     if not os.path.exists(recdir + folder):
         os.makedirs(recdir+folder)
-    plt.savefig(recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + type + '.png')
+    #plt.savefig(recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + type + '.png')
     print("Saved as " + recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + type + '.png')
+    plt.show()
+    plt.close(fig)
+
+def plotmethoddiff(dir, recdir, noise_percent, p, type, num_samples, use_complex, use_truth, useCS, method='cs'):
+    folder = get_folder(use_complex)
+    colors = ['blue','orange','green', 'red']
+    fig, ax = plt.subplots(figsize=(4,3))
+    i = 0
+    alpha = 1
+    allplt = [None]*3
+    for methodfolder in [solver_folder(0), solver_folder(1), solver_folder(2)]: 
+        msecs, mselin = get_error(dir, recdir+methodfolder, noise_percent, p, type, num_samples, use_complex, use_truth)
+        if useCS:
+            toplot = msecs
+            msg = 'vplt'
+        else:
+            toplot = mselin
+            msg = 'vplt_lin'
+        if not use_truth:
+            msg = msg + 'avg'
+        allplt[i] = toplot
+        i = i + 1
+    bplts = plt.violinplot(allplt)
+    for patch, color in zip(bplts['bodies'], colors):
+        patch.set_facecolor(color)
+    formatting(ax, ['CS', 'CSDEBIAS', 'OMP'], 'Solver')
+    if not os.path.exists(recdir + folder):
+        os.makedirs(recdir+folder)
+    filename = recdir + folder + '/' + msg + '_noise' + str(int(noise_percent*100)) + '_p'+str(int(p*100)) + type + '.png'
+    plt.savefig(filename)
+    print("Saved as " + filename)
     #plt.show()
     plt.close(fig)
 

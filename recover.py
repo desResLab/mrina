@@ -125,6 +125,18 @@ def linear_reconstruction(fourier_file, omega=None):
                 linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
     return linrec
 
+def solver_folder(solver_mode):
+    if solver_mode == CS_MODE:
+        folder = 'cs/'
+    elif solver_mode == DEBIAS_MODE:
+        folder = 'csdebias/'
+    elif solver_mode == OMP_MODE:
+        folder = 'omp/'
+    else:  
+        print('ERROR: Invalid solver mode')
+        sys.exit(-1)
+    return folder
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         noise_percent = float(sys.argv[1])
@@ -135,9 +147,11 @@ if __name__ == '__main__':
         kspacedir = sys.argv[6]
         recdir = kspacedir
         patterndir = kspacedir 
+        solver_mode = CS_MODE
         if len(sys.argv) > 8:
             recdir = sys.argv[7] 
             patterndir = sys.argv[8]
+            solver_mode = int(sys.argv[9])
     else:
         noise_percent=0.01
         p=0.75 #percent not sampled
@@ -147,8 +161,8 @@ if __name__ == '__main__':
         recdir = kspacedir #where to save recovered imgs
         patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
         num_processes = 2
+        solver_mode = CS_MODE 
     wavelet_type = 'haar'
-    solver_mode = CS_MODE 
     
     fourier_file = kspacedir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
@@ -156,11 +170,12 @@ if __name__ == '__main__':
     omega = pattern[0]
     orig_file = kspacedir+'imgs_n1' +  '.npy'
     venc = np.load(kspacedir + 'venc_n1' + '.npy')
-    savednpy = recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy' 
+    folder = solver_folder(solver_mode)
+    savednpy = recdir +folder+'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy' 
     if not os.path.exists(savednpy):
         recovered = recoverAll(fourier_file, orig_file, pattern, c=num_processes, wvlt=wavelet_type, mode=solver_mode)
-        if not os.path.exists(recdir):
-            os.makedirs(recdir)
+        if not os.path.exists(recdir+folder):
+            os.makedirs(recdir+folder)
         np.save(savednpy, recovered)
         print('Recovered images saved as ', savednpy)
     else:

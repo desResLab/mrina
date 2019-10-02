@@ -6,6 +6,7 @@ P=0.5
 PATTERN="vardengauss"
 PROCESSES=2
 REALIZATIONS=2
+SOLVER_MODE=0 #0 cs, 1 csdebias, 2 omp
 
 for SAMPTYPE in "vardengauss" "bernoulli"
 do
@@ -22,7 +23,7 @@ do
         for NOISEVAL in 0.01 0.05 0.1 0.3
         do
             echo $NOISEVAL $PVAL $SAMPTYPE
-            python3 ../../recover.py $NOISEVAL $PVAL $SAMPTYPE $REALIZATIONS $PROCESSES $DIR $RECDIR $DIR
+            python3 ../../recover.py $NOISEVAL $PVAL $SAMPTYPE $REALIZATIONS $PROCESSES $DIR $RECDIR $DIR $SOLVER_MODE
         done
     done
 done
