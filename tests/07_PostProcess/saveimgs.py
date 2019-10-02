@@ -15,6 +15,9 @@ def rescale(img):
 def save_mask(tosavedir, p, uType, numRealizations, relative, ext='.png'):
     undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
     mask = np.load(undfile + '.npy')
+    mask = mask.astype(int)
+    if relative:
+        mask = rescale(mask)
     cv2.imwrite(undfile + ext, np.moveaxis(mask,0,2).astype(int))
 
 def save_cs(noise_percent, p, samptype, recdir, venc, num_samples, relative, ext='.png'):
