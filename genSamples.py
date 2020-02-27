@@ -5,6 +5,8 @@ import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
 from CSRecoverySuite import generateSamplingMask, crop
+import argparse
+
 home = os.getenv('HOME')
 
 def getVenc(vel):
@@ -67,48 +69,151 @@ def add_noise(kspace, noise_percent, num_realizations):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
-def samples(fromdir         = '\.',
-            numRealizations = 1,
-            truefile        = 'imgs_n1', 
-            tosavedir       = None, 
-            uType           = 'bernoulli',
-            uVal            = 0.5,
-            uSeed           = 1234,
-            noisePercent    = 0.0):
+def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noisePercent):
+    
     #p: percent not sampled, uType: bernoulli, vardengauss, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
-    if tosavedir is None:
-        tosavedir = fromdir
+    
     # Get images
-    inp = np.load(tosavedir + truefile + '.npy')
+    inp = np.load(fromdir + truefile + '.npy')
+    
     # Get velocity encoding
     venc = getVenc(inp[:,1:,:])
+    
+    # Save Velocity Encoding
     np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
+
+    # Transform image in the Fourier domain
     kspace = getKspace(inp, venc)
     
-    print('Saving masks and noisy image to directory', tosavedir)
-    
-    print('Generating undersampling mask with p =', p)
-    mask = generateSamplingMask(kspace.shape[3:], p, uType)
-    undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
+    # Generate undersampling mask
+    mask = generateSamplingMask(kspace.shape[3:], uVal, uType, uSeed)
+    undfile = tosavedir + 'undersamplpattern_p' + str(int(uVal*100)) + uType + '_seed' + str(uSeed)       
     np.save(undfile, mask)
     
-    if genNoise or (not os.path.exists(tosavedir + 'noisy_noise1_n' + str(numRealizations) + '.npy')):
-        for noisePercent in [0.01, 0.05, 0.10, 0.30]:
-            print('Generating noisy images with noise percent = ',noisePercent)
-            noisy,snr = add_noise(kspace,noisePercent, numRealizations)
-            fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
-            np.save(fourier_file + '_n' + str(numRealizations), noisy)
-            np.save(tosavedir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
+    noisy,snr = add_noise(kspace, noisePercent, numRealizations)
+    fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
+    np.save(fourier_file + '_n' + str(numRealizations), noisy)
+    
+    # Save SNR
+    np.save(tosavedir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
 
+# --- MAIN FUNCTION
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        numsamples = int(sys.argv[1])
-        samptype = sys.argv[2]
-        directory = sys.argv[3] #options: bernoulli, vardengauss, bpoisson, halton, vardentri, vardenexp
-        fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSamples=1, uType='bernoulli',genNoise=False
-    else:
-        numsamples = 100
-        samptype = 'vardengauss'
-        directory = home + "/apps/undersampled/poiseuille/img/"
-    samples(directory, numsamples, uType=samptype)
+
+    parser = argparse.ArgumentParser(description='Generate noisy k-space measurements and undersampling masks.')
+    # fromdir         = '\.'
+    parser.add_argument('-f', '--fromdir',
+                        action=None,
+                        nargs=1,
+                        const=None,
+                        default='./',
+                        type=str,
+                        choices=None,
+                        required=False,
+                        help='origin image location',
+                        metavar='',
+                        dest='fromdir')
+
+    # numRealizations = 1
+    parser.add_argument('-r', '--repetitions',
+                        action=None,
+                        nargs=1,
+                        const=None,
+                        default=1,
+                        type=int,
+                        choices=None,
+                        required=False,
+                        help='number of k-space samples and mask to generate',
+                        metavar='',
+                        dest='repetitions')
+
+    # truefile        = 'imgs_n1', 
+    parser.add_argument('-o', '--origin',
+                        action=None,
+                        nargs=1,
+                        const=None,
+                        default='imgs_n1',
+                        type=str,
+                        choices=None,
+                        required=False,
+                        help='name of the origin images to process',
+                        metavar='',
+                        dest='origin')
+
+    # tosavedir       = None, 
+    parser.add_argument('-d', '--dest',
+                        action=None,
+                        nargs=1,
+                        const=None,
+                        default='./',
+                        type=str,
+                        choices=None,
+                        required=False,
+                        help='destination folder for sample generation',
+                        metavar='',
+                        dest='dest')
+
+    # uType           = 'bernoulli',
+    parser.add_argument('-u', '--utype',
+                        action=None,
+                        nargs=1,
+                        const=None,
+                        default='bernoulli',
+                        type=str,
+                        choices=['bernoulli','vardentri','vardengauss','vardenexp','halton'],
+                        required=False,
+                        help='undersampling pattern type',
+                        metavar='',
+                        dest='uType')
+
+    # uVal            = 0.5,
+    parser.add_argument('-v', '--urate',
+                        action=None,
+                        nargs=1,
+                        const=None,
+                        default=True,
+                        type=float,
+                        choices=None,
+                        required=False,
+                        help='undersampling rate',
+                        metavar='',
+                        dest='uVal')
+
+    # uSeed           = 1234,
+    parser.add_argument('-seed',
+                        action=None,
+                        nargs=1,
+                        const=None,
+                        default=1234,
+                        type=int,
+                        choices=None,
+                        required=False,
+                        help='random generator seed',
+                        metavar='',
+                        dest='seed')
+
+    # noisePercent    = 0.0
+    parser.add_argument('-n', '--noisepercent',
+                        action=None,
+                        nargs=1,
+                        const=None,
+                        default=0.0,
+                        type=float,
+                        choices=None,
+                        required=False,
+                        help='noise ',
+                        metavar='',
+                        dest='noisepercent')
+
+    args = parser.parse_args()
+    
+    # Generate Samples
+    genSamples(args.fromdir,
+               args.repetitions,
+               args.origin,
+               args.dest,
+               args.uType,
+               args.uVal,
+               args.seed,
+               args.noisepercent)
