@@ -47,13 +47,17 @@ def get_noise(imsz,nrm, noise_percent,num_realizations):
     #noise param is a percentage of how much noise to be added
     noise = np.zeros((num_realizations, 4, 1,) + imsz, dtype=complex)
     snr = np.zeros((num_realizations,4))
-    avgnorm = nrm[0]/math.sqrt(np.prod(imsz))
-    stdev = noise * avgnorm
+    # avgnorm = nrm[0]/math.sqrt(np.prod(imsz))
+    # stdev = noise * avgnorm
     for n in range(num_realizations):
         for j in range(0,4):
             avgnorm = nrm[j]/math.sqrt(np.prod(imsz))
             stdev = noise_percent * avgnorm
-            snr[n,j] = math.pow(avgnorm/stdev,2)
+            if(stdev < 1.0e-12):           
+              # There is no noise, so SNR is infinity
+              snr[n,j] = np.infty
+            else:
+              snr[n,j] = (avgnorm/stdev)**2
             noise[n,j] = np.random.normal(scale=stdev, size=imsz) + 1j*np.random.normal(scale=stdev, size=imsz)
     return noise,snr
 
@@ -69,33 +73,45 @@ def add_noise(kspace, noise_percent, num_realizations):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
-def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noisePercent):
+def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noisePercent,printlevel):
     
     #p: percent not sampled, uType: bernoulli, vardengauss, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
     
     # Get images
+    if(printlevel>0):
+        print('Loading Image...')
     inp = np.load(fromdir + truefile + '.npy')
     
     # Get velocity encoding
     venc = getVenc(inp[:,1:,:])
     
     # Save Velocity Encoding
-    np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
+    if(printlevel>0):
+        print('Saving velocity encoding...')    
+    np.save(tosavedir + 'venc_n' + str(numRealizations) + '.npy', venc)
 
     # Transform image in the Fourier domain
+    if(printlevel>0):
+        print('Fourier transform in k-space...')    
     kspace = getKspace(inp, venc)
     
     # Generate undersampling mask
+    if(printlevel>0):
+        print('Generate and save sampling mask...')        
     mask = generateSamplingMask(kspace.shape[3:], uVal, uType, uSeed)
     undfile = tosavedir + 'undersamplpattern_p' + str(int(uVal*100)) + uType + '_seed' + str(uSeed)       
     np.save(undfile, mask)
-    
+
+    if(printlevel>0):
+        print('Add noise to image...')
     noisy,snr = add_noise(kspace, noisePercent, numRealizations)
     fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
     np.save(fourier_file + '_n' + str(numRealizations), noisy)
     
     # Save SNR
+    if(printlevel>0):
+        print('Save image SNR...')
     np.save(tosavedir + 'snr_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations), snr)
 
 # --- MAIN FUNCTION
@@ -105,7 +121,7 @@ if __name__ == '__main__':
     # fromdir         = '\.'
     parser.add_argument('-f', '--fromdir',
                         action=None,
-                        nargs=1,
+                        # nargs='+',
                         const=None,
                         default='./',
                         type=str,
@@ -118,7 +134,7 @@ if __name__ == '__main__':
     # numRealizations = 1
     parser.add_argument('-r', '--repetitions',
                         action=None,
-                        nargs=1,
+                        # nargs='+',
                         const=None,
                         default=1,
                         type=int,
@@ -131,7 +147,7 @@ if __name__ == '__main__':
     # truefile        = 'imgs_n1', 
     parser.add_argument('-o', '--origin',
                         action=None,
-                        nargs=1,
+                        # nargs='+',
                         const=None,
                         default='imgs_n1',
                         type=str,
@@ -144,7 +160,7 @@ if __name__ == '__main__':
     # tosavedir       = None, 
     parser.add_argument('-d', '--dest',
                         action=None,
-                        nargs=1,
+                        # nargs='+',
                         const=None,
                         default='./',
                         type=str,
@@ -157,7 +173,7 @@ if __name__ == '__main__':
     # uType           = 'bernoulli',
     parser.add_argument('-u', '--utype',
                         action=None,
-                        nargs=1,
+                        # nargs='+',
                         const=None,
                         default='bernoulli',
                         type=str,
@@ -170,7 +186,7 @@ if __name__ == '__main__':
     # uVal            = 0.5,
     parser.add_argument('-v', '--urate',
                         action=None,
-                        nargs=1,
+                        # nargs='+',
                         const=None,
                         default=True,
                         type=float,
@@ -183,7 +199,7 @@ if __name__ == '__main__':
     # uSeed           = 1234,
     parser.add_argument('-seed',
                         action=None,
-                        nargs=1,
+                        # nargs='+',
                         const=None,
                         default=1234,
                         type=int,
@@ -196,17 +212,41 @@ if __name__ == '__main__':
     # noisePercent    = 0.0
     parser.add_argument('-n', '--noisepercent',
                         action=None,
-                        nargs=1,
+                        # nargs='+',
                         const=None,
                         default=0.0,
                         type=float,
                         choices=None,
                         required=False,
-                        help='noise ',
+                        help='noise percent based the average two-norm of the k-space image',
                         metavar='',
                         dest='noisepercent')
 
+    # noisePercent    = 0.0
+    parser.add_argument('-p', '--printlevel',
+                        action=None,
+                        # nargs='+',
+                        const=None,
+                        default=0,
+                        type=float,
+                        choices=None,
+                        required=False,
+                        help='print level, 0 - no print, >0 increasingly more information ',
+                        metavar='',
+                        dest='printlevel')
+
+  
+    # Parse Commandline Arguments
     args = parser.parse_args()
+
+    # print(args.fromdir)
+    # print(args.repetitions)
+    # print(args.origin)
+    # print(args.dest)
+    # print(args.uType)
+    # print(args.uVal)
+    # print(args.seed)
+    # print(args.noisepercent)
     
     # Generate Samples
     genSamples(args.fromdir,
@@ -216,4 +256,8 @@ if __name__ == '__main__':
                args.uType,
                args.uVal,
                args.seed,
-               args.noisepercent)
+               args.noisepercent,
+               args.printlevel)
+
+    if(args.printlevel > 0):
+      print('Completed!!!')
