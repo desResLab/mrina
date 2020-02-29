@@ -1,53 +1,55 @@
-import sys
-from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing,OMPRecovery, Operator4dFlow, pywt2array, array2pywt, crop
+import sys,os
+import numpy as np
 import matplotlib.pyplot as plt
 import numpy.fft as fft
 import pywt
-import numpy as np
-import os
 import math
-import sys
+import scipy.misc
+from scipy.stats import norm
 from multiprocessing import Process, cpu_count, Manager
 from genSamples import getKspace,getVenc
-from scipy.stats import norm,bernoulli
-import scipy.misc
+from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing,OMPRecovery, Operator4dFlow, pywt2array, array2pywt, crop
+
 home = os.getenv('HOME')
 
-CS_MODE = 0
+CS_MODE     = 0
 DEBIAS_MODE = 1
-OMP_MODE = 2
+OMP_MODE    = 2
 
 def get_eta(im, imNrm, noise_percent, m):
     avgnorm = imNrm/math.sqrt(im.size)
-    stdev = noise_percent * avgnorm
-    rv = norm()
-    #ppf: inverse of cdf
-    eta = stdev*math.sqrt(2*m + 2*math.sqrt(m)*rv.ppf(0.95))
-    if eta < 1E-3: #min. threshold for eta
+    stdev   = noise_percent * avgnorm
+    rv      = norm()
+    # ppf: inverse of cdf
+    eta     = stdev*math.sqrt(2*m + 2*math.sqrt(m)*rv.ppf(0.95))
+    if eta < 1E-3: # min. threshold for eta
         eta = 1E-3
     return eta
 
 def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver_mode=CS_MODE):
+    
     def recover(kspace,imsz,eta,omega):
-        wim          = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet=wvlt, mode='periodization'), imsz)
+        wim = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet=wvlt, mode='periodization'), imsz)
         wsz = wim.shape
-        A = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName=wvlt, waveletMode='periodization' )
-        yim          = A.eval( wim, 1 )
-        if solver_mode == OMP_MODE:
-          tol = eta/np.linalg.norm(yim.ravel(),2)
-          print('Recovering using OMP with tol =', tol)
-          wim = OMPRecovery(A, yim, tol=tol, showProgress=True, progressInt=250, maxItns=2000)[0]
+        A   = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=~omega, waveletName=wvlt, waveletMode='periodization' )
+        yim = A.eval( wim, 1 )
+        
+        if(solver_mode == OMP_MODE):
+            tol = eta/np.linalg.norm(yim.ravel(),2)
+            print('Recovering using OMP with tol =', tol)
+            wim = OMPRecovery(A, yim, tol=tol, showProgress=True, progressInt=250, maxItns=2000)[0]
         else:
-          print('Recovering using CS with eta =', eta)
-          wim =  CSRecovery(eta, yim, A, np.zeros( wsz ), disp=1)
+            print('Recovering using CS with eta =', eta)
+            wim =  CSRecovery(eta, yim, A, np.zeros(wsz), disp=1)
         if isinstance(wim, tuple):
             wim = wim[0] #for the case where ynrm is less than eta
         if solver_mode == DEBIAS_MODE:
             wim =  CSRecoveryDebiasing( yim, A, wim)
             if isinstance(wim, tuple):
                 wim = wim[0] #for the case where ynrm is less than eta
-        csim    = pywt.waverec2(array2pywt( wim ), wavelet=wvlt, mode='periodization')
+        csim = pywt.waverec2(array2pywt( wim ), wavelet=wvlt, mode='periodization')
         return csim
+
     imsz = crop(noisy[0,0,0]).shape
     cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
     if len(pattern.shape) > 2:
@@ -126,6 +128,21 @@ def linear_reconstruction(fourier_file, omega=None):
     return linrec
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='.')
+    
+    parser.add_argument('-o', '--origindir',
+                        action=None,
+                        # nargs='+',
+                        const=None,
+                        default='/apps/pDat/samp256/',
+                        type=str,
+                        choices=None,
+                        required=False,
+                        help='origin VTK file folder',
+                        metavar='',
+                        dest='directory')
+
     if len(sys.argv) > 1:
         noise_percent = float(sys.argv[1])
         p=float(sys.argv[2])
@@ -147,8 +164,9 @@ if __name__ == '__main__':
         recdir = kspacedir #where to save recovered imgs
         patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
         num_processes = 2
+    
     wavelet_type = 'haar'
-    solver_mode = CS_MODE 
+    solver_mode  = CS_MODE 
     
     fourier_file = kspacedir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
