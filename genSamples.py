@@ -17,17 +17,18 @@ def getVenc(vel):
 def getKspace(sample, venc, sliceIndex=0):
     #return the fft of the complex images
     numSamples = sample.shape[0]
+    print('samples', sample.shape)
     mag_samples = np.empty((0,) + sample.shape[2:])
-    vel_samples = np.empty((0,3,) + sample.shape[2:])
+    vel_samples = np.empty((0,sample.shape[1]-1,) + sample.shape[2:])
     for n in range(numSamples):
         magnitude = sample[n,0]
         y0 = np.zeros(magnitude.shape,dtype=complex)
-        vel = sample[n,1:4]
+        vel = sample[n,1:sample.shape[1]]
         yk = np.zeros(vel.shape,dtype=complex) #reference complex images for computing velocities
         #2d fourier transform each slice for k space
         for k in range(magnitude.shape[0]): #number of 2d images in grid
             y0[k] = fft.fft2(magnitude[k])
-            for j in range(0,3):
+            for j in range(0, sample.shape[1]-1):
                 yk[j,k] = fft.fft2(np.multiply(magnitude[k], np.exp((2*math.pi*1j/venc)*vel[j,k])))
         mag_samples = np.append(mag_samples, np.expand_dims(y0,axis=0), axis=0)
         vel_samples = np.append(vel_samples, np.expand_dims(yk,axis=0), axis=0)
@@ -46,7 +47,7 @@ def get_noise(imsz,nrm, noise_percent,num_realizations):
     noise = np.zeros((num_realizations, 4, 1,) + imsz, dtype=complex)
     snr = np.zeros((num_realizations,4))
     avgnorm = nrm[0]/math.sqrt(np.prod(imsz))
-    stdev = noise * avgnorm
+    stdev = noise_percent * avgnorm
     for n in range(num_realizations):
         for j in range(0,4):
             avgnorm = nrm[j]/math.sqrt(np.prod(imsz))
@@ -59,11 +60,12 @@ def add_noise(kspace, noise_percent, num_realizations):
     imsz = kspace.shape[3:]
     samples = np.zeros((num_realizations, 4,1,) + imsz, dtype=complex)
     nrm = [None]*4
-    for v in range(4):
+    for v in range(kspace.shape[1]):
         nrm[v] = la.norm(kspace[0,v])
+    print('norm', nrm)
     noise, snr = get_noise(imsz, nrm, noise_percent, num_realizations)
     for n in range(num_realizations):
-        for v in range(4):
+        for v in range(kspace.shape[1]):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
@@ -74,9 +76,15 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
         tosavedir = fromdir
     #get images
     inp = np.load(tosavedir + truefile + '.npy')
-    venc = getVenc(inp[:,1:,:])
-    np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
+    if len(inp.shape) == 4:
+        inp = np.expand_dims(inp,axis=0)
+    if inp.shape[1] > 1:
+      venc = getVenc(inp[:,1:,:])
+      np.save(tosavedir + 'venc_n' + str(numSamples) + '.npy', venc)
+    else:
+      venc = None
     kspace = getKspace(inp, venc)
+    print(kspace.shape)
     print('Saving masks and noisy image to directory', tosavedir)
     for p in [0.25, 0.5, 0.75]:
         print('Generating undersampling mask with p =', p)
@@ -85,7 +93,7 @@ def samples(fromdir,numRealizations,truefile='imgs_n1', tosavedir=None, numSampl
         np.save(undfile, mask)
     
     if genNoise or (not os.path.exists(tosavedir + 'noisy_noise1_n' + str(numRealizations) + '.npy')):
-        for noisePercent in [0.01, 0.05, 0.10, 0.30]:
+        for noisePercent in [0.01, 0.05, 0.1, 0.3]: 
             print('Generating noisy images with noise percent = ',noisePercent)
             noisy,snr = add_noise(kspace,noisePercent, numRealizations)
             fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
