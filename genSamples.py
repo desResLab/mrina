@@ -14,26 +14,28 @@ def getVenc(vel):
     venc = mx*3
     return venc
 
-def getKspace(sample, venc, sliceIndex=0):
+def getKspace(sample, venc, magnitudes=None, referencephase=None):
     #return the fft of the complex images
-    numSamples = sample.shape[0]
-    print('samples', sample.shape)
-    mag_samples = np.empty((0,) + sample.shape[2:])
-    vel_samples = np.empty((0,sample.shape[1]-1,) + sample.shape[2:])
-    for n in range(numSamples):
-        magnitude = sample[n,0]
-        y0 = np.zeros(magnitude.shape,dtype=complex)
-        vel = sample[n,1:sample.shape[1]]
-        yk = np.zeros(vel.shape,dtype=complex) #reference complex images for computing velocities
+    num_samples = sample.shape[0]
+    yk = np.zeros(sample.shape,dtype=complex) #reference complex images for computing velocities
+    if referencephase is None:
+        print("Reference phase not found. Information loss may occur.")
+        referencephase = np.zeros(sample[:,0].shape)
+    if magnitudes is None:
+        print("Magnitude of complex images not found. Information loss may occur.")
+        magnitudes = np.ones(sample.shape)
+    for n in range(num_samples):
+        mag = sample[n,0]
+        refphase = referencephase[n]
+        vel = sample[n,1:4]
+        compyk = np.zeros(vel.shape, dtype=complex)
         #2d fourier transform each slice for k space
-        for k in range(magnitude.shape[0]): #number of 2d images in grid
-            y0[k] = fft.fft2(magnitude[k])
-            for j in range(0, sample.shape[1]-1):
-                yk[j,k] = fft.fft2(np.multiply(magnitude[k], np.exp((2*math.pi*1j/venc)*vel[j,k])))
-        mag_samples = np.append(mag_samples, np.expand_dims(y0,axis=0), axis=0)
-        vel_samples = np.append(vel_samples, np.expand_dims(yk,axis=0), axis=0)
-    kspace = np.concatenate((np.expand_dims(mag_samples, axis=1), vel_samples), axis=1)
-    return kspace
+        for k in range(sample.shape[2]): #number of 2d images in grid
+            yk[n,0,k] = fft.fft2(mag[k]*np.exp(1j*refphase[k]))
+            for j in range(0,sample.shape[1]-1): #number of velocity components
+                compyk[j,k] = magnitudes[n,j+1,k]*np.exp(1j*refphase[k])*np.exp(np.pi*1j*vel[j,k]/venc)
+                yk[n,j+1,k] = fft.fft2(compyk[j,k])
+    return yk 
 
 def undersample(kspace, mask):
     mag,vel = kspace

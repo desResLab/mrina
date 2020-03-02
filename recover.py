@@ -89,24 +89,23 @@ def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar', mode=CS_MODE)
     print('Finished recovering, with final shape', recovered.shape)
     return recovered
 
-def recover_vel(recovered, venc=None):
-    if venc is None:
-        print('Venc not found: skipping velocity recovery.')
-        return np.abs(recovered)
-    mag = recovered[:, 0, :]
-    vel = np.empty((recovered.shape[0],) + (3,) + recovered.shape[2:] )
-    for n in range(0,recovered.shape[0]):
-        for k in range(1,4):
-            for j in range(0, recovered.shape[2]):
-                m = mag[n,j]
-                v = recovered[n,k,j]
-                v = venc/(2*math.pi)*np.log(np.divide(v,m)).imag
-                vel[n,k-1,j] = v
+def recover_vel(compleximg, venc=None, threshold=True):
+    vel = np.zeros(compleximg.shape)
+    for n in range(0,compleximg.shape[0]):
+        for j in range(0, compleximg.shape[2]):
+            m = compleximg[n,0,j]
+            vel[n,0,j] = np.abs(m)
+            for k in range(1,compleximg.shape[1]):
+                v = compleximg[n,k,j]
+                v = venc/(np.pi)*(np.angle(v) - np.angle(m))
+                #v = venc/(math.pi)*np.angle(np.divide(v,m))
+                vel[n,k,j] = v
                 #set velocity = 0 wherever mag is close enough to 0
-                mask = (np.abs(mag[n,j]) < 1E-1)
-                vel[n,k-1,j, mask] = 0
-    mag = np.abs(mag)
-    return np.concatenate((np.expand_dims(mag, axis=1),vel), axis=1)
+                if threshold:
+                    mask = (np.abs(m) < 1E-1)
+                    vel[n,k,j, mask] = 0
+    refphase = np.angle(compleximg[:,0,:])
+    return vel, refphase, np.abs(compleximg)
 
 def linear_reconstruction(fourier_file, omega=None):
     if isinstance(fourier_file, str): 
@@ -192,8 +191,8 @@ if __name__ == '__main__':
         venc = np.load(vencfile)
     else:
         venc = None    
-    linrec = recover_vel(linrec, venc)
-    recovered = recover_vel(recovered, venc)
+    linrec, a, b = recover_vel(linrec, venc)
+    recovered, a, b = recover_vel(recovered, venc)
     orig = np.load(orig_file)
     new_shape = crop(orig[0,0,0]).shape
     
