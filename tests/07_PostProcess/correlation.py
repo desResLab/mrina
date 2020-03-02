@@ -50,29 +50,37 @@ def get_points(size, num_pts,imsz, ptsdir):
 
 def get_samples(noise_percent, p, samptype, num_samples, recdir, kspacedir):
     samples = np.load(recdir + 'rec_noise'+str(int(noise_percent*100))+'_p' + str(int(p*100)) + samptype +'_n'+str(num_samples) + '.npy')
-    venc = np.load(kspacedir + 'venc_n1' + '.npy')
+    vencfile = kspacedir + 'venc_n1' + '.npy'
+    if os.path.exists(vencfile):
+        venc = np.load(vencfile)
+    else:
+        venc = None
     samples = recover_vel(samples, venc)
-    samples = np.squeeze(samples)
-    samples = samples[0:n]
+    #TODO/CHANGE: AVG NOISE
+    avgimg = np.mean(samples, axis=0)
+    for k in range(samples.shape[0]):
+      samples[k] = samples[k] - avgimg
     return samples
 
 def get_saved_points(samples, size, num_pts, ptsdir):
-    imsz = samples.shape[2:]
+    imsz = samples.shape[3:]
     if not os.path.isfile(ptsdir+'points_s' + str(size) + '_n' + str(num_pts) + '.npy'):
         get_points(size,num_pts,imsz, ptsdir)
     points = np.load(ptsdir+'points_s' + str(size) + '_n' + str(num_pts) + '.npy')
     return points
 
 def get_coeff(size, num_pts, samples, points):
+    print('in coeff', samples.shape)
     coeff = np.zeros((samples.shape[1], size, num_pts))
     for k in range(1, size+1):
         for j in range(num_pts):
             pt1 = (points[k-1, j, 0,0], points[k-1,j, 0,1])
             pt2 = (points[k-1, j, 1,0], points[k-1,j, 1,1])
             for v in range(samples.shape[1]):
-                var1 = np.abs(samples[:, v,pt1[0], pt1[1]])
-                var2 = np.abs(samples[:, v,pt2[0], pt2[1]])
-                coeff[v, k-1, j] = np.corrcoef(np.asarray([var1, var2]))[0,1]**2#R^2 correlation
+                var1 = np.abs(samples[:,v, 0, pt1[0], pt1[1]])
+                var2 = np.abs(samples[:, v, 0, pt2[0], pt2[1]])
+                coeff[v, k-1, j] = np.corrcoef(np.asarray([var1, var2]))[0,1] #correlation
+    print('is there nan in coeff?', np.isnan(coeff).any())
     return coeff
 
 def get_vals(noise_percent, p, samptype, num_samples, size, num_pts, recdir, kspacedir, ptsdir, save_numpy=True):
