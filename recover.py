@@ -26,7 +26,7 @@ def get_eta(im, imNrm, noise_percent, m):
     if eta < 1E-3: #min. threshold for eta
         eta = 1E-3
     return eta
-
+  
 def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver_mode=CS_MODE):
     def recover(kspace,imsz,eta,omega):
         wim          = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet=wvlt, mode='periodization'), imsz)
@@ -50,13 +50,14 @@ def recover(noisy, original, pattern, wsz, processnum, return_dict, wvlt, solver
         return csim
     imsz = crop(noisy[0,0,0]).shape
     cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
+    print('pattern shape, ', pattern.shape)
     if len(pattern.shape) > 2:
         omega = crop(pattern[0])
     else:
         omega = crop(pattern)
-    for n in range(0,noisy.shape[0]):
-        for k in range(0,4):
-            for j in range(0, noisy.shape[2]):
+    for n in range(noisy.shape[0]):
+        for k in range(noisy.shape[1]):
+            for j in range(noisy.shape[2]):
                 im = crop(original[0,k,j])
                 imNrm=np.linalg.norm(im.ravel(), 2)
                 eta = get_eta(im, imNrm, noise_percent, imsz[0])
@@ -88,7 +89,10 @@ def recoverAll(fourier_file, orig_file, pattern, c=1, wvlt='haar', mode=CS_MODE)
     print('Finished recovering, with final shape', recovered.shape)
     return recovered
 
-def recover_vel(recovered, venc):
+def recover_vel(recovered, venc=None):
+    if venc is None:
+        print('Venc not found: skipping velocity recovery.')
+        return np.abs(recovered)
     mag = recovered[:, 0, :]
     vel = np.empty((recovered.shape[0],) + (3,) + recovered.shape[2:] )
     for n in range(0,recovered.shape[0]):
@@ -110,10 +114,13 @@ def linear_reconstruction(fourier_file, omega=None):
     else:
         kspace = fourier_file
     if omega is not None:
-        if len(omega.shape) > 2:
+        if len(omega.shape) == 3 and omega.shape[0] == 1:
             omega = crop(omega[0])
-        else:
+        elif len(omega.shape) == 2:
             omega = crop(omega)
+        else:
+            print("ERROR: mask has unexpected shape.")
+            sys.exit(-1)
     imsz = crop(kspace[0,0,0]).shape
     kspace = kspace[:,:,:, :imsz[0], :imsz[1]]
     linrec = np.zeros(kspace.shape[0:3] + imsz, dtype=complex)
@@ -167,9 +174,7 @@ if __name__ == '__main__':
     fourier_file = kspacedir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy'
     undersample_file = patterndir + 'undersamplpattern_p' + str(int(p*100)) + type +  '_n' + str(num_samples) + '.npy'
     pattern = np.load(undersample_file)
-    omega = pattern[0]
     orig_file = kspacedir+'imgs_n1' +  '.npy'
-    venc = np.load(kspacedir + 'venc_n1' + '.npy')
     folder = solver_folder(solver_mode)
     savednpy = recdir +folder+'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + type + '_n' + str(num_samples) + '.npy' 
     if not os.path.exists(savednpy):
@@ -181,14 +186,19 @@ if __name__ == '__main__':
     else:
         print('Retrieving recovered images from numpy file', savednpy)
         recovered = np.load(savednpy)
-    linrec = linear_reconstruction(fourier_file, omega)
-    imgs = recover_vel(linrec, venc)
-    csimgs = recover_vel(recovered, venc)
+    linrec = linear_reconstruction(fourier_file, pattern)
+    vencfile = kspacedir + 'venc_n1' + '.npy'
+    if os.path.exists(vencfile):
+        venc = np.load(vencfile)
+    else:
+        venc = None    
+    linrec = recover_vel(linrec, venc)
+    recovered = recover_vel(recovered, venc)
     orig = np.load(orig_file)
     new_shape = crop(orig[0,0,0]).shape
     
-    o = np.zeros(csimgs.shape, dtype=complex)
+    o = np.zeros(recovered.shape, dtype=complex)
     for k in range(0,num_samples):
         o[k] = orig[0,:, :new_shape[0], :new_shape[1]]
-    print('MSE between original and recovered images: ', (np.square(csimgs - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
-    print('MSE between original and linear reconstructed images: ', (np.square(imgs - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
+    print('MSE between original and recovered images: ', (np.square(recovered - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
+    print('MSE between original and linear reconstructed images: ', (np.square(linrec - o[:,:,:,:new_shape[0], :new_shape[1]])).mean())
