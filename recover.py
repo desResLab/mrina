@@ -104,8 +104,13 @@ def recover_vel(compleximg, venc=None, threshold=True):
                 if threshold:
                     mask = (np.abs(m) < 1E-1)
                     vel[n,k,j, mask] = 0
-    refphase = np.angle(compleximg[:,0,:])
-    return vel, refphase, np.abs(compleximg)
+    return vel
+
+def phase_info(compleximg):
+  #return reference phase and magnitude of velocities
+  #required for inversion from velocity components
+  refphase = np.angle(compleximg[:,0,:])
+  return refphase, np.abs(compleximg)
 
 def linear_reconstruction(fourier_file, omega=None):
     if isinstance(fourier_file, str): 
