@@ -196,8 +196,8 @@ if __name__ == '__main__':
         venc = np.load(vencfile)
     else:
         venc = None    
-    linrec, a, b = recover_vel(linrec, venc)
-    recovered, a, b = recover_vel(recovered, venc)
+    linrec = recover_vel(linrec, venc)
+    recovered = recover_vel(recovered, venc)
     orig = np.load(orig_file)
     new_shape = crop(orig[0,0,0]).shape
     
