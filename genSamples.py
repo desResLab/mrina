@@ -16,25 +16,28 @@ def getVenc(vel):
     venc = mx*3
     return venc
 
-def getKspace(sample, venc, sliceIndex=0):
+def getKspace(sample, venc, magnitudes=None, referencephase=None):
     #return the fft of the complex images
-    numSamples = sample.shape[0]
-    mag_samples = np.empty((0,) + sample.shape[2:])
-    vel_samples = np.empty((0,3,) + sample.shape[2:])
-    for n in range(numSamples):
-        magnitude = sample[n,0]
-        y0 = np.zeros(magnitude.shape,dtype=complex)
+    num_samples = sample.shape[0]
+    yk = np.zeros(sample.shape,dtype=complex) #reference complex images for computing velocities
+    if referencephase is None:
+        print("Reference phase not found. Information loss may occur.")
+        referencephase = np.zeros(sample[:,0].shape)
+    if magnitudes is None:
+        print("Magnitude of complex images not found. Information loss may occur.")
+        magnitudes = np.ones(sample.shape)
+    for n in range(num_samples):
+        mag = sample[n,0]
+        refphase = referencephase[n]
         vel = sample[n,1:4]
-        yk = np.zeros(vel.shape,dtype=complex) #reference complex images for computing velocities
+        compyk = np.zeros(vel.shape, dtype=complex)
         #2d fourier transform each slice for k space
-        for k in range(magnitude.shape[0]): #number of 2d images in grid
-            y0[k] = fft.fft2(magnitude[k])
-            for j in range(0,3):
-                yk[j,k] = fft.fft2(np.multiply(magnitude[k], np.exp((2*math.pi*1j/venc)*vel[j,k])))
-        mag_samples = np.append(mag_samples, np.expand_dims(y0,axis=0), axis=0)
-        vel_samples = np.append(vel_samples, np.expand_dims(yk,axis=0), axis=0)
-    kspace = np.concatenate((np.expand_dims(mag_samples, axis=1), vel_samples), axis=1)
-    return kspace
+        for k in range(sample.shape[2]): #number of 2d images in grid
+            yk[n,0,k] = fft.fft2(mag[k]*np.exp(1j*refphase[k]))
+            for j in range(0,sample.shape[1]-1): #number of velocity components
+                compyk[j,k] = magnitudes[n,j+1,k]*np.exp(1j*refphase[k])*np.exp(np.pi*1j*vel[j,k]/venc)
+                yk[n,j+1,k] = fft.fft2(compyk[j,k])
+    return yk 
 
 def undersample(kspace, mask):
     mag,vel = kspace
@@ -43,12 +46,11 @@ def undersample(kspace, mask):
         vel[k,:,:,mask[k]] = 0
     return mag, vel
 
-def get_noise(imsz,nrm, noise_percent,num_realizations):
+def get_noise(imsz, nrm, noise_percent,num_realizations):
     #noise param is a percentage of how much noise to be added
     noise = np.zeros((num_realizations, 4, 1,) + imsz, dtype=complex)
     snr = np.zeros((num_realizations,4))
-    # avgnorm = nrm[0]/math.sqrt(np.prod(imsz))
-    # stdev = noise * avgnorm
+
     for n in range(num_realizations):
         for j in range(0,4):
             avgnorm = nrm[j]/math.sqrt(np.prod(imsz))
@@ -65,11 +67,12 @@ def add_noise(kspace, noise_percent, num_realizations):
     imsz = kspace.shape[3:]
     samples = np.zeros((num_realizations, 4,1,) + imsz, dtype=complex)
     nrm = [None]*4
-    for v in range(4):
+    for v in range(kspace.shape[1]):
         nrm[v] = la.norm(kspace[0,v])
+    print('norm', nrm)
     noise, snr = get_noise(imsz, nrm, noise_percent, num_realizations)
     for n in range(num_realizations):
-        for v in range(4):
+        for v in range(kspace.shape[1]):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
@@ -238,15 +241,6 @@ if __name__ == '__main__':
   
     # Parse Commandline Arguments
     args = parser.parse_args()
-
-    # print(args.fromdir)
-    # print(args.repetitions)
-    # print(args.origin)
-    # print(args.dest)
-    # print(args.uType)
-    # print(args.uVal)
-    # print(args.seed)
-    # print(args.noisepercent)
     
     # Generate Samples
     genSamples(args.fromdir,
