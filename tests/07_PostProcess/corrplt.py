@@ -5,217 +5,389 @@ import os
 import math
 from scipy.optimize import curve_fit
 from correlation import get_vals
+import argparse
+
 sys.path.append('../../')
-from recover import solver_folder
+
 home = os.getenv('HOME')
-fs=12
+
+fs = 12
 plt.rc('font',  family='serif')
 plt.rc('xtick', labelsize='x-small')
 plt.rc('ytick', labelsize='x-small')
 plt.rc('text',  usetex=True)
 start = 0
-end = 15 #last distance to include in plot (final x axis value)
-interval = int((end-start)/4)#int(math.ceil(((end-start)/4) / 10.0)) * 10))
+end   = 15 # last distance to include in plot (final x axis value)
+interval = int((end-start)/4) #int(math.ceil(((end-start)/4) / 10.0)) * 10))
 
-def formatting(lgd,max):
-    plt.xlabel('Distance',fontsize=fs)
-    plt.ylabel('Correlation Coefficient',fontsize=fs)
-    plt.tick_params(labelsize=fs)
-    plt.ylim(top=max)
-    plt.xticks(np.arange(start+1, end+1,interval))
-    plt.tight_layout()
+def get_umask_string(samptype):
+  if(samptype == 'bernoulli'):
+    return 'Bernoulli'
+  elif(samptype == 'vardengauss'):
+    return 'Gauss'
+  else:
+    print('ERROR: Invalid mask type')
+    sys.exit(-1)
 
-def get_coeff(noise_percent, p, samptype, n, size, num_pts, dir, ptsdir=None, kspacedir=None):
-    if ptsdir is None:
-        ptsdir = dir
-    if kspacedir is None:
-        kspacedir = dir
-    corrfile = dir + 'plots/corrsqravg' + str(num_pts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype +'_n'+str(n) + '.npy'
-    if os.path.exists(corrfile):
-        #print('Correlation coefficient file exists.')
-        coeff = np.load(corrfile)
-    else:
-        print('Calculating correlation coefficients...')
-        coeff = get_vals(noise_percent, p, samptype, n, size, num_pts, recdir=dir, kspacedir=kspacedir, ptsdir=ptsdir, save_numpy=False)
+def get_method_string(method):
+  if(method == 'cs'):
+    return 'CS'
+  elif(method == 'csdebias'):
+    return 'CS+Debias'
+  elif(method == 'omp'):
+    return 'OMP'    
+  else:
+    print('ERROR: Invalid mask type')
+    sys.exit(-1)
+
+def getCorrelationFileName(numsamples, numpts, noise, p, masktype):
+  res = 'corrcoeff' + str(numpts) + '_noise' + str(int(noise*100)) + '_p' + str(int(p*100)) + masktype +'_n'+ str(numsamples) + '.npy'
+  return res
+
+def get_coeff(noise, p, masktype, method, numsamples, numpts, dir):
+  '''
+  Retrieve the file with the correlations
+  ''' 
+  corrfile = dir + method + '/' + getCorrelationFileName(numsamples, numpts, noise, p, masktype)
+  if(os.path.isfile(corrfile)):
+    coeff = np.load(corrfile)
     return coeff
+  else:
+    print('Warning: no correlation file found: ',corrfile)
+    return None
 
-def plot_corr_vplt(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir):
-    coeff = get_coeff(noise_percent, p, samptype, n, size, num_pts, dir, ptsdir, kspacedir)
-    coeff = coeff[v]
-    coeff[np.isnan(coeff)] = 0
-    print('max coeff', np.amax(coeff))
-    print(coeff[start:end].shape)
-    p = plt.violinplot(np.swapaxes(coeff[start:end], 0,1))
-    return p['cbars']
-
-def plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir):
-    coeff = get_coeff(noise_percent, p, samptype, n, size, num_pts, dir, ptsdir, kspacedir)
+def plot_corr(noise_percent, p, samptype, method, n, num_pts, v, dir, labelstr):
+  coeff = get_coeff(noise_percent, p, samptype, method, n, num_pts, dir)
+  if(coeff is None):
+    return None
+  else:
     coeff = coeff[v]
     coeff[np.isnan(coeff)] = 0
     corravg = np.mean(coeff, axis=1)
     corrmin = np.percentile(coeff, 10, axis=1)
     corrmax = np.percentile(coeff, 90, axis=1)
     size = len(corravg)
-    p, = plt.plot(range(start+1,end+1), corravg[start:end])
-    plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2)
+    p, = plt.plot(range(start+1,end+1), corravg[start:end], label=labelstr)
+    plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2) # label='10-90 CI')
     return p
 
-def get_max(coeff, mx, v):
-    coeff = coeff[v]            
-    corravg = np.mean(coeff, axis=1)
-    corrmax = np.percentile(coeff, 90, axis=1)
-    return max(mx, np.amax(corrmax))
+def plot_noisediff(args, save_fig=True):
+  
+  print("Plotting correlations for various k-space noise values...")
 
-def find_max(noise_vals, p_vals, samp_vals, noise_val, p_val, samp_val, n, size, num_pts, dir, ptsdir, kspacedir):
-    print("Finding a maximum correlation for all plots...")
-    mx=0.
-    coeff = get_coeff(noise_val, p_val, samp_val, n, size, num_pts, dir, ptsdir, kspacedir)
-    maxv = coeff.shape[0]
-    for v in range(0,maxv):
-        for noise_percent in noise_vals:
-            coeff = get_coeff(noise_percent, p_val, samp_val, n, size, num_pts, dir, ptsdir, kspacedir)
-            mx = get_max(coeff, mx, v)
-    for v in range(0,maxv):
-        for p in p_vals:
-            coeff = get_coeff(noise_val, p, samp_val, n, size, num_pts, dir, ptsdir, kspacedir)
-            mx = get_max(coeff, mx, v)
-    for v in range(0,maxv):
-        for samptype in samp_vals:
-            coeff = get_coeff(noise_val, p_val, samptype, n, size, num_pts, dir, ptsdir, kspacedir)
-            mx = get_max(coeff, mx, v)
-    return mx
+  # Set the baseline conditions
+  # These are the first element of the lists
+  bl_noise  = args.noise[0]
+  bl_uval   = args.uval[0]
+  bl_utype  = args.utype[0]
+  bl_method = args.method[0]
 
-def plot_noisediff(noise_vals, p, samptype, n, size, num_pts, max, dir, ptsdir, kspacedir, save_fig=True):
-    print("Plotting noise percent comparison with baseline", p, samptype)
-    coeff = get_coeff(noise_vals[0], p, samptype, n, size, num_pts, dir, ptsdir, kspacedir)
-    maxv = coeff.shape[0]
-    for v in range(0,maxv):
-        plt.figure(figsize=(4,3))
-        count = 0
-        handles = [None]*len(noise_vals)
-        for noise_percent in noise_vals:
-            handles[count] = plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir)
-            count = count + 1
-        lgd = [str(int(x*100)) + '\% noise' for x in noise_vals] 
-        plt.legend(handles, lgd)
-        formatting(lgd, max)
-        if save_fig:
-            folder = '/plots/correlation/'
-            if not os.path.exists(dir + folder):
-                os.makedirs(dir+folder)  
-            plt.savefig(dir + folder+ '/diffnoise' + str(start) + 'to' + str(end) + '_p' + str(int(p*100)) + samptype + '_v' + str(v) + '.pdf')
-            plt.close()
-        else:
-            plt.show()
+  if(args.singlechannel):
+    numChannels = 1
+  else:
+    numChannels = 3
+  
+  # Loop on the reconstruction component
+  for k in range(0,numChannels):
 
-def plot_pdiff(noise_percent, p_vals, samptype, n, size, num_pts, max, dir, ptsdir, kspacedir, save_fig=True):
-    print("Plotting undersampling percent comparison with baseline", noise_percent, samptype)
-    coeff = get_coeff(noise_percent, p_vals[0], samptype, n, size, num_pts, dir, ptsdir, kspacedir)
-    maxv = coeff.shape[0]
-    for v in range(0,maxv):
-        plt.figure(figsize=(4,3))
-        count = 0
-        handles = [None]*len(noise_vals)
-        for p in p_vals:
-            handles[count] = plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir) 
-            count = count + 1
-        lgd = [str(int(x*100)) + '\% undersampling' for x in p_vals]#['25\% undersampling', '50\% undersampling', '75\% undersampling']
-        plt.legend(handles, lgd)
-        formatting(lgd, max)
-        if save_fig:
-            folder = '/plots/correlation/'
-            if not os.path.exists(dir + folder):
-                os.makedirs(dir+folder)
-            plt.savefig(dir + folder +'/diffundersamp' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_' + samptype + '_v' + str(v) + '.pdf')
-            plt.close()
-        else:
-            plt.draw()
+    plt.figure(figsize=(2.2,4))
+    # Loop on all noise values
+    for noise in args.noise:
+      label = r"{}\% noise".format(int(noise*100))
+      plot_corr(noise, bl_uval, bl_utype, bl_method, args.numsamples, args.numpts, k, args.dir, label)
+    
+    plt.xlabel('Distance [px]',fontsize=fs)
+    plt.ylabel('Correlation Coefficient',fontsize=fs)
+    # plt.axhline(y=0,c='gray',lw=1,ls='--',alpha=0.8)
+    plt.grid(color='gray', linestyle='-', linewidth=0.5, alpha=0.2)
+    plt.tick_params(labelsize=fs)
+    plt.ylim([-0.2,1.0])
+    plt.xlim([1.0,9.0])
+    plt.xticks(np.arange(1, 11, 2))
+    plt.legend(loc='upper center',fontsize=fs-2)
+    plt.tight_layout()
 
-def plot_sampdiff(noise_percent, p, samp_vals, n, size, num_pts, max, dir, ptsdir, kspacedir, save_fig=True):
-    print("Plotting undersampling mask comparison with baseline", noise_percent, p)
-    coeff = get_coeff(noise_percent, p, samp_vals[0], n, size, num_pts, dir, ptsdir, kspacedir)
-    maxv = coeff.shape[0]
-    for v in range(0,maxv):
-        plt.figure(figsize=(4,3))
-        count = 0
-        handles = [None]*len(noise_vals)
-        for samptype in samp_vals: #'bernoulli', 'halton', 'vardengauss','vardentri', 'vardenexp'
-            handles[count] = plot_corr(noise_percent, p, samptype, n, size, num_pts, v, dir, ptsdir, kspacedir)
-            count = count + 1
-        lgd = [x.capitalize() + ' undersampling' for x in samp_vals]
-        plt.legend(handles, lgd) 
-        formatting(lgd, max)
-        if save_fig:
-            folder = '/plots/correlation/'
-            if not os.path.exists(dir + folder):
-                os.makedirs(dir+folder)
-            plt.savefig(dir + folder + '/diffsamptype' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + '_v' + str(v) + '.png')
-            plt.close()
-        else:
-            plt.draw()
+    if save_fig:
+      plt.savefig(args.outputdir + 'diffnoise' + str(start) + 'to' + str(end) + '_p' + str(int(bl_uval*100)) + bl_utype + '_k' + str(k) + '.pdf')
+      plt.close()
+    else:
+      plt.show()
 
-def plot_methoddiff(noise_percent, p, samptype, n, size, num_pts, max, recdir, ptsdir, kspacedir, save_fig=True):
-    print("Plotting solver method comparison with baseline", noise_percent, p, samptype)
-    coeff = get_coeff(noise_percent, p, samptype, n, size, num_pts, recdir+solver_folder(0), ptsdir, kspacedir)
-    maxv = coeff.shape[0]
-    for v in range(0,maxv):
-        plt.figure(figsize=(4,3))
-        count = 0
-        #handles = [None]
-        handles = [None]*3
-        for methodfolder in [solver_folder(0), solver_folder(1), solver_folder(2)]: #'cs', 'csdebias', 'omp'
-            print('folder', methodfolder)
-            handles[count] = plot_corr(noise_percent, p, samptype, n, size, num_pts, v, recdir+methodfolder, ptsdir, kspacedir)
-            count = count + 1
-        lgd = ["CS", "CSDEBIAS", "OMP"]
-        plt.legend(handles, lgd)
-        formatting(lgd, max)
-        if save_fig:
-            folder = '/plots/correlation/'
-            if not os.path.exists(recdir + folder):
-                os.makedirs(recdir+folder)
-            plt.savefig(recdir + folder + '/diffmethod' + str(start) + 'to' + str(end) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype + '_v' + str(v) + '.pdf')
-            plt.close()
-        else:
-            plt.draw()
-            
+def plot_pdiff(args, save_fig=True):
+  
+  print("Plotting correlations for various undersampling ratios...")
+
+  # Set the baseline conditions
+  # These are the first element of the lists
+  bl_noise  = args.noise[0]
+  bl_uval   = args.uval[0]
+  bl_utype  = args.utype[0]
+  bl_method = args.method[0]
+
+  if(args.singlechannel):
+    numChannels = 1
+  else:
+    numChannels = 3
+
+  # Loop on the reconstruction component
+  for k in range(0,numChannels):
+
+    plt.figure(figsize=(2.2,4))
+    # Loop on all noise values
+    for p in args.uval:
+      label = r"{}\%".format(int(p*100))
+      plot_corr(bl_noise, p, bl_utype, bl_method, args.numsamples, args.numpts, k, args.dir, label)
+    
+    plt.xlabel('Distance [px]',fontsize=fs)
+    plt.ylabel('Correlation Coefficient',fontsize=fs)
+    # plt.axhline(y=0,c='gray',lw=1,ls='--',alpha=0.8)
+    plt.grid(color='gray', linestyle='-', linewidth=0.5, alpha=0.2)
+    plt.tick_params(labelsize=fs)
+    plt.ylim([-0.2,1.0])
+    plt.xlim([1.0,9.0])
+    plt.xticks(np.arange(1, 11, 2))
+    plt.legend(loc='upper center',fontsize=fs-2)
+    plt.tight_layout()
+
+    if save_fig:
+      plt.savefig(args.outputdir + 'diffuratio' + str(start) + 'to' + str(end) + '_p' + str(int(bl_uval*100)) + bl_utype + '_k' + str(k) + '.pdf')
+      plt.close()
+    else:
+      plt.show()
+
+def plot_sampdiff(args, save_fig=True):
+    
+  print("Plotting correlations for various undersampling ratios...")
+
+  # Set the baseline conditions
+  # These are the first element of the lists
+  bl_noise  = args.noise[0]
+  bl_uval   = args.uval[0]
+  bl_utype  = args.utype[0]
+  bl_method = args.method[0]
+
+  if(args.singlechannel):
+    numChannels = 1
+  else:
+    numChannels = 3
+
+  # Loop on the reconstruction component
+  for k in range(0,numChannels):
+
+    plt.figure(figsize=(2.2,4))
+    # Loop on all noise values
+    for samptype in args.utype:
+      label = get_umask_string(samptype)
+      plot_corr(bl_noise, bl_uval, samptype, bl_method, args.numsamples, args.numpts, k, args.dir, label)
+    
+    plt.xlabel('Distance [px]',fontsize=fs)
+    plt.ylabel('Correlation Coefficient',fontsize=fs)
+    # plt.axhline(y=0,c='gray',lw=1,ls='--',alpha=0.8)
+    plt.grid(color='gray', linestyle='-', linewidth=0.5, alpha=0.2)
+    plt.tick_params(labelsize=fs)
+    plt.ylim([-0.2,1.0])
+    plt.xlim([1.0,9.0])
+    plt.xticks(np.arange(1, 11, 2))
+    plt.legend(loc='upper center',fontsize=fs-2)
+    plt.tight_layout()
+
+    if save_fig:
+      plt.savefig(args.outputdir + 'diffumask' + str(start) + 'to' + str(end) + '_p' + str(int(bl_uval*100)) + bl_utype + '_k' + str(k) + '.pdf')
+      plt.close()
+    else:
+      plt.show()            
+
+def plot_methoddiff(args, save_fig=True):
+
+  print("Plotting correlations for various reconstruction algorithms...")
+
+  # Set the baseline conditions
+  # These are the first element of the lists
+  bl_noise  = args.noise[0]
+  bl_uval   = args.uval[0]
+  bl_utype  = args.utype[0]
+  bl_method = args.method[0]
+
+  if(args.singlechannel):
+    numChannels = 1
+  else:
+    numChannels = 3
+
+  # Loop on the reconstruction component
+  for k in range(0,numChannels):
+
+    plt.figure(figsize=(2.2,4))
+    # Loop on all noise values
+    for method in args.method:
+      label = get_method_string(method)
+      plot_corr(bl_noise, bl_uval, bl_utype, method, args.numsamples, args.numpts, k, args.dir, label)
+    
+    plt.xlabel('Distance [px]',fontsize=fs)
+    plt.ylabel('Correlation Coefficient',fontsize=fs)
+    # plt.axhline(y=0,c='gray',lw=1,ls='--',alpha=0.8)
+    plt.grid(color='gray', linestyle='-', linewidth=0.5, alpha=0.2)
+    plt.tick_params(labelsize=fs)
+    plt.ylim([-0.2,1.0])
+    plt.xlim([1.0,9.0])
+    plt.xticks(np.arange(1, 11, 2))
+    plt.legend(loc='upper center',fontsize=fs-2)
+    plt.tight_layout()
+
+    if save_fig:
+      plt.savefig(args.outputdir + 'diffmethod' + str(start) + 'to' + str(end) + '_p' + str(int(bl_uval*100)) + bl_utype + '_k' + str(k) + '.pdf')
+      plt.close()
+    else:
+      plt.show()            
+
+
+# MAIN 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        #specify parameters that are common in comparison plots
-        # e.g. plot each noise level (1%, 5%, 10%) comparison in one plot, where each has 75% Gaussian undersampling
-        noise_percent = float(sys.argv[1])
-        p = float(sys.argv[2]) 
-        samptype = sys.argv[3] #bernoulli, vardengauss, 'bpoisson', 'halton','vardentri', 'vardenexp'
-        numsamples = int(sys.argv[4])
-        recdir = sys.argv[5]
-    else:
-        recdir = home + '/apps/undersampled/poiseuille/debiasing/'
-        noise_percent = 0.1
-        p = 0.75
-        samptype = 'vardengauss'
-        numsamples = 100
-    if len(sys.argv) > 6:
-        ptsdir = sys.argv[6]
-        kspacedir = sys.argv[7]
-        solver_mode = int(sys.argv[8])
-    else:
-        ptsdir = None
-        kspacedir = None
-        solver_mode = 0
-    size = 200
-    size = 50
-    num_pts = 50
-    noise_vals = [0.01, 0.05, 0.1, 0.3]
-    p_vals = [0.25, 0.5, 0.75]
-    samp_vals = ['bernoulli', 'vardengauss']#['bernoulli', 'halton', 'vardengauss', 'vardentri', 'vardenexp']
-    print("Creating correlation plots...")
-    mf = solver_folder(solver_mode)
-    #max_corr = find_max(noise_vals, p_vals, samp_vals, noise_percent, p, samptype, numsamples, size, num_pts, recdir+mf, ptsdir, kspacedir)
-    max_corr=1 #max for poiseuille axis2 and ideal flow
-    print('max', max_corr)
-    sf = True
-    plot_noisediff(noise_vals, p, samptype, numsamples, size, num_pts, max_corr, recdir+mf, ptsdir, kspacedir, save_fig=sf)
-    plot_pdiff(noise_percent, p_vals, samptype, numsamples, size, num_pts, max_corr, recdir+mf, ptsdir, kspacedir, save_fig=sf)
-    plot_sampdiff(noise_percent, p, samp_vals, numsamples, size, num_pts, max_corr, recdir+mf, ptsdir, kspacedir, save_fig=sf)
-    plot_methoddiff(noise_percent, p, samptype, numsamples, size, num_pts, max_corr, recdir, ptsdir, kspacedir, save_fig=sf)
-    plt.show() 
+
+  # Init parser
+  parser = argparse.ArgumentParser(description='Generate result images.')
+
+  # Load Base Line Params
+  # noise
+  parser.add_argument('-n', '--noise',
+                      action=None,
+                      nargs='*',
+                      const=None,
+                      default=[0.1],
+                      type=float,
+                      choices=None,
+                      required=False,
+                      help='list of noise values',
+                      metavar='',
+                      dest='noise')
+  # uval
+  parser.add_argument('-u', '--uval',
+                      action=None,
+                      nargs='*',
+                      const=None,
+                      default=[0.75],
+                      type=float,
+                      choices=None,
+                      required=False,
+                      help='list of undersampling ratios',
+                      metavar='',
+                      dest='uval')
+  # utype
+  parser.add_argument('-t', '--utype',
+                      action=None,
+                      nargs='*',
+                      const=None,
+                      default=['vardengauss'],
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='list of random undersampling patterns',
+                      metavar='',
+                      dest='utype')
+  # numsamples
+  parser.add_argument('-s', '--numsamples',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default=100,
+                      type=int,
+                      choices=None,
+                      required=False,
+                      help='number of repetitions',
+                      metavar='',
+                      dest='numsamples')
+  # numpts
+  parser.add_argument('-np', '--numpts',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default=100,
+                      type=int,
+                      choices=None,
+                      required=False,
+                      help='number of points for computing the',
+                      metavar='',
+                      dest='numpts')
+  # method
+  parser.add_argument('-m', '--method',
+                      action=None,
+                      nargs='*',
+                      const=None,
+                      default=['cs'],
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='list of reconstruction methods',
+                      metavar='',
+                      dest='method')
+  # maindir
+  parser.add_argument('-d', '--dir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='folder containing the file with the point locations for the correlation and with subfoldes with the reconstruction methods',
+                      metavar='',
+                      dest='dir')
+  # outputdir
+  parser.add_argument('-o', '--outputdir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='output folder for images',
+                      metavar='',
+                      dest='outputdir')
+  # singlechannel
+  parser.add_argument('--singlechannel',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='treat the image as single-channel, without velocity components',
+                      dest='singlechannel')    
+  # Print Level
+  parser.add_argument('-p', '--printlevel',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default=0,
+                      type=int,
+                      choices=None,
+                      required=False,
+                      help='print level, 0 - no print, >0 increasingly more information ',
+                      metavar='',
+                      dest='printlevel')
+
+  # Parse Commandline Arguments
+  args = parser.parse_args()
+
+  # Plot the parameter perturbations
+  if(len(args.noise) > 1):
+    plot_noisediff(args)
+  if(len(args.uval) > 1):
+    plot_pdiff(args)
+  if(len(args.utype) > 1):
+    plot_sampdiff(args)
+  if(len(args.method) > 1):
+    plot_methoddiff(args)
+
+  # Completed!
+  if(args.printlevel > 0):
+    print('Completed!!!')  
+
+
+
+    
+
+
+
+
+
+
+
+

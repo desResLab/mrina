@@ -1,26 +1,34 @@
-import matplotlib.pyplot as plt
-import sys
-import os
-import cv2
+import sys,os
 import numpy as np
-sys.path.append('../../')
-#from recuniq import recover_vel, linear_reconstruction, solver_folder
-from recover import recover_vel, linear_reconstruction, solver_folder
+import matplotlib.pyplot as plt
+import cv2
+# sys.path.append('../../')
+sys.path.append('/home/dschiava/Documents/01_Development/01_PythonApps/03_Reconstruction/')
+from recover import recover_vel, linear_reconstruction
+import argparse
+
 home = os.getenv("HOME")
 
 def rescale(img, newmax=255, truncate=True, truncateMax=1):
-    if truncate:
-      img[img<0] = 0
-      img[img>truncateMax] = truncateMax
-    newimg = np.zeros(img.shape)
-    for n in range(img.shape[0]):
-        for k in range(img.shape[1]):
-            minimum = np.amin(img[n,k])
-            maximum = np.amax(img[n,k])
-            if (maximum-minimum > 1E-3):
-                newimg[n,k] = (img[n,k]-minimum)*(newmax/(maximum - minimum))
-    print('new', np.amin(newimg), np.amax(newimg))
-    return newimg
+  '''
+  Rescale Image from 0 to 255 and optionally truncate between 0 and truncateMax
+  '''
+  if truncate:
+    img[img < 0] = 0
+    img[img > truncateMax] = truncateMax
+
+  newimg = np.zeros(img.shape)
+  for n in range(img.shape[0]):
+    for k in range(img.shape[1]):
+      minimum = np.amin(img[n,k])
+      maximum = np.amax(img[n,k])
+      if (maximum-minimum > 1E-3):
+        newimg[n,k] = (img[n,k]-minimum)*(newmax/(maximum - minimum))
+      else:
+        newimg[n,k] = np.zeros(newimg[n,k].shape)
+
+  print('Image rescaled: new minimum: %f, new maximum: %f ' % (np.amin(newimg), np.amax(newimg)))
+  return newimg
 
 def pltimg(img, title):
   if len(img.shape)>2:
@@ -31,61 +39,83 @@ def pltimg(img, title):
   plt.title(title)
   plt.draw()
 
-def save_mask(tosavedir, p, uType, numRealizations, relative, ext='.png'):
-    undfile = tosavedir + 'undersamplpattern_p' + str(int(p*100)) + uType + '_n' + str(numRealizations)       
-    mask = np.load(undfile + '.npy')
-    mask = mask.astype(int)
-    if relative:
-        mask = rescale(mask)
-    if len(mask.shape) == 2:
-        mask = np.expand_dims(mask,0)
-    cv2.imwrite(undfile + ext, np.moveaxis(mask,0,2))
+def save_mask(maskFile, outputdir):
+  '''
+  Save undersampling mask to file
+  '''
+  mask = np.load(maskFile).astype(int)
+  plt.imshow(mask, cmap='grays', vmin=0, vmax=1)
+  plt.axis('off')
+  plt.savefig(outputFile, bbox_inches='tight', pad_inches=0)
 
-def save_cs(noise_percent, p, samptype, recdir, venc, num_samples, relative, ext='.png'):
-    recnpy = recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + samptype + '_n' + str(num_samples) + '.npy' 
-    recovered = np.load(recnpy)
-    imgs = recover_vel(recovered, venc)
-    #pltimg(imgs[0,1], 'recovered before rescale')
-    if relative:
-        imgs = rescale(imgs)
-    pltimg(imgs[0,1], 'recovered after rescale')
-    directory = recdir + 'noise' + str(int(noise_percent*100)) + '/p' + str(int(p*100)) + samptype 
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    for n in range(1):#range(imgs.shape[0]):
-        for k in range(imgs.shape[1]):
-           cv2.imwrite(directory + '/rec_p' + str(int(p*100)) + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k,0])
-           #cv2.imwrite(directory + '/rec' + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k,0])
+def save_rec(infilename, venc, p, prefix, outputdir, singleChannel=False, relative=True):
+  
+  recovered = np.load(infilename)
 
-def save_rec_noise(noise_percent, p, samptype, dir, recdir, venc, num_samples, relative, use_truth=False, ext='.png'):
-    recnpy = recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + samptype + '_n' + str(num_samples) + '.npy' 
-    recovered = np.load(recnpy)
-    orig_file = dir+'imgs_n1' +  '.npy'
-    true = np.load(orig_file)
+  if(singleChannel):
+    imgs = np.absolute(recovered)
+  else:
     imgs = recover_vel(recovered, venc)
+  
+  if(relative and not(singleChannel)):
+    imgs = rescale(imgs)
+  
+  for n in range(1): #range(imgs.shape[0]):
+    for k in range(imgs.shape[1]):
+      plt.imshow(imgs[n,k,0], cmap='gray')
+      plt.axis('off')
+      plt.savefig(outputdir + '/' + prefix + 'rec_p' + str(int(p*100)) + '_n' + str(n) + '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
+
+def save_rec_noise(recnpyFile, orig_file, venc, prefix, outputdir, singleChannel=False, use_truth=False, ext='.png'):
+  
+  # Read File with CS Reconstructions 
+  recovered = np.load(recnpyFile)
+  
+  # Read True underlying Image
+  true = np.load(orig_file)
+
+  # Check consistency 
+  if(recovered.shape[-2:] != true.shape[-2:]):
+    print('ERROR: reconstructed images and true images are not compatible')
+    sys.exit(-1)
+
+  # Reconstruct velocities from complex recovered images
+  if(singleChannel):
+    imgs = np.absolute(recovered)
+  else:
+    imgs = recover_vel(recovered, venc)
+
+  # Compute Average Image
+  if(not(use_truth)):
     avg = imgs.mean(axis=0)
-    for i in range(imgs.shape[0]):
-        for j in range(imgs.shape[1]):
-            for k in range(imgs.shape[2]):
-                if use_truth:
-                    imgs[i,j,k] = imgs[i,j,k] - true[0,j,k]    
-                else:
-                    imgs[i,j,k] = imgs[i,j,k] - avg[j,k] 
-    if use_truth:
-        desc = 'true'
-    else:
-        desc = 'avg'
-    print(desc + " MSE ", ((imgs)**2).mean(axis=None))
-    if relative:
-        imgs = rescale(imgs, truncate=False)
-    directory = recdir + 'noise' + str(int(noise_percent*100)) + '/p' + str(int(p*100)) + samptype 
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    for n in range(1): #range(imgs.shape[0]):
-        for k in range(imgs.shape[1]):        
-            cv2.imwrite(directory + '/' + desc + 'recnoise' + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k,0])
 
-def save_noisy(noise_percent, dir, recdir, venc, num_samples, relative, ext='.png'):
+  # Substract images either from the truth or the average reconstruction
+  for i in range(imgs.shape[0]):
+    if use_truth:
+      boolMask = np.logical_or((np.absolute(imgs[i,:,:,:,:]) < 1.0e-12),(np.absolute(true[0,:,:,:,:]) < 1.0e-12))
+      with np.errstate(divide='ignore', invalid='ignore'):
+        imgs[i,:,:,:,:] = 2*(imgs[i,:,:,:,:] - true[0,:,:,:,:])/(np.absolute(imgs[i,:,:,:,:]) + np.absolute(true[0,:,:,:,:]))      
+      imgs[i,boolMask] = 0.0
+    else:
+      boolMask = np.logical_or((np.absolute(imgs[i,:,:,:,:]) < 1.0e-12),(np.absolute(true[0,:,:,:,:]) < 1.0e-12))
+      with np.errstate(divide='ignore', invalid='ignore'):
+        imgs[i,:,:,:,:] = 2*(imgs[i,:,:,:,:] - avg[:,:,:,:])/(np.absolute(imgs[i,:,:,:,:]) + np.absolute(avg[:,:,:,:]))
+      imgs[i,boolMask] = 0.0
+      
+  if(use_truth):
+    desc = 'true'
+  else:
+    desc = 'avg'
+
+  print(desc + " MSE ", ((imgs)**2).mean())
+
+  for n in range(1): # range(imgs.shape[0]): # Loop on the number of samples
+    for k in range(imgs.shape[1]):
+      plt.imshow(imgs[n,k,0], cmap='seismic', vmin=-2, vmax=2)
+      plt.axis('off')
+      plt.savefig(outputdir + '/' + prefix + desc + 'recnoise' + '_n' + str(n) + '_k' + str(k) + ext, bbox_inches='tight', pad_inches=0)
+
+def save_noisy(noise_percent, dir, recdir, venc, num_samples, relative=False, ext='.png'):
     noisy = np.load(dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy')
     noisy = linear_reconstruction(noisy)
     avg = noisy.mean(axis=0)
@@ -100,63 +130,216 @@ def save_noisy(noise_percent, dir, recdir, venc, num_samples, relative, ext='.pn
         for k in range(imgs.shape[1]):    
             cv2.imwrite(directory + '/noisy' + '_n' + str(n) + '_k' + str(k) + ext, imgs[n,k,0])
 
-def save_truth(dir, relative, ext='.png'):
-    orig_file = dir+'imgs_n1' +  '.npy'
-    true = np.load(orig_file)
-    if relative:
-        true = rescale(true, truncate=False)
-    print('save truth')
-    for k in range(true.shape[1]):
-        cv2.imwrite(dir + '/true' '_k' + str(k) + ext, true[0,k,0])
+def save_true(trueFileName, outputDir, relative=False):
+  true = np.load(trueFileName)
+  if relative:
+    true = rescale(true, truncate=False)
+  for k in range(true.shape[1]):
+    plt.imshow(true[0,k,0], cmap='gray')
+    plt.axis('off')
+    plt.savefig(outputDir + '/' + 'true' '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
 
-def save_all(dir, recdir, patterndir, numRealizations=100, relative=True):
-    save_truth(dir, relative)
-    vencfile = dir + 'venc_n1.npy'
-    if os.path.exists(vencfile):
-        venc = np.load(dir + 'venc_n1' + '.npy')
-    else:
-        venc = None
-    for p in [0.25, 0.5, 0.75]:
-        for samptype in ['bernoulli', 'vardengauss']:
-            save_mask(patterndir, p, samptype, numRealizations, relative) 
-            for noise_percent in [0.01, 0.05, 0.1, 0.3]:
-                save_cs(noise_percent, p, samptype, recdir, venc, numRealizations, relative)
-            
-    for noise_percent in [0.01, 0.05, 0.1, 0.3]:
-        save_noisy(noise_percent, dir, recdir, venc, numRealizations, relative)  
+def save_all(args,relative=True):
+  '''
+  Save all the pictures determining a reconstruction process
+  '''
 
+  # Store Image Prefix
+  prefstr = args.imgprefix + '_'  
+
+  # Save Original Image
+  if(args.savetrue):
+    trueFileName = args.maindir+'imgs_n1.npy'    
+    if(os.path.exists(trueFileName)):
+      if(args.printlevel>0):
+        print('Saving true image: ',trueFileName)
+      save_true(trueFileName,args.outputdir)
+  
+  # Read Velocity Encoding if file exists
+  vencfile = args.maindir+'venc_n1.npy'
+  if(os.path.exists(vencfile)):
+    venc = np.load(vencfile)
+  else:
+    venc = None
+
+  # Loop over undersamplingn ratios
+  for p in [0.25, 0.5, 0.75]:
+    for samptype in ['bernoulli', 'vardengauss']:
+      if(args.savemask):
+        maskFile = args.maskdir + 'undersamplpattern_p' + str(int(p*100)) + samptype + '_n' + str(args.numsamples) + '.npy'
+        if(os.path.exists(maskFile)):
+          maskoutFile = args.outputdir + prefstr + 'undersamplpattern_p' + str(int(p*100)) + samptype + '_n' + str(args.numsamples) + '.png'
+          if(args.printlevel > 0):
+            print('Saving undersampling mask: ',maskFile)
+          save_mask(maskFile, maskoutFile) 
+
+      for noise_percent in [0.0, 0.01, 0.05, 0.1, 0.3]:
+        if(args.saverec):
+          recnpy = args.recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + samptype + '_n' + str(args.numsamples) + '.npy' 
+          if(os.path.exists(recnpy)):
+            if(args.printlevel > 0):
+              print('Saving image reconstructions: ',recnpy)
+            save_rec(recnpy, venc, p, prefstr, args.outputdir, singleChannel=args.singlechannel)
+            if(args.printlevel > 0):
+              print('Saving image reconstruction errors')
+            save_rec_noise(recnpy, trueFileName, venc, prefstr, args.outputdir, use_truth=args.usetrueasref, singleChannel=args.singlechannel)
+  
+  # Save Noise Patterns - For Testing
+  # for noise_percent in [0.01, 0.05, 0.1, 0.3]:
+  #   if(args.savenoise):
+  #     save_noisy(noise_percent, args.maindir, args.recdir, venc, numRealizations, relative)
+
+# MAIN 
 if __name__ == '__main__':
-    if len(sys.argv) == 6:
-        numRealizations = int(sys.argv[1])
-        dir = sys.argv[2]
-        recdir = sys.argv[3]
-        patterndir = sys.argv[4]
-        solver_mode = int(sys.argv[5])
-    elif len(sys.argv) == 3:
-        numRealizations = int(sys.argv[1])
-        dir = sys.argv[2]
-        recdir = dir
-        patterndir = dir
-        solver_mode = 0
-    elif len(sys.argv) == 1:
-        numRealizations = 100
-        dir = home + '/apps/undersampled/poiseuille/npy/'#where the kspace data is
-        recdir = dir #where to save recovered imgs
-        patterndir = home + '/apps/undersampled/poiseuille/npy/' #where the undersampling patterns are located
-        solver_mode = 0
-    recdir = recdir + "/" + solver_folder(solver_mode) + "/"
-    #save_all(dir, recdir, patterndir, numRealizations)
-    #save_mask(patterndir, p, samptype, numRealizations, relative) 
-    noise_percent=0.1
-    p=0.75
-    venc = np.load(dir+ "venc_n1.npy")#None
-    relative=False
-    #relative=True
-    #save_truth(dir, relative)
-    nngpfile = np.loadtxt(home + '/apps/undersampled/nngp/repo/nnGP/data/10_aorta/y.mod')
-    nngpfile = np.reshape(nngpfile, (256,256))
-    for samptype in ['vardengauss']:#['bernoulli', 'vardengauss']:
-        save_cs(noise_percent, p, samptype, recdir, venc, numRealizations, relative)
-        save_rec_noise(noise_percent, p, samptype, dir, recdir, venc, numRealizations, relative, use_truth=False)
-        save_rec_noise(noise_percent, p, samptype, dir, recdir, venc, numRealizations, relative, use_truth=True)
-        save_noisy(noise_percent, dir, recdir, venc, numRealizations, relative)
+
+  # Init parser
+  parser = argparse.ArgumentParser(description='Generate result images.')
+
+  # numRealizations
+  parser.add_argument('-n', '--numsamples',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default=100,
+                      type=int,
+                      choices=None,
+                      required=False,
+                      help='number of repetitions',
+                      metavar='',
+                      dest='numsamples')
+
+  # maindir
+  parser.add_argument('-m', '--maindir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='folder with original image and velocity encoding file',
+                      metavar='',
+                      dest='maindir')
+
+  # recdir
+  parser.add_argument('-r', '--recdir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='folder with the reconstructed images',
+                      metavar='',
+                      dest='recdir')
+
+  # maskdir
+  parser.add_argument('-s', '--maskdir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='folder containing the undesampling masks',
+                      metavar='',
+                      dest='maskdir')
+
+  # outputdir
+  parser.add_argument('-o', '--outputdir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='image output folder',
+                      metavar='',
+                      dest='outputdir')
+
+  # output image prefix
+  parser.add_argument('--imgprefix',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='output image prefix',
+                      metavar='',
+                      dest='imgprefix')
+
+  # Use the True Images as a refences when evaluating noise
+  parser.add_argument('--usetrueasref',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='Use original image instead of average image to evaluate noise',
+                      dest='usetrueasref')
+
+  # save_true
+  parser.add_argument('--savetrue',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='save original image',
+                      dest='savetrue')
+
+  # save_mask
+  parser.add_argument('--savemask',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='save undersampling mask',
+                      dest='savemask')
+
+  # save_rec
+  parser.add_argument('--saverec',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='save reconstructed images',
+                      dest='saverec')
+
+  # save_noise
+  parser.add_argument('--savenoise',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='save reconstructed images',
+                      dest='savenoise')
+
+  # singlechannel
+  parser.add_argument('--singlechannel',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='treat the image as single-channel, without velocity components',
+                      dest='singlechannel')
+
+  # Print Level
+  parser.add_argument('-p', '--printlevel',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default=0,
+                      type=float,
+                      choices=None,
+                      required=False,
+                      help='print level, 0 - no print, >0 increasingly more information ',
+                      metavar='',
+                      dest='printlevel')
+
+  # Parse Commandline Arguments
+  args = parser.parse_args()
+
+  # Save all the images
+  save_all(args)
+
+  if(args.printlevel > 0):
+    print('Completed!!!')  
+
