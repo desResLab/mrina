@@ -46,13 +46,13 @@ def undersample(kspace, mask):
         vel[k,:,:,mask[k]] = 0
     return mag, vel
 
-def get_noise(imsz, nrm, noise_percent,num_realizations):
+def get_noise(imsz, nrm, noise_percent, num_realizations, num_components=4):
     #noise param is a percentage of how much noise to be added
-    noise = np.zeros((num_realizations, 4, 1,) + imsz, dtype=complex)
-    snr = np.zeros((num_realizations,4))
+    noise = np.zeros((num_realizations, num_components, 1,) + imsz, dtype=complex)
+    snr = np.zeros((num_realizations,num_components))
 
     for n in range(num_realizations):
-        for j in range(0,4):
+        for j in range(num_components):
             avgnorm = nrm[j]/math.sqrt(np.prod(imsz))
             stdev = noise_percent * avgnorm
             if(stdev < 1.0e-12):           
@@ -63,14 +63,14 @@ def get_noise(imsz, nrm, noise_percent,num_realizations):
             noise[n,j] = np.random.normal(scale=stdev, size=imsz) + 1j*np.random.normal(scale=stdev, size=imsz)
     return noise,snr
 
-def add_noise(kspace, noise_percent, num_realizations):
+def add_noise(kspace, noise_percent, num_realizations, num_components=4):
     imsz = kspace.shape[3:]
-    samples = np.zeros((num_realizations, 4,1,) + imsz, dtype=complex)
-    nrm = [None]*4
+    samples = np.zeros((num_realizations, num_components, 1,) + imsz, dtype=complex)
+    nrm = [None]*num_components
     for v in range(kspace.shape[1]):
         nrm[v] = la.norm(kspace[0,v])
-    print('norm', nrm)
-    noise, snr = get_noise(imsz, nrm, noise_percent, num_realizations)
+    print('Image component norms: ', nrm)
+    noise, snr = get_noise(imsz, nrm, noise_percent, num_realizations , num_components)
     for n in range(num_realizations):
         for v in range(kspace.shape[1]):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
@@ -191,7 +191,7 @@ if __name__ == '__main__':
                         action=None,
                         # nargs='+',
                         const=None,
-                        default=True,
+                        default=0.75,
                         type=float,
                         choices=None,
                         required=False,

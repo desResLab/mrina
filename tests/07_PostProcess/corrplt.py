@@ -1,13 +1,10 @@
-import matplotlib.pyplot as plt
+import sys,os,math
 import numpy as np
-import sys
-import os
-import math
-from scipy.optimize import curve_fit
-from correlation import get_vals
+import matplotlib.pyplot as plt
+# sys.path.append('../../')
+sys.path.append('/home/dschiava/Documents/01_Development/01_PythonApps/03_Reconstruction/')
+from CSRecoverySuite import get_umask_string, get_method_string
 import argparse
-
-sys.path.append('../../')
 
 home = os.getenv('HOME')
 
@@ -19,26 +16,6 @@ plt.rc('text',  usetex=True)
 start = 0
 end   = 15 # last distance to include in plot (final x axis value)
 interval = int((end-start)/4) #int(math.ceil(((end-start)/4) / 10.0)) * 10))
-
-def get_umask_string(samptype):
-  if(samptype == 'bernoulli'):
-    return 'Bernoulli'
-  elif(samptype == 'vardengauss'):
-    return 'Gauss'
-  else:
-    print('ERROR: Invalid mask type')
-    sys.exit(-1)
-
-def get_method_string(method):
-  if(method == 'cs'):
-    return 'CS'
-  elif(method == 'csdebias'):
-    return 'CS+Debias'
-  elif(method == 'omp'):
-    return 'OMP'    
-  else:
-    print('ERROR: Invalid mask type')
-    sys.exit(-1)
 
 def getCorrelationFileName(numsamples, numpts, noise, p, masktype):
   res = 'corrcoeff' + str(numpts) + '_noise' + str(int(noise*100)) + '_p' + str(int(p*100)) + masktype +'_n'+ str(numsamples) + '.npy'

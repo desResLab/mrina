@@ -3,11 +3,32 @@ import pywt
 import numpy as np
 import sys
 import numpy.linalg as la
-import scipy.optimize as sciopt
+from scipy import optimize
+from scipy.optimize import toms748
 from scipy.stats import bernoulli
 import scipy
 import math
 import time
+
+def get_umask_string(samptype):
+  if(samptype == 'bernoulli'):
+    return 'Bernoulli'
+  elif(samptype == 'vardengauss'):
+    return 'Gauss'
+  else:
+    print('ERROR: Invalid mask type')
+    sys.exit(-1)
+
+def get_method_string(method):
+  if(method == 'cs'):
+    return 'CS'
+  elif(method == 'csdebias'):
+    return 'CS+Deb.'
+  elif(method == 'omp'):
+    return 'OMP'    
+  else:
+    print('ERROR: Invalid mask type')
+    sys.exit(-1)
 
 def toSlice(idx):
   if idx == None:
@@ -17,7 +38,7 @@ def toSlice(idx):
 
 # Methods for cropping in the case the dimensions aren't a power of 2
 def powerof2(num):
-  #return the highest power of 2 less than or equal to number
+  # Return the highest power of 2 less than or equal to number
   return int(math.pow(2,math.floor(math.log(num, 2))))
 
 def crop(x):
@@ -29,6 +50,17 @@ def crop(x):
     dim2 = powerof2(x.shape[1])
     dim1 = max(powerof2(x.shape[0]), math.floor(x.shape[0]/dim2)*dim2)
   return x[0:dim1, 0:dim2]
+
+def isvalidcrop(x):
+  '''
+  Check if the image has valid power of 2 dimensions
+  '''
+  y = x.copy()
+  y = crop(y)
+  if(x.shape[0] == y.shape[0])and(x.shape[1] == y.shape[1]):
+    return True
+  else:
+    return False
 
 def pywt2array( x, shape ):
   # Essentially a breadth-first traversal
@@ -476,7 +508,7 @@ def CSRecovery(eta, y, A, x0, disp=0, printEvery=0):
     # Root finding via TOMS748
     tend        = time.time()
     froot = RootPGDL1(eta=eta, f=lambda x: f(y, A, x), df=lambda x: f_grad(y, A, x), L=L, tmin=tmin, xmin=wtmin, tmax=tmax, xmax=wtmax, maxItns=1E4, dwAbsTol=1E-4, dfwAbsTol=1E-5, disp=root_disp)
-    topt, rnfo = sciopt.toms748(lambda t: froot.eval(t), tmin, tmax, xtol=1E-3, full_output=True, disp=True)
+    topt, rnfo = scipy.optimize.toms748(lambda t: froot.eval(t), tmin, tmax, xtol=1E-3, full_output=True, disp=True)
     wopt = froot.lastOptimalPoint
     tend        = time.time() - tend
     if( disp > 0 ):
@@ -579,7 +611,7 @@ def VardensTriangleSampling(shape, delta):
 
 def VardensGaussianSampling(shape, delta):
     c = 2 * np.sqrt(delta / np.pi)
-    s, rnfo = sciopt.toms748(lambda t: scipy.special.erf(t) - c * t, 1E-6, 1/c, xtol=1E-3, full_output=True, disp=True)
+    s, rnfo = scipy.optimize.toms748(lambda t: scipy.special.erf(t) - c * t, 1E-6, 1/c, xtol=1E-3, full_output=True, disp=True)
     s = 1 / (s * np.sqrt(2))
     x = np.linspace(-1, 1, num=shape[1])
     y = np.linspace(-1, 1, num=shape[0])
@@ -594,7 +626,7 @@ def VardensGaussianSampling(shape, delta):
 
 def VardensExponentialSampling(shape, delta):
     c = np.sqrt(delta)
-    a, rnfo = sciopt.toms748(lambda t: np.exp(-t) - 1 + c * t, 1E-6, 1/c, xtol=1E-3, full_output=True, disp=True)
+    a, rnfo = scipy.optimize.toms748(lambda t: np.exp(-t) - 1 + c * t, 1E-6, 1/c, xtol=1E-3, full_output=True, disp=True)
     x = np.linspace(-1, 1, num=shape[1])
     y = np.linspace(-1, 1, num=shape[0])
     omega = np.full(shape, False)
@@ -640,29 +672,32 @@ def HaltonSampling(shape, p):
   return indices
 
 def generateSamplingMask(imsz, p, saType='bernoulli', num_patterns=1):
-  # Check delta is valid
-  if(p<=0.0)and(p > 1.0):
+  # p is the undersampling ratio: what you don't sample
+  if(p < 0.0)or(p > 1.0):
     print('ERROR: Invalid undersampling ratio delta in generateSamplingMask.')
     sys.exit(-1)
-  mask = np.empty((num_patterns, ) + imsz, dtype=np.bool)
-  delta = 1-p #delta is sampling fraction, p is fraction NOT sampled
-  for k in range(num_patterns):
-    #to keep undersampling the same for each slice
-    if saType=='bernoulli':
-      indices = bernoulli.rvs(size=(imsz), p=p)
-    elif saType =='vardentri':
-      indices = ~VardensTriangleSampling(imsz, delta)
-    elif saType =='vardengauss': #gaussian density
-      indices = ~VardensGaussianSampling(imsz, delta)
-    elif saType == 'vardenexp': #exponential density
-      indices = ~VardensExponentialSampling(imsz, delta)
-    elif saType == 'halton': #halton sequence
-      indices = HaltonSampling(imsz, p)
-    else:
-      print('ERROR: Invalid sampling type')
-      sys.exit(-1)
-    mask[k] = np.ma.make_mask(indices)
-    return mask
+  elif(p == 0.0):
+    return np.full(imsz, True, dtype=bool)
+  else:
+    mask = np.empty((num_patterns, ) + imsz, dtype=np.bool)
+    for k in range(num_patterns):
+      #to keep undersampling the same for each slice
+      if saType=='bernoulli':
+        indices = bernoulli.rvs(size=(imsz), p=(1-p))
+      elif saType =='vardentri':
+        indices = VardensTriangleSampling(imsz, (1-p))
+      elif saType =='vardengauss': #gaussian density
+        indices = VardensGaussianSampling(imsz, (1-p))
+      elif saType == 'vardenexp': #exponential density
+        indices = VardensExponentialSampling(imsz, (1-p))
+      elif saType == 'halton': #halton sequence
+        indices = HaltonSampling(imsz, (1-p))
+      else:
+        print('ERROR: Invalid sampling type')
+        sys.exit(-1)
+      mask[k] = np.ma.make_mask(indices)
+      # Return the complement of the mask
+      return mask
 
 ################################
 #### OMP RECOVERY   ############
