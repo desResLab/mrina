@@ -108,7 +108,9 @@ def recover_vel(compleximg, venc=None, threshold=True):
       vel[n,0,j] = np.abs(m)
       for k in range(1,compleximg.shape[1]):
         v = compleximg[n,k,j]
-        v = venc/(np.pi)*(np.angle(v) - np.angle(m))
+        # NEED TO UNDERSTAND WHY THIS IS HAPPENING...
+        v = venc/(2*np.pi)*(np.angle(v) - np.angle(m))
+        # v = venc/(np.pi)*(np.angle(v) - np.angle(m))
         # v = venc/(math.pi)*np.angle(np.divide(v,m))
         vel[n,k,j] = v
         # set velocity = 0 wherever mag is close enough to 0
@@ -253,136 +255,136 @@ if __name__ == '__main__':
                       metavar='',
                       dest='numprocesses')
 
-    # fromdir         = '\.'
-    parser.add_argument('-f', '--fromdir',
-                        action=None,
-                        # nargs='+',
-                        const=None,
-                        default='./',
-                        type=str,
-                        choices=None,
-                        required=False,
-                        help='folder for original image, k-space images and velocity encoding',
-                        metavar='',
-                        dest='fromdir')
+  # fromdir         = '\.'
+  parser.add_argument('-f', '--fromdir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='folder for original image, k-space images and velocity encoding',
+                      metavar='',
+                      dest='fromdir')
 
     # recdir         = '\.'
-    parser.add_argument('-d', '--recdir',
-                        action=None,
-                        # nargs='+',
-                        const=None,
-                        default='./',
-                        type=str,
-                        choices=None,
-                        required=False,
-                        help='folder for recontructed images',
-                        metavar='',
-                        dest='recdir')
+  parser.add_argument('-d', '--recdir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='folder for recontructed images',
+                      metavar='',
+                      dest='recdir')
 
-    # maskdir         = '\.'
-    parser.add_argument('-m', '--maskdir',
-                        action=None,
-                        # nargs='+',
-                        const=None,
-                        default='./',
-                        type=str,
-                        choices=None,
-                        required=False,
-                        help='folder for undersampling patterns',
-                        metavar='',
-                        dest='maskdir')
+  # maskdir         = '\.'
+  parser.add_argument('-m', '--maskdir',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='./',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='folder for undersampling patterns',
+                      metavar='',
+                      dest='maskdir')
 
-    # method
-    parser.add_argument('-rm', '--method',
-                        action=None,
-                        # nargs='*',
-                        const=None,
-                        default=0,
-                        type=int,
-                        choices=[0,1,2],
-                        required=False,
-                        help='nonlinear reconstruction method',
-                        metavar='',
-                        dest='method')
+  # method
+  parser.add_argument('-rm', '--method',
+                      action=None,
+                      # nargs='*',
+                      const=None,
+                      default=0,
+                      type=int,
+                      choices=[0,1,2],
+                      required=False,
+                      help='nonlinear reconstruction method',
+                      metavar='',
+                      dest='method')
 
-    # wavelet type
-    parser.add_argument('-w', '--wavelet',
-                        action=None,
-                        # nargs='*',
-                        const=None,
-                        default='haar',
-                        type=str,
-                        choices=['haar','db4'],
-                        required=False,
-                        help='wavelet family',
-                        metavar='',
-                        dest='wavelet')
+  # wavelet type
+  parser.add_argument('-w', '--wavelet',
+                      action=None,
+                      # nargs='*',
+                      const=None,
+                      default='haar',
+                      type=str,
+                      choices=['haar','db4'],
+                      required=False,
+                      help='wavelet family',
+                      metavar='',
+                      dest='wavelet')
 
-    # compute linear reconstruction
-    parser.add_argument('--evallinrec',
-                        action='store_true',
-                        default=False,
-                        required=False,
-                        help='Evaluate linear reconstructions',
-                        dest='evallinrec')    
-
-    # save velocities
-    parser.add_argument('--savevels',
+  # compute linear reconstruction
+  parser.add_argument('--evallinrec',
                       action='store_true',
                       default=False,
                       required=False,
-                      help='Save velocity fields',
-                      dest='savevels')    
+                      help='Evaluate linear reconstructions',
+                      dest='evallinrec')    
 
-    # Parse Commandline Arguments
-    args = parser.parse_args()
-    
-    # Get File Names
-    fourier_file,mask_file,orig_file,rec_file,vel_file,rec_lin_file,vel_lin_file = getFiles(args)
-    
-    # Perform Reconstruction
-    if not os.path.exists(rec_file):
+  # save velocities
+  parser.add_argument('--savevels',
+                    action='store_true',
+                    default=False,
+                    required=False,
+                    help='Save velocity fields',
+                    dest='savevels')    
 
-      print('Loading undersampling mask...')
-      if os.path.exists(mask_file):
-        umask = np.load(mask_file)
-      else:
-        print('ERROR: Undersampling mask file not found.')
-        sys.exit(-1)
+  # Parse Commandline Arguments
+  args = parser.parse_args()
+  
+  # Get File Names
+  fourier_file,mask_file,orig_file,rec_file,vel_file,rec_lin_file,vel_lin_file = getFiles(args)
+  
+  # Perform Reconstruction
+  if not os.path.exists(rec_file):
 
-      print('Computing reconstructions...')
-      recovered = recoverAll(fourier_file, orig_file, umask, c=args.numprocesses, wvlt=args.wavelet, mode=args.method)
-      print('Saving reconstruction to file: ',rec_file)
-      np.save(rec_file, recovered)
+    print('Loading undersampling mask...')
+    if os.path.exists(mask_file):
+      umask = np.load(mask_file)
     else:
-      print('Retrieving recovered images from numpy file: ', rec_file)
-      recovered = np.load(rec_file)
+      print('ERROR: Undersampling mask file not found.')
+      sys.exit(-1)
 
-    # Linear Reconstructions
+    print('Computing reconstructions...')
+    recovered = recoverAll(fourier_file, orig_file, umask, c=args.numprocesses, wvlt=args.wavelet, mode=args.method)
+    print('Saving reconstruction to file: ',rec_file)
+    np.save(rec_file, recovered)
+  else:
+    print('Retrieving recovered images from numpy file: ', rec_file)
+    recovered = np.load(rec_file)
+
+  # Linear Reconstructions
+  if(args.evallinrec):
+    print('Computing linear reconstrucitons...')
+    linrec = linear_reconstruction(fourier_file, umask)
+    print('Saving linear reconstrucitons to file: ',rec_lin_file)
+    np.save(rec_lin_file, linrec)
+
+  # Save velocities
+  if(args.savevels): 
+
+    # Load velocity encoding
+    print('Loading velocity encoding...')
+    vencfile = args.fromdir + 'venc_n1.npy'
+    if os.path.exists(vencfile):
+      venc = np.load(vencfile)
+    else:
+      print('Warning: file for velocity encoding not found...')
+      venc = None  
+
+    print('Computing velocities...')  
+    recovered = recover_vel(recovered, venc)
+    print('Saving velocities to file: ',vel_file) 
+    np.save(vel_file, recovered)
+    
     if(args.evallinrec):
-      print('Computing linear reconstrucitons...')
-      linrec = linear_reconstruction(fourier_file, umask)
-      print('Saving linear reconstrucitons to file: ',rec_lin_file)
-      np.save(rec_lin_file, linrec)
-
-    # Save velocities
-    if(args.savevels): 
-
-      # Load velocity encoding
-      print('Loading velocity encoding...')
-      vencfile = args.fromdir + 'venc_n1.npy'
-      if os.path.exists(vencfile):
-        venc = np.load(vencfile)
-      else:
-        print('Warning: file for velocity encoding not found...')
-        venc = None  
-
-      print('Computing velocities...')  
-      recovered = recover_vel(recovered, venc)
-      print('Saving velocities to file: ',vel_file) 
-      np.save(vel_file, recovered)
-      
-      if(args.evallinrec)
-        linrec = recover_vel(linrec, venc)
-        print('Saving linear reconstructed velocities to file: ',vel_lin_file)
-        np.save(vel_lin_file, linrec)
+      linrec = recover_vel(linrec, venc)
+      print('Saving linear reconstructed velocities to file: ',vel_lin_file)
+      np.save(vel_lin_file, linrec)

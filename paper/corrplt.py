@@ -62,7 +62,7 @@ def plot_noisediff(args, save_fig=True):
   if(args.singlechannel):
     numChannels = 1
   else:
-    numChannels = 3
+    numChannels = 4
   
   # Loop on the reconstruction component
   for k in range(0,numChannels):
@@ -104,7 +104,7 @@ def plot_pdiff(args, save_fig=True):
   if(args.singlechannel):
     numChannels = 1
   else:
-    numChannels = 3
+    numChannels = 4
 
   # Loop on the reconstruction component
   for k in range(0,numChannels):
@@ -146,7 +146,7 @@ def plot_sampdiff(args, save_fig=True):
   if(args.singlechannel):
     numChannels = 1
   else:
-    numChannels = 3
+    numChannels = 4
 
   # Loop on the reconstruction component
   for k in range(0,numChannels):
@@ -188,7 +188,7 @@ def plot_methoddiff(args, save_fig=True):
   if(args.singlechannel):
     numChannels = 1
   else:
-    numChannels = 3
+    numChannels = 4
 
   # Loop on the reconstruction component
   for k in range(0,numChannels):

@@ -4,8 +4,7 @@ python3 corrplt.py --noise 0.1 0.01 0.05 0.3 \
                    --method cs csdebias omp \
                    --numsamples 100 \
                    --numpts 50 \
-                   --dir /home/dschiava/Documents/02_Documents/04_Studies/03_MRI_withCarlos/09_NewImages/ndimg/ \
-                   --outputdir /home/dschiava/Documents/02_Documents/04_Studies/03_MRI_withCarlos/09_NewImages/out_ndimg/ \
-                   --singlechannel \
+                   --dir ./04_poiseuilleaxis2/ \
+                   --outputdir ./07_out/03_out_p2/corr/ \
                    --printlevel 1
 

@@ -13,6 +13,7 @@ def getVenc(vel):
     mx = np.amax(np.fabs(vel))
     #less than 1/2: let it be equal to 1/3
     # Shouldn'd be mx*1.5????
+    # CHECK THIS !!!
     venc = mx*3
     return venc
 
@@ -53,6 +54,7 @@ def get_noise(imsz, nrm, noise_percent, num_realizations, num_components=4):
 
     for n in range(num_realizations):
         for j in range(num_components):
+            # IS THERE A 2 MISSING HERE?? !!!
             avgnorm = nrm[j]/math.sqrt(np.prod(imsz))
             stdev = noise_percent * avgnorm
             if(stdev < 1.0e-12):           
@@ -106,6 +108,7 @@ def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noise
     undfile = tosavedir + 'undersamplpattern_p' + str(int(uVal*100)) + uType + '_seed' + str(uSeed)       
     np.save(undfile, mask)
 
+    # Add noise to image
     if(printlevel>0):
         print('Add noise to image...')
     noisy,snr = add_noise(kspace, noisePercent, numRealizations)

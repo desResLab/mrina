@@ -1,0 +1,4 @@
+sh 05_saveimgs_poiseuille_a1.sh
+sh 06_correlations_poiseuille_a1.sh
+sh 07_pltcorr_poiseuille_a1.sh
+sh 08_pltmse_poiseuille_a1.sh

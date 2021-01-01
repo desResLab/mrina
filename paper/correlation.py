@@ -108,7 +108,7 @@ def get_all(args):
   # size is max. distance to retrieve correlations for
   # num_pts is the number of points to average correlation across
   for noise_percent in [0.0, 0.01, 0.05, 0.1, 0.3]:
-    for p in [0.25, 0.5, 0.75]:
+    for p in [0.25, 0.5, 0.75, 0.80, 0.85, 0.90, 0.95]:
       for samptype in ['bernoulli', 'vardengauss']:
         recfile = args.recdir + 'rec_noise'+str(int(noise_percent*100))+'_p' + str(int(p*100)) + samptype +'_n'+str(args.numsamples) + '.npy'
         savefile = args.recdir + 'corrcoeff' + str(args.numpts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype +'_n'+str(args.numsamples)

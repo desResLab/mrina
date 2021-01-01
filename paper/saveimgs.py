@@ -39,12 +39,17 @@ def pltimg(img, title):
   plt.title(title)
   plt.draw()
 
-def save_mask(maskFile, outputdir):
+def save_mask(maskFile, outputFile):
   '''
   Save undersampling mask to file
+  CAREFULL: NEED TO CHANGE THE CONTOUR TO GRAY
   '''
-  mask = np.load(maskFile).astype(int)
-  plt.imshow(mask, cmap='grays', vmin=0, vmax=1)
+  print('WARNING: Need to change the cmap to gray in the final edit!!!')
+  mask = np.load(maskFile).astype(bool)
+  if(len(mask.shape) == 3):
+    plt.imshow(np.absolute(np.fft.fftshift(mask[0])), cmap='Greys', vmin=0, vmax=1)
+  else:
+    plt.imshow(np.absolute(np.fft.fftshift(mask)), cmap='Greys', vmin=0, vmax=1)
   plt.axis('off')
   plt.savefig(outputFile, bbox_inches='tight', pad_inches=0)
 
@@ -163,7 +168,7 @@ def save_all(args,relative=True):
     venc = None
 
   # Loop over undersamplingn ratios
-  for p in [0.25, 0.5, 0.75]:
+  for p in [0.25, 0.5, 0.75, 0.80, 0.85, 0.90, 0.95]:
     for samptype in ['bernoulli', 'vardengauss']:
       if(args.savemask):
         maskFile = args.maskdir + 'undersamplpattern_p' + str(int(p*100)) + samptype + '_n' + str(args.numsamples) + '.npy'

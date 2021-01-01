@@ -50,17 +50,37 @@ def generateViolinPlot(lgd,xlabel,allplt,allplt_lin=None):
   return fig
 
 def generateBarPlot(lgd,xlabel,ylabel,
+                    usecompleximgs,addlinearrec,
                     allplt_mag,allplt_ang,allplt_cmx,
                     allplt_mag_lin=None,allplt_ang_lin=None,allplt_cmx_lin=None,
                     rotext=False):
+
+  # Set Space and Initial Shift for the plots
+  pltShift = 1.0
+  pltNum = 4
+  if(addlinearrec):
+    if(usecompleximgs):
+      pltShift = 2.5
+      pltNum = 7 
+    else:
+      pltShift = 0.5
+      pltNum = 2
+  else:
+    if(usecompleximgs):
+      pltShift = 1.0
+      pltNum = 4
+    else:
+      pltShift = 0.0
+      pltNum = 2
 
   # New picture
   fig, ax = plt.subplots(figsize=(4,3))
 
   # Set Values on the X Axis
-  xVals_mag = np.arange(0,7*len(allplt_mag),7)
-  xVals_ang = np.arange(1,7*len(allplt_ang),7)
-  xVals_cmx = np.arange(2,7*len(allplt_cmx),7)
+  xVals_mag = np.arange(0,pltNum*len(allplt_mag),pltNum)
+  if(usecompleximgs):
+    xVals_ang = np.arange(1,pltNum*len(allplt_ang),pltNum)
+    xVals_cmx = np.arange(2,pltNum*len(allplt_cmx),pltNum)
   
   # Compute Mean values
   # Magnitude
@@ -95,16 +115,20 @@ def generateBarPlot(lgd,xlabel,ylabel,
 
   # Plot MSE
   ax.bar(xVals_mag, yVals_mag, yerr=yErr_mag, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='cs mag',hatch='++')
-  ax.bar(xVals_ang, yVals_ang, yerr=yErr_ang, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='cs ang',hatch='--')
-  ax.bar(xVals_cmx, yVals_cmx, yerr=yErr_cmx, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='cs cmx',hatch='\\\\')
+  if(usecompleximgs):
+    ax.bar(xVals_ang, yVals_ang, yerr=yErr_ang, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='cs ang',hatch='--')
+    ax.bar(xVals_cmx, yVals_cmx, yerr=yErr_cmx, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='cs cmx',hatch='\\\\')
 
   # Plot MSE for linear reconstruction
-  if(not(allplt_mag_lin is None)):
+  if(addlinearrec):
     
     # Set X values
-    xVals_mag = np.arange(3,7*len(allplt_mag_lin),7)
-    xVals_ang = np.arange(4,7*len(allplt_ang_lin),7)
-    xVals_cmx = np.arange(5,7*len(allplt_cmx_lin),7)
+    if(usecompleximgs):
+      xVals_mag = np.arange(3,pltNum*len(allplt_mag_lin),pltNum)
+      xVals_ang = np.arange(4,pltNum*len(allplt_ang_lin),pltNum)
+      xVals_cmx = np.arange(5,pltNum*len(allplt_cmx_lin),pltNum)
+    else:
+      xVals_mag = np.arange(1,pltNum*len(allplt_mag_lin),pltNum)
 
     # Compute Mean values
     yVals_mag = np.zeros(len(allplt_mag_lin))
@@ -136,11 +160,14 @@ def generateBarPlot(lgd,xlabel,ylabel,
       yErr_cmx[1,loopA] = np.abs(np.percentile(allplt_cmx_lin[loopA],90)-yVals_cmx[loopA])
 
     ax.bar(xVals_mag, yVals_mag, yerr=yErr_mag, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='lin mag',hatch='xx')
-    ax.bar(xVals_ang, yVals_ang, yerr=yErr_ang, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='lin ang',hatch='oo')
-    ax.bar(xVals_cmx, yVals_cmx, yerr=yErr_cmx, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='lin cmx',hatch='..')
+    if(usecompleximgs):
+      ax.bar(xVals_ang, yVals_ang, yerr=yErr_ang, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='lin ang',hatch='oo')
+      ax.bar(xVals_cmx, yVals_cmx, yerr=yErr_cmx, width=0.8, error_kw=dict(lw=0.5, capsize=2, capthick=0.5),label='lin cmx',hatch='..')
+   
+  # Set X thicks
+  ax.set_xticks(pltShift+pltNum*np.arange(len(lgd)))
 
   plt.ylabel(ylabel,fontsize=fs)
-  ax.set_xticks(2.5+7*np.arange(len(lgd)))
   if(rotext):
     ax.set_xticklabels(lgd, rotation=40, ha='right')  
   else:
@@ -160,91 +187,166 @@ def generateBarPlot(lgd,xlabel,ylabel,
   return fig
 
 def get_files(dir, maskdir, noise, uval, utype, method, numsamples):
-  fourier_file     = dir + 'noisy_noise' + str(int(noise*100)) + '_n' + str(numsamples) + '.npy'
-  undersample_file = maskdir + 'undersamplpattern_p' + str(int(uval*100)) + utype + '_n' + str(numsamples) + '.npy'
+  # Get Image File Names
   orig_file        = dir + 'imgs_n1.npy'
+  fourier_file     = dir + 'noisy_noise' + str(int(noise*100)) + '_n' + str(numsamples) + '.npy'
+  mask_file        = maskdir + 'undersamplpattern_p' + str(int(uval*100)) + utype + '_n' + str(numsamples) + '.npy'
   recovered_file   = dir + method + '/' + 'rec_noise' + str(int(noise*100)) + '_p' + str(int(uval*100)) + utype + '_n' + str(numsamples) + '.npy'
-  return fourier_file, orig_file, undersample_file, recovered_file
-
-def get_complex(dir, maskdir, noise, uval, utype, method, numsamples, usecompleximgs, usetrueimg, addlinearrec):
-    
-  # Get all files
-  fourier_file, orig_file, undersample_file, recovered_file = get_files(dir, maskdir, noise, uval, utype, method, numsamples)
-
-  # Load reconstruction
-  if(os.path.exists(recovered_file)):
-    recovered = np.load(recovered_file)
-  else:
-    print('ERROR: file with reconstructions not found: ',recovered_file)
-    sys.exit(-1)
-
-  # Load original image
+  
+  # Check if files exist and open the images
+  # Original image
   if(os.path.exists(orig_file)):
-    orig = np.load(orig_file).astype(np.float)
+    orig = np.load(orig_file).astype(np.complex)
     if(not(isvalidcrop(orig))):
       print('ERROR: Invalid original image file.')
+      sys.exit(-1)
+  else:
+    print('ERROR: original image file not found: ',orig_file)
+    sys.exit(-1)
+
+  # Noisy Fourier Image
+  if(os.path.exists(fourier_file)):
+    fourier = np.load(fourier_file).astype(np.complex)
+  else:
+    print('ERROR: file for noisy Fourier image not found: ',fourier_file)
+    sys.exit(-1)
+
+  # Undersampling Mask
+  if(os.path.exists(mask_file)):
+    mask = np.load(mask_file).astype(bool)
+  else:
+    print('ERROR: undersampling mask file not found: ',mask_file)
+    sys.exit(-1)
+
+  # File with reconstructed image
+  if(os.path.exists(recovered_file)):
+    recovered = np.load(recovered_file).astype(np.complex)
+  else:
+    print('ERROR: file for reconstructed images not found: ',recovered_file)
+    sys.exit(-1)
+
+  return fourier, orig, mask, recovered
+
+def get_complex(channel, dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec):
+    
+  # Get all files
+  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, method, numsamples)
 
   # Compute linear reconstructions if requested
   if(addlinearrec):
-    
     # Load undesampling mask
-    omega = None
-    if(os.path.exists(undersample_file)):
-      pattern = np.load(undersample_file).astype(bool)
-      if(len(pattern.shape) == 3):
-        omega = pattern[0]
-      else:
-        omega = pattern
-    else:    
-      print('ERROR: file with undersampling mask not found: ',undersample_file)
-      sys.exit(-1)
-
-    # Compute linear reconstruction with no undesampling
-    if(os.path.exists(fourier_file)):
-      linrec = linear_reconstruction(fourier_file,omega)
+    if(len(mask.shape) == 3):
+      linrec = linear_reconstruction(fourier,mask[0])
     else:
-      linrec = None
-      print('WARNING: file with k-space image not found: ',fourier_file)
+      linrec = linear_reconstruction(fourier,mask)
+    
+    # Return complex images only for the requested channel
+    return recovered[:,channel,:,:,:], orig[:,channel,:,:,:], linrec[:,channel,:,:,:]
 
-    return recovered, orig, linrec
   else:
-    return recovered, orig, None
+    
+    # Return complex images only for the requested channel
+    return recovered[:,channel,:,:,:], orig[:,channel,:,:,:], None
 
-def get_final(dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec):
+def get_final(channel, dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec):
 
   # Get all files
-  fourier_file, orig_file, undersample_file, recovered_file = get_files(dir, maskdir, noise, uval, utype, method, numsamples)
-  
-  # Get Original image
-  orig = np.load(orig_file).astype(np.float) 
-  new_shape = crop(orig[0,0,0]).shape
-  linrec = linear_reconstruction(fourier_file, omega)
-  
+  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, method, numsamples)
+
   # Get velocity encoding
-  vencfile = dir + 'venc_n1.npy'
-  if os.path.exists(vencfile):
-    venc = np.load(dir + 'venc_n1' + '.npy').astype(np.float)
+  venc_file = dir + 'venc_n1.npy'
+  if os.path.exists(venc_file):
+    venc = np.load(dir + 'venc_n1.npy').astype(np.float)
   else:
     venc = None
+    print('WARNING: file for velocity encoding not found: ',venc_file)
 
-  # Recover the velocity components
-  imgs   = recover_vel(linrec, venc)
-  csimgs = recover_vel(recovered, venc)
+  # Recover the velocity components  
+  csvels = recover_vel(recovered, venc)
 
-  # Return
-  return csimgs, imgs, orig[0,:,:,:new_shape[0], :new_shape[1]]
+  # Compute linear reconstructions if requested
+  if(addlinearrec):
+    # Load undesampling mask
+    if(len(mask.shape) == 3):
+      linrec = linear_reconstruction(fourier,mask[0])
+    else:
+      linrec = linear_reconstruction(fourier,mask)
+    
+    # Compute velocities from linear reconstructions
+    linvels = recover_vel(linrec, venc)
 
-def get_error(dir, maskdir, noise, uval, utype, method, numsamples, usecompleximgs, usetrueimg, addlinearrec):
+    # Return
+    return csvels[:,channel,:,:,:], orig[:,channel,:,:,:], linvels[:,channel,:,:,:]
+  
+  else:
+    
+    # Return
+    return csvels[:,channel,:,:,:], orig[:,channel,:,:,:], None
+
+def extractFluidMask(img):
+  res = np.max(np.absolute(img[0]),axis=0)
+  return (res > 0)
+
+def get_mse_mag(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
+  if(useFluidMask):
+    imgNum = (np.absolute(refimg[0,0])-np.absolute(csimgs[k,0]))**2
+    imgDen = np.absolute(refimg[0,0])**2
+    res = np.mean(imgNum[fluidMask])
+    den = np.mean(imgDen[fluidMask])
+    if(den > 1.0e-12):
+      res = res/den
+  else:
+    res = np.mean((np.absolute(refimg[0,0])-np.absolute(csimgs[k,0]))**2)
+    if(np.mean(np.absolute(refimg[0,0])**2) > 1.0e-12):
+      res = res/np.mean(np.absolute(refimg[0,0])**2)    
+  return res
+
+def get_mse_ang(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
+  if(useFluidMask):
+    imgNum = (np.angle(refimg[0,0])-np.angle(csimgs[k,0]))**2
+    res = np.mean(imgNum[fluidMask])
+  else:
+    res = np.mean((np.angle(refimg[0,0])-np.angle(csimgs[k,0]))**2)   
+    # mse_ang_cs[k]  = mse_ang_cs[k]/np.mean(np.angle(refimg)**2)
+  return res
+
+def get_mse_cmx(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
+  if(useFluidMask):
+    imgNum = (np.absolute(refimg[0,0]-csimgs[k,0]))**2
+    imgDen = np.absolute(refimg[0,0])**2
+    res = np.mean(imgNum[fluidMask])
+    den = np.mean(imgDen[fluidMask])
+    if(den > 1.0e-12):
+      res = res/den    
+  else:
+    res = np.mean((np.absolute(refimg[0,0]-csimgs[k,0]))**2)
+    if(np.mean(np.absolute(refimg[0,0])**2) > 1.0e-12):
+      res = res/np.mean(np.absolute(refimg[0,0])**2)
+  return res
+
+def get_error(channel, dir, maskdir, noise, uval, utype, method, numsamples, usecompleximgs, usetrueimg, addlinearrec, useFluidMask):
     
   # Get CS reconstructions, linear reconstruction and original image
   if usecompleximgs:
-    csimgs, orig, linimgs = get_complex(dir, maskdir, noise, uval, utype, method, numsamples, usecompleximgs, usetrueimg, addlinearrec)
+    csimgs, orig, linimgs = get_complex(channel, dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec)
   else:
-    csimgs, orig, linimgs = get_final(dir, maskdir, noise, uval, utype, method, numsamples, usecompleximgs, usetrueimg, addlinearrec) 
+    csimgs, orig, linimgs = get_final(channel, dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec) 
 
-  # Now that you mention it, I think we should add np.angle(orig)-np.angle(csimgs[k]) and np.abs(orig-csimgs[k]).
+  # If use fluid mask, then compute the mask using the original image density+velocities
+  fluidMask = None
+  if(useFluidMask):
+    fluidMask = extractFluidMask(orig)
+
   # Get average cs and linear reconstructed image
-  avgcs = csimgs.mean(axis=0)
+  if(usetrueimg):
+    refimg = orig
+  else:
+    refimg = csimgs.mean(axis=0).expand_dims(axis=0)
+
+  # print('Sizes')
+  # print('csimgs:',csimgs.shape)
+  # print('orig: ',orig.shape)
+  # print('linimgs: ',linimgs.shape)
 
   # Init vectors for MSE: one for every sample
   mse_mag_cs = np.zeros(csimgs.shape[0])
@@ -259,72 +361,30 @@ def get_error(dir, maskdir, noise, uval, utype, method, numsamples, usecomplexim
     mse_cmx_lin = np.zeros(csimgs.shape[0])
 
     # Compute image average
-    avglin = linimgs.mean(axis=0)
+    avglin = linimgs.mean(axis=0).expand_dims(axis=0)
     
   for k in range(csimgs.shape[0]):
-    if usetrueimg:
+      
+    # Magnitude
+    mse_mag_cs[k]  = get_mse_mag(k,csimgs,refimg,useFluidMask,fluidMask)
+    # Angle - Now that you mention it, I think we should add np.angle(orig)-np.angle(csimgs[k]) and np.abs(orig-csimgs[k]).
+    mse_ang_cs[k]  = get_mse_ang(k,csimgs,refimg,useFluidMask,fluidMask)
+    # Complex
+    mse_cmx_cs[k]  = get_mse_cmx(k,csimgs,refimg,useFluidMask,fluidMask)
+
+    if(addlinearrec):
+      
       # Magnitude
-      mse_mag_cs[k]  = np.mean((np.absolute(orig)-np.absolute(csimgs[k]))**2)
-      mse_mag_cs[k]  = mse_mag_cs[k]/np.mean(np.absolute(orig)**2)
-
+      mse_mag_lin[k] = get_mse_mag(k,linimgs,refimg,useFluidMask,fluidMask)
       # Angle
-      mse_ang_cs[k]  = np.mean((np.angle(orig)-np.angle(csimgs[k]))**2)
-      # mse_ang_cs[k]  = mse_ang_cs[k]/np.mean(np.angle(orig)**2)
-
+      mse_ang_lin[k] = get_mse_ang(k,linimgs,refimg,useFluidMask,fluidMask)
       # Complex
-      mse_cmx_cs[k]  = np.mean((np.absolute(orig-csimgs[k]))**2)
-      mse_cmx_cs[k]  = mse_cmx_cs[k]/np.mean(np.absolute(orig)**2)
-
-      if(addlinearrec):
-        # Magnitude
-        mse_mag_lin[k] = np.mean((np.absolute(orig)-np.absolute(linimgs[k]))**2)
-        mse_mag_lin[k] = mse_mag_lin[k]/np.mean(np.absolute(orig)**2)
-
-        # Angle
-        mse_ang_lin[k] = np.mean((np.angle(orig)-np.angle(linimgs[k]))**2)
-        # mse_ang_lin[k] = mse_ang_lin[k]/np.mean(np.angle(orig)**2)
-
-        # Complex
-        mse_cmx_lin[k] = np.mean((np.absolute(orig-linimgs[k]))**2)
-        mse_cmx_lin[k] = mse_cmx_lin[k]/np.mean(np.absolute(orig)**2)
-
-    else: 
-      # Magnitude
-      mse_mag_cs[k]  = np.mean((np.absolute(avgcs)-np.absolute(csimgs[k]))**2)
-      mse_mag_cs[k]  = mse_mag_cs[k]/np.mean(np.absolute(avgcs)**2)
-
-      # Angle
-      mse_ang_cs[k]  = np.mean((np.angle(avgcs)-np.angle(csimgs[k]))**2)
-      # mse_ang_cs[k]  = mse_ang_cs[k]/np.mean(np.angle(avgcs)**2)
-
-      # Complex
-      mse_cmx_cs[k]  = np.mean((np.absolute(avgcs-csimgs[k]))**2)
-      mse_cmx_cs[k]  = mse_cmx_cs[k]/np.mean(np.absolute(avgcs)**2)
-
-      if(addlinearrec):
-        # Magnitude
-        mse_mag_lin[k] = np.mean((np.absolute(avgcs)-np.absolute(linimgs[k]))**2)
-        mse_mag_lin[k] = mse_mag_lin[k]/np.mean(np.absolute(avgcs)**2)
-
-        # Angle
-        mse_ang_lin[k] = np.mean((np.angle(avgcs)-np.angle(linimgs[k]))**2)
-        # mse_ang_lin[k] = mse_ang_lin[k]/np.mean(np.angle(avgcs)**2)
-
-        # Complex
-        mse_cmx_lin[k] = np.mean((np.absolute(avgcs-linimgs[k]))**2)
-        mse_cmx_lin[k] = mse_cmx_lin[k]/np.mean(np.absolute(avgcs)**2)
+      mse_cmx_lin[k] = get_mse_cmx(k,linimgs,refimg,useFluidMask,fluidMask)
 
   if(addlinearrec):
     return mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin
   else:
     return mse_mag_cs, mse_ang_cs, mse_cmx_cs, None, None, None
-
-def get_folder(use_complex):    
-    if use_complex:
-        folder = '/plots/msecomplex'
-    else:
-        folder = '/plots/msefinal'
-    return folder
 
 def plot_pdiff(args):
 
@@ -340,47 +400,55 @@ def plot_pdiff(args):
   if(args.singlechannel):
     numChannels = 1
   else:
-    numChannels = 3
+    numChannels = 4
 
-  # CS    
-  allplt_mag = [None]*len(args.uval)
-  allplt_ang = [None]*len(args.uval)
-  allplt_cmx = [None]*len(args.uval)
-  # Linear
-  allplt_mag_lin = [None]*len(args.uval)
-  allplt_ang_lin = [None]*len(args.uval)
-  allplt_cmx_lin = [None]*len(args.uval)
+  for ch in range(numChannels):
 
-  for i,uval in enumerate(sorted(args.uval)): 
-    
-    mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(args.dir, args.maskdir, bl_noise, uval, bl_utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec)
-    
-    allplt_mag[i] = mse_mag_cs
-    allplt_ang[i] = mse_ang_cs
-    allplt_cmx[i] = mse_cmx_cs
+    # CS    
+    allplt_mag = [None]*len(args.uval)
+    allplt_ang = [None]*len(args.uval)
+    allplt_cmx = [None]*len(args.uval)
+    # Linear
+    allplt_mag_lin = [None]*len(args.uval)
+    allplt_ang_lin = [None]*len(args.uval)
+    allplt_cmx_lin = [None]*len(args.uval)
 
-    if(args.addlinearrec):
-      allplt_mag_lin[i] = mse_mag_lin
-      allplt_ang_lin[i] = mse_ang_lin
-      allplt_cmx_lin[i] = mse_cmx_lin
+    for i,uval in enumerate(sorted(args.uval)): 
+      
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, bl_noise, uval, bl_utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec)
+      
+      allplt_mag[i] = mse_mag_cs
+      allplt_ang[i] = mse_ang_cs
+      allplt_cmx[i] = mse_cmx_cs
 
-    if(args.usetrueimg):
-      msg = 'tru'
-      ylabel = 'MSE - w.r.t. true image'
-    else:
-      msg = 'avg'
-      ylabel = 'MSE - w.r.t. average image'
+      if(args.addlinearrec):
+        allplt_mag_lin[i] = mse_mag_lin
+        allplt_ang_lin[i] = mse_ang_lin
+        allplt_cmx_lin[i] = mse_cmx_lin
 
-  lgd = [str(int(x*100)) + '\%' for x in sorted(args.uval)]
-  # fig = generateViolinPlot(lgd,'Undersampling ratio',allplt,allplt_lin)
-  fig = generateBarPlot(lgd,'Undersampling ratio',ylabel,
-                        allplt_mag,allplt_ang,allplt_cmx,
-                        allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin)
+      if(args.usetrueimg):
+        msg = 'tru'
+        ylabel = 'MSE - w.r.t. true image'
+      else:
+        msg = 'avg'
+        ylabel = 'MSE - w.r.t. average image'
 
-  fname = args.outputdir + 'pdiff_' + msg + '_noise' + str(int(bl_noise*100)) + bl_utype + '.png'
-  plt.savefig(fname,dpi=200)
-  print("MSE Image saved: " + fname)
-  plt.close(fig)
+      if(args.usecompleximgs):
+        msg += '_cmx'
+      else:
+        msg += '_vel'
+
+    lgd = [str(int(x*100)) + '\%' for x in sorted(args.uval)]
+    # fig = generateViolinPlot(lgd,'Undersampling ratio',allplt,allplt_lin)
+    fig = generateBarPlot(lgd,'Undersampling ratio',ylabel,
+                          args.usecompleximgs,args.addlinearrec,
+                          allplt_mag,allplt_ang,allplt_cmx,
+                          allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin)
+
+    fname = args.outputdir + 'pdiff_' + msg + '_noise' + str(int(bl_noise*100)) + '_' + bl_utype + '_k' + str(ch) + '.png'
+    plt.savefig(fname,dpi=200)
+    print("MSE Image saved: " + fname)
+    plt.close(fig)
 
 def plot_noisediff(args):
   '''
@@ -399,51 +467,57 @@ def plot_noisediff(args):
   if(args.singlechannel):
     numChannels = 1
   else:
-    numChannels = 3
+    numChannels = 4
 
-  # CS    
-  allplt_mag = [None]*len(args.noise)
-  allplt_ang = [None]*len(args.noise)
-  allplt_cmx = [None]*len(args.noise)
-  # Linear
-  allplt_mag_lin = [None]*len(args.noise)
-  allplt_ang_lin = [None]*len(args.noise)
-  allplt_cmx_lin = [None]*len(args.noise)
+  for ch in range(numChannels):
 
-  for i,noise in enumerate(sorted(args.noise)):
-    
-    mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(args.dir, args.maskdir, noise, bl_uval, bl_utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec)
+    # CS    
+    allplt_mag = [None]*len(args.noise)
+    allplt_ang = [None]*len(args.noise)
+    allplt_cmx = [None]*len(args.noise)
+    # Linear
+    allplt_mag_lin = [None]*len(args.noise)
+    allplt_ang_lin = [None]*len(args.noise)
+    allplt_cmx_lin = [None]*len(args.noise)
 
-    allplt_mag[i] = mse_mag_cs
-    allplt_ang[i] = mse_ang_cs
-    allplt_cmx[i] = mse_cmx_cs
-    msg = 'vplt'
-
-    if(args.addlinearrec):
-      allplt_mag_lin[i] = mse_mag_lin
-      allplt_ang_lin[i] = mse_ang_lin
-      allplt_cmx_lin[i] = mse_cmx_lin
-      msg = 'vplt_lin'
+    for i,noise in enumerate(sorted(args.noise)):
       
-    if(args.usetrueimg):
-      msg = 'tru'
-      ylabel = 'MSE - w.r.t. true image'
-    else:
-      msg = 'avg'
-      ylabel = 'MSE - w.r.t. average image'
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, noise, bl_uval, bl_utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec)
 
-  # Generate Plots
-  lgd = [str(int(x*100)) + '\%' for x in sorted(args.noise)]
-  # fig = generateViolinPlot(lgd,'Noise intensity',allplt,allplt_lin)
-  fig = generateBarPlot(lgd,'Noise intensity',ylabel,
-                        allplt_mag,allplt_ang,allplt_cmx,
-                        allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin)
+      allplt_mag[i] = mse_mag_cs
+      allplt_ang[i] = mse_ang_cs
+      allplt_cmx[i] = mse_cmx_cs
 
-  # Save Img  
-  fname = args.outputdir + 'noisediff_' + msg + '_p' + str(int(bl_uval*100)) + bl_utype + '.png'
-  plt.savefig(fname,dpi=200)
-  print("MSE Image saved: " + fname)
-  plt.close(fig)
+      if(args.addlinearrec):
+        allplt_mag_lin[i] = mse_mag_lin
+        allplt_ang_lin[i] = mse_ang_lin
+        allplt_cmx_lin[i] = mse_cmx_lin
+        
+      if(args.usetrueimg):
+        msg = 'tru'
+        ylabel = 'MSE - w.r.t. true image'
+      else:
+        msg = 'avg'
+        ylabel = 'MSE - w.r.t. average image'
+
+      if(args.usecompleximgs):
+        msg += '_cmx'
+      else:
+        msg += '_vel'
+
+    # Generate Plots
+    lgd = [str(int(x*100)) + '\%' for x in sorted(args.noise)]
+    # fig = generateViolinPlot(lgd,'Noise intensity',allplt,allplt_lin)
+    fig = generateBarPlot(lgd,'Noise intensity',ylabel,
+                          args.usecompleximgs,args.addlinearrec,
+                          allplt_mag,allplt_ang,allplt_cmx,
+                          allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin)
+
+    # Save Img  
+    fname = args.outputdir + 'noisediff_' + msg + '_p' + str(int(bl_uval*100)) + '_' + bl_utype + '_k' + str(ch) + '.png'
+    plt.savefig(fname,dpi=200)
+    print("MSE Image saved: " + fname)
+    plt.close(fig)
 
 def plot_maskdiff(args):
   '''
@@ -461,53 +535,59 @@ def plot_maskdiff(args):
   if(args.singlechannel):
     numChannels = 1
   else:
-    numChannels = 3
+    numChannels = 4
 
-  # CS    
-  allplt_mag = [None]*len(args.utype)
-  allplt_ang = [None]*len(args.utype)
-  allplt_cmx = [None]*len(args.utype)
-  # Linear
-  allplt_mag_lin = [None]*len(args.utype)
-  allplt_ang_lin = [None]*len(args.utype)
-  allplt_cmx_lin = [None]*len(args.utype)
+  for ch in range(numChannels):
 
-  for i,utype in enumerate(args.utype):
-    
-    mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(args.dir, args.maskdir, bl_noise, bl_uval, utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec)
-    
-    allplt_mag[i] = mse_mag_cs
-    allplt_ang[i] = mse_ang_cs
-    allplt_cmx[i] = mse_cmx_cs
-    msg = 'vplt'
+    # CS    
+    allplt_mag = [None]*len(args.utype)
+    allplt_ang = [None]*len(args.utype)
+    allplt_cmx = [None]*len(args.utype)
+    # Linear
+    allplt_mag_lin = [None]*len(args.utype)
+    allplt_ang_lin = [None]*len(args.utype)
+    allplt_cmx_lin = [None]*len(args.utype)
 
-    if(args.addlinearrec):
-      allplt_mag_lin[i] = mse_mag_lin
-      allplt_ang_lin[i] = mse_ang_lin
-      allplt_cmx_lin[i] = mse_cmx_lin
-      msg = 'vplt_lin'
+    for i,utype in enumerate(args.utype):
+      
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec)
+      
+      allplt_mag[i] = mse_mag_cs
+      allplt_ang[i] = mse_ang_cs
+      allplt_cmx[i] = mse_cmx_cs
 
-    if(args.usetrueimg):
-      msg = 'tru'
-      ylabel = 'MSE - w.r.t. true image'
-    else:
-      msg = 'avg'
-      ylabel = 'MSE - w.r.t. average image'
+      if(args.addlinearrec):
+        allplt_mag_lin[i] = mse_mag_lin
+        allplt_ang_lin[i] = mse_ang_lin
+        allplt_cmx_lin[i] = mse_cmx_lin
 
-  lgd = []
-  for loopA in range(len(args.utype)):
-    lgd.append(get_umask_string(args.utype[loopA]))
+      if(args.usetrueimg):
+        msg = 'tru'
+        ylabel = 'MSE - w.r.t. true image'
+      else:
+        msg = 'avg'
+        ylabel = 'MSE - w.r.t. average image'
 
-  # fig = generateViolinPlot(lgd,'Undersampling mask',allplt,allplt_lin)    
-  fig = generateBarPlot(lgd,'Undersampling mask',ylabel,
-                        allplt_mag,allplt_ang,allplt_cmx,
-                        allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin,rotext=True)
+      if(args.usecompleximgs):
+        msg += '_cmx'
+      else:
+        msg += '_vel'
 
-  # Save Img  
-  fname = args.outputdir + 'maskdiff_' + msg + '_noise' + str(int(bl_noise*100)) + '_p' + str(int(bl_uval*100)) + '.png'
-  plt.savefig(fname,dpi=200)
-  print("MSE Image saved: " + fname)
-  plt.close(fig)  
+    lgd = []
+    for loopA in range(len(args.utype)):
+      lgd.append(get_umask_string(args.utype[loopA]))
+
+    # fig = generateViolinPlot(lgd,'Undersampling mask',allplt,allplt_lin)    
+    fig = generateBarPlot(lgd,'Undersampling mask',ylabel,
+                          args.usecompleximgs,args.addlinearrec,
+                          allplt_mag,allplt_ang,allplt_cmx,
+                          allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin,rotext=True)
+
+    # Save Img  
+    fname = args.outputdir + 'maskdiff_' + msg + '_noise' + str(int(bl_noise*100)) + '_p' + str(int(bl_uval*100)) + '_' + bl_utype + '_k' + str(ch) + '.png'
+    plt.savefig(fname,dpi=200)
+    print("MSE Image saved: " + fname)
+    plt.close(fig)  
 
 def plot_methoddiff(args):
 
@@ -523,53 +603,59 @@ def plot_methoddiff(args):
   if(args.singlechannel):
     numChannels = 1
   else:
-    numChannels = 3
+    numChannels = 4
 
-  # CS    
-  allplt_mag = [None]*len(args.method)
-  allplt_ang = [None]*len(args.method)
-  allplt_cmx = [None]*len(args.method)
-  # Linear
-  allplt_mag_lin = [None]*len(args.method)
-  allplt_ang_lin = [None]*len(args.method)
-  allplt_cmx_lin = [None]*len(args.method)
+  for ch in range(numChannels):
 
-  for i,method in enumerate(args.method):
+    # CS    
+    allplt_mag = [None]*len(args.method)
+    allplt_ang = [None]*len(args.method)
+    allplt_cmx = [None]*len(args.method)
+    # Linear
+    allplt_mag_lin = [None]*len(args.method)
+    allplt_ang_lin = [None]*len(args.method)
+    allplt_cmx_lin = [None]*len(args.method)
 
-    mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec)
-      
-    allplt_mag[i] = mse_mag_cs
-    allplt_ang[i] = mse_ang_cs
-    allplt_cmx[i] = mse_cmx_cs
-    msg = 'vplt'
+    for i,method in enumerate(args.method):
 
-    if(args.addlinearrec):
-      allplt_mag_lin[i] = mse_mag_lin
-      allplt_ang_lin[i] = mse_ang_lin
-      allplt_cmx_lin[i] = mse_cmx_lin
-      msg = 'vplt_lin'
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec)
+        
+      allplt_mag[i] = mse_mag_cs
+      allplt_ang[i] = mse_ang_cs
+      allplt_cmx[i] = mse_cmx_cs
 
-    if(args.usetrueimg):
-      msg = 'tru'
-      ylabel = 'MSE - w.r.t. true image'
-    else:
-      msg = 'avg'
-      ylabel = 'MSE - w.r.t. average image'
+      if(args.addlinearrec):
+        allplt_mag_lin[i] = mse_mag_lin
+        allplt_ang_lin[i] = mse_ang_lin
+        allplt_cmx_lin[i] = mse_cmx_lin
 
-  # Generate Plots
-  lgd = []
-  for loopA in range(len(args.method)):
-    lgd.append(get_method_string(args.method[loopA]))
+      if(args.usetrueimg):
+        msg = 'tru'
+        ylabel = 'MSE - w.r.t. true image'
+      else:
+        msg = 'avg'
+        ylabel = 'MSE - w.r.t. average image'
 
-  # fig = generateViolinPlot(lgd,'Reconstruction method',allplt,allplt_lin)    
-  fig = generateBarPlot(lgd,'Reconstruction method',ylabel,
-                        allplt_mag,allplt_ang,allplt_cmx,
-                        allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin,rotext=True)
+      if(args.usecompleximgs):
+        msg += '_cmx'
+      else:
+        msg += '_vel'
 
-  fname = args.outputdir + 'methoddiff_' + msg + '_noise' + str(int(bl_noise*100)) + '_p'+str(int(bl_uval*100)) + bl_utype + '.png'
-  plt.savefig(fname,dpi=200)
-  print("MSE Image saved: " + fname)
-  plt.close(fig)
+    # Generate Plots
+    lgd = []
+    for loopA in range(len(args.method)):
+      lgd.append(get_method_string(args.method[loopA]))
+
+    # fig = generateViolinPlot(lgd,'Reconstruction method',allplt,allplt_lin)    
+    fig = generateBarPlot(lgd,'Reconstruction method',ylabel,
+                          args.usecompleximgs,args.addlinearrec,
+                          allplt_mag,allplt_ang,allplt_cmx,
+                          allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin,rotext=True)
+
+    fname = args.outputdir + 'methoddiff_' + msg + '_noise' + str(int(bl_noise*100)) + '_p'+str(int(bl_uval*100)) + '_' + bl_utype + '_k' + str(ch) + '.png'
+    plt.savefig(fname,dpi=200)
+    print("MSE Image saved: " + fname)
+    plt.close(fig)
 
 def pltviolin(dir, recdir, patterndir, num_samples, use_complex, use_truth):
     #use_complex: compare against complex images or final recovered velocity images
@@ -717,13 +803,20 @@ if __name__ == '__main__':
                       required=False,
                       help='treat the image as single-channel, without velocity components',
                       dest='singlechannel')    
-  # singlechannel
+  # usecompleximgs
   parser.add_argument('--usecompleximgs',
                       action='store_true',
                       default=False,
                       required=False,
                       help='evaluate the MSE based on the reconstructed complex image. Default: use velocity components.',
                       dest='usecompleximgs')    
+  # mseinmask
+  parser.add_argument('--usefluidmask',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='evaluate the MSE only within the fluid region. Default: use full image',
+                      dest='usefluidmask')    
   # addlinear reconstructions
   parser.add_argument('--addlinearrec',
                       action='store_true',
@@ -731,7 +824,7 @@ if __name__ == '__main__':
                       required=False,
                       help='Plot linear reconstruction MSE.',
                       dest='addlinearrec')      
-  # singlechannel
+  # use true image
   parser.add_argument('--usetrueimg',
                       action='store_true',
                       default=False,
