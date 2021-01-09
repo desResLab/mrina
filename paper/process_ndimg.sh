@@ -1,4 +1,7 @@
-sh 01_saveimgs_ndimg.sh
-sh 02_correlations_ndimg.sh
-sh 03_pltcorr_ndimg.sh
-sh 04_pltmse_ndimg.sh
+sh 01_ndimg_01_saveimgs.sh
+sh 01_ndimg_02_correlations.sh
+sh 01_ndimg_03_pltcorr.sh
+sh 01_ndimg_04_pltmse.sh
+sh 01_ndimg_05_correlations_fluid.sh
+sh 01_ndimg_06_pltcorr_fluid.sh
+sh 01_ndimg_07_pltmse_fluid.sh

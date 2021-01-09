@@ -19,6 +19,10 @@ def get_umask_string(samptype):
     print('ERROR: Invalid mask type')
     sys.exit(-1)
 
+def extractFluidMask(img):  
+  res = np.max(np.absolute(img[0,0]),axis=0)
+  return (res > 0)    
+
 def get_method_string(method):
   if(method == 'cs'):
     return 'CS'
@@ -671,7 +675,7 @@ def HaltonSampling(shape, p):
   indices[pts[:,0], pts[:,1]] = 1
   return indices
 
-def generateSamplingMask(imsz, p, saType='bernoulli', num_patterns=1):
+def generateSamplingMask(imsz, p, saType='bernoulli', num_patterns=1, seed=1234321):
   # p is the undersampling ratio: what you don't sample
   if(p < 0.0)or(p > 1.0):
     print('ERROR: Invalid undersampling ratio delta in generateSamplingMask.')
@@ -679,6 +683,7 @@ def generateSamplingMask(imsz, p, saType='bernoulli', num_patterns=1):
   elif(p == 0.0):
     return np.full(imsz, True, dtype=bool)
   else:
+    np.random.seed(seed)
     mask = np.empty((num_patterns, ) + imsz, dtype=np.bool)
     for k in range(num_patterns):
       #to keep undersampling the same for each slice

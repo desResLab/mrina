@@ -1,4 +1,0 @@
-sh 13_saveimgs_aortaideal.sh
-sh 14_correlations_aortaideal.sh
-sh 15_pltcorr_aortaideal.sh
-sh 16_pltmse_aortaideal.sh

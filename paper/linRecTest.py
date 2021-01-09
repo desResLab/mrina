@@ -1,6 +1,5 @@
 import sys
-# sys.path.append('../../')
-sys.path.append('/home/dschiava/Documents/01_Development/01_PythonApps/03_Reconstruction/')
+sys.path.append('../')
 import numpy as np
 import matplotlib.pyplot as plt
 from genSamples import add_noise

@@ -9,6 +9,7 @@ from scipy.stats import norm
 from multiprocessing import Process, cpu_count, Manager
 from genSamples import getKspace,getVenc
 from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing,OMPRecovery, Operator4dFlow, pywt2array, array2pywt, crop
+import argparse
 
 home = os.getenv('HOME')
 
@@ -63,6 +64,7 @@ def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wv
         imNrm=np.linalg.norm(im.ravel(), 2)
         eta = get_eta(im, imNrm, noise_percent, imsz[0])
         cs[n,k,j] = recoverOne(crop(noisy[n,k,j]), imsz, eta, omega, wvlt, solver_mode)
+        print('Recovered! Repetition: %d, Image: %d, Third: %d' % (n,k,j))
 
   return_dict[processnum] = cs
   return cs
@@ -108,10 +110,8 @@ def recover_vel(compleximg, venc=None, threshold=True):
       vel[n,0,j] = np.abs(m)
       for k in range(1,compleximg.shape[1]):
         v = compleximg[n,k,j]
-        # NEED TO UNDERSTAND WHY THIS IS HAPPENING...
-        v = venc/(2*np.pi)*(np.angle(v) - np.angle(m))
-        # v = venc/(np.pi)*(np.angle(v) - np.angle(m))
-        # v = venc/(math.pi)*np.angle(np.divide(v,m))
+        # Formula in the paper !!!
+        v = venc/(np.pi)*(np.angle(v) - np.angle(m))
         vel[n,k,j] = v
         # set velocity = 0 wherever mag is close enough to 0
         if threshold:
@@ -149,25 +149,13 @@ def linear_reconstruction(fourier_file, omega=None):
         linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
   return linrec
 
-def solver_folder(solver_mode):
-  if solver_mode == CS_MODE:
-    folder = 'cs/'
-  elif solver_mode == DEBIAS_MODE:
-    folder = 'csdebias/'
-  elif solver_mode == OMP_MODE:
-    folder = 'omp/'
-  else:  
-    print('ERROR: Invalid solver mode')
-    sys.exit(-1)
-  return folder
-
 # Get File Names
 def getFiles(args):
   # Get Default file names
   fourier_file = args.fromdir + 'noisy_noise' + str(int(args.noisepercent*100)) + '_n' + str(args.repetitions) + '.npy'
-  mask_file    = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + type +  '_n' + str(args.repetitions) + '.npy'
+  mask_file    = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + args.uType + '.npy'
   orig_file    = args.fromdir + 'imgs_n1.npy'
-  rec_file     = args.recdir + solver_folder(args.method) + 'rec_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + type + '_n' + str(args.repetitions) + '.npy' 
+  rec_file     = args.recdir + 'rec_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy' 
   
   # Save linear reconstruction file and velocities if requested
   rec_lin_file = None
@@ -175,12 +163,12 @@ def getFiles(args):
   vel_lin_file = None
   
   if(args.evallinrec):
-    rec_lin_file = args.recdir + solver_folder(args.method) + 'lin_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + type + '_n' + str(args.repetitions) + '.npy'
+    rec_lin_file = args.recdir + 'lin_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
   
   if(args.savevels):
-    vel_file = args.recdir + solver_folder(args.method) + 'rec_vel_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + type + '_n' + str(args.repetitions) + '.npy'
+    vel_file = args.recdir + 'rec_vel_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
     if(args.evallinrec):
-      vel_lin_file = args.recdir + solver_folder(args.method) + 'lin_vel_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + type + '_n' + str(args.repetitions) + '.npy'
+      vel_lin_file = args.recdir + 'lin_vel_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
   
   # Return file names
   return fourier_file,mask_file,orig_file,rec_file,vel_file,rec_lin_file,vel_lin_file
@@ -349,15 +337,15 @@ if __name__ == '__main__':
     if os.path.exists(mask_file):
       umask = np.load(mask_file)
     else:
-      print('ERROR: Undersampling mask file not found.')
+      print('ERROR: Undersampling mask file not found: ',mask_file)
       sys.exit(-1)
 
     print('Computing reconstructions...')
-    recovered = recoverAll(fourier_file, orig_file, umask, c=args.numprocesses, wvlt=args.wavelet, mode=args.method)
+    recovered = recoverAll(fourier_file, orig_file, umask, args.noisepercent, c=args.numprocesses, wvlt=args.wavelet, mode=args.method)
     print('Saving reconstruction to file: ',rec_file)
     np.save(rec_file, recovered)
   else:
-    print('Retrieving recovered images from numpy file: ', rec_file)
+    print('Retrieving recovered images from numpy file: ',rec_file)
     recovered = np.load(rec_file)
 
   # Linear Reconstructions
@@ -376,7 +364,7 @@ if __name__ == '__main__':
     if os.path.exists(vencfile):
       venc = np.load(vencfile)
     else:
-      print('Warning: file for velocity encoding not found...')
+      print('WARNING: file for velocity encoding not found: ',vencfile)
       venc = None  
 
     print('Computing velocities...')  

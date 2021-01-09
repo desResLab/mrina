@@ -94,7 +94,8 @@ def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noise
     # Save Velocity Encoding
     if(printlevel>0):
         print('Saving velocity encoding...')    
-    np.save(tosavedir + 'venc_n' + str(numRealizations) + '.npy', venc)
+    # Always one velocity encoding for image set
+    np.save(tosavedir + 'venc_n1.npy', venc) 
 
     # Transform image in the Fourier domain
     if(printlevel>0):
@@ -103,9 +104,9 @@ def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noise
     
     # Generate undersampling mask
     if(printlevel>0):
-        print('Generate and save sampling mask...')        
-    mask = generateSamplingMask(kspace.shape[3:], uVal, uType, uSeed)
-    undfile = tosavedir + 'undersamplpattern_p' + str(int(uVal*100)) + uType + '_seed' + str(uSeed)       
+        print('Generate and save sampling mask...')  
+    mask = generateSamplingMask(kspace.shape[3:], uVal, saType=uType, num_patterns=1, seed=uSeed)
+    undfile = tosavedir + 'undersamplpattern_p' + str(int(uVal*100)) + uType # + '_seed' + str(uSeed)       
     np.save(undfile, mask)
 
     # Add noise to image
