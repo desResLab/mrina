@@ -256,10 +256,7 @@ class Operator4dFlow(genericOperator):
     "Multiplication"
     # Convert x from 1D to 2D
     if(not(self.isTransposed)):
-      
-      # FORWARD OPERATOR
-      # print("FORWARD OPERATOR MULTIPLICATION")
-      
+            
       # Create zero vector
       inV = np.zeros(np.prod(self.insz),dtype=np.complex)
       
@@ -282,10 +279,7 @@ class Operator4dFlow(genericOperator):
         return y[ self.samplingSet ]
     
     else:
-      
-      # ADJOINT OPERATOR
-      # print("ADJOINT OPERATOR MULTIPLICATION")
-
+    
       # Apply Fourier Transform Only for frequencies in the sampling set
       if( self.samplingSet is None ):
         arr = np.conj( fft.fft2( np.conj(x) ) )
@@ -293,13 +287,10 @@ class Operator4dFlow(genericOperator):
         self._buffer[ self.samplingSet ] = x[ : ];
         arr = np.conj( fft.fft2( np.conj(self._buffer) ) )
 
-      # print('ARR ',arr)
-
       # Perform wavelet transform
       res = self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape)
 
       # Filter wavelet coefficients as per basisSet
-      # print(res.dtype)
       if( self.basisSet is None ):
         return res.ravel()
       else:

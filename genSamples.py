@@ -11,8 +11,8 @@ home = os.getenv('HOME')
 
 def getVenc(vel):
     mx = np.amax(np.fabs(vel))
-    #less than 1/2: let it be equal to 1/3
-    # Shouldn'd be mx*1.5????
+    # less than 1/2: let it be equal to 1/3
+    # Shouldn'd be max*1.5????
     # CHECK THIS !!!
     venc = mx*3
     return venc

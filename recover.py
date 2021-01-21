@@ -34,12 +34,16 @@ def recoverOne(kspace,imsz,eta,omega,wvlt='haar',solver_mode=CS_MODE):
   yim = A.eval( wim, 1 )
   
   if(solver_mode == OMP_MODE):
+    # OMP Recovery
     tol = eta/np.linalg.norm(yim.ravel(),2)
     print('Recovering using OMP with tol =', tol)
     wim = OMPRecovery(A, yim, tol=tol, showProgress=True, progressInt=250, maxItns=2000)[0]
+
   else:
+    # CS Recovery
     print('Recovering using CS with eta =', eta)
     wim =  CSRecovery(eta, yim, A, np.zeros(wsz), disp=1)
+
   if isinstance(wim, tuple):
     wim = wim[0] # for the case where ynrm is less than eta
   if solver_mode == DEBIAS_MODE:
@@ -110,8 +114,10 @@ def recover_vel(compleximg, venc=None, threshold=True):
       vel[n,0,j] = np.abs(m)
       for k in range(1,compleximg.shape[1]):
         v = compleximg[n,k,j]
-        # Formula in the paper !!!
+        # Formula in the paper: correct.
         v = venc/(np.pi)*(np.angle(v) - np.angle(m))
+        # This works with some of the old reconstruction files
+        # v = venc/(2*np.pi)*(np.angle(v) - np.angle(m))
         vel[n,k,j] = v
         # set velocity = 0 wherever mag is close enough to 0
         if threshold:

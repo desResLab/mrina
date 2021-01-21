@@ -138,11 +138,9 @@ def get_coeff(size, num_pts, samples, points):
       for v in range(samples.shape[1]):
         var1 = np.abs(samples[:, v, 0, pt1[0], pt1[1]])
         var2 = np.abs(samples[:, v, 0, pt2[0], pt2[1]])
-        # print(var1)
-        # print(var2)
-        # What to do when the two sequences are both zero !!!
-        # It should be 1!
-        # exit(-1)
+        # If both sequences contain zeros, this generates a nan.
+        # We replace nan with ones. This is only a problem when evaluating the 
+        # correlation between pixels in the background. 
         coeff[v, k-1, j] = np.corrcoef(np.asarray([var1, var2]))[0,1] # correlation
   if(np.isnan(coeff).any()):
     print('WARNING: Found some NAN, probably due to sequences of zeros in the background. Replacing with correlation of 1.0')

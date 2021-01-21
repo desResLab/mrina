@@ -68,7 +68,25 @@ def save_rec(infilename, venc, p, samptype, noise_percent, prefix, outputdir, si
   # Only the first reconstructed Sample
   for n in range(1): #range(imgs.shape[0]):
     for k in range(imgs.shape[1]):
-      plt.imshow(imgs[n,k,0], cmap='gray')
+      # Custom mage Scaling for Comparison
+      if(False)
+        if(k==0):
+          myvmin = 0.0
+          myvmax = 184.2392788833003
+        elif(k==1):
+          myvmin = -1.0776501893997192
+          myvmax = 1.0873665809631348
+        elif(k==2):
+          myvmin = -1.146713376045227
+          myvmax = 1.4400959014892578
+        elif(k==3):
+          myvmin = -1.2205644845962524
+          myvmax = 1.3197449445724487
+      else:
+        myvmin=None
+        myvmax=None
+
+      plt.imshow(imgs[n,k,0], cmap='gray',vmin=myvmin,vmax=myvmax)
       plt.axis('off')
       plt.savefig(outputdir + prefix + 'rec_p' + str(int(p*100)) + samptype + '_noise' + str(int(noise_percent*100)) + '_n' + str(n) + '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
 
@@ -141,12 +159,15 @@ def save_true(trueFileName, outputDir, relative=False):
   if relative:
     true = rescale(true, truncate=False)
   for k in range(true.shape[1]):
+    if(False):
+      print('Min True: ',np.min(true[0,k,0]))
+      print('Max True: ',np.max(true[0,k,0]))
     plt.imshow(true[0,k,0], cmap='gray')
     plt.axis('off')
     plt.savefig(outputDir + 'true' '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
     
 
-def save_all(args,relative=True):
+def save_all(args,relativeScale=False):
   '''
   Save all the pictures determining a reconstruction process
   '''
@@ -160,7 +181,7 @@ def save_all(args,relative=True):
     if(os.path.exists(trueFileName)):
       if(args.printlevel>0):
         print('Saving true image: ',trueFileName)
-      save_true(trueFileName,args.outputdir)
+      save_true(trueFileName,args.outputdir,relative=relativeScale)
   
   # Read Velocity Encoding if file exists
   vencfile = args.maindir+'venc_n1.npy'
@@ -186,7 +207,7 @@ def save_all(args,relative=True):
           if(os.path.exists(recnpy)):
             if(args.printlevel > 0):
               print('Saving image reconstructions: ',recnpy)
-            save_rec(recnpy, venc, p, samptype, noise_percent, prefstr, args.outputdir, singleChannel=args.singlechannel)
+            save_rec(recnpy, venc, p, samptype, noise_percent, prefstr, args.outputdir, singleChannel=args.singlechannel,relative=relativeScale)
             if(args.printlevel > 0):
               print('Saving image reconstruction errors')
             save_rec_noise(recnpy, trueFileName, venc, p, samptype, noise_percent, prefstr, args.outputdir, use_truth=args.usetrueasref, singleChannel=args.singlechannel)
