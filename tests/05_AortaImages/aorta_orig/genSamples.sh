@@ -4,6 +4,7 @@ python3 ../../../genSamples.py --fromdir ./ \
                                --utype 'vardengauss' \
                                --urate 0.75 \
                                --noisepercent 0.0 \
+                               --usemultipatterns 1 \
                                --printlevel 1 \
 
   

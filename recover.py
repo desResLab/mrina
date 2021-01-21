@@ -43,7 +43,6 @@ def recoverOne(kspace,imsz,eta,omega,wvlt='haar',solver_mode=CS_MODE):
     # CS Recovery
     print('Recovering using CS with eta =', eta)
     wim =  CSRecovery(eta, yim, A, np.zeros(wsz), disp=1)
-
   if isinstance(wim, tuple):
     wim = wim[0] # for the case where ynrm is less than eta
   if solver_mode == DEBIAS_MODE:
@@ -57,11 +56,15 @@ def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wv
   imsz = crop(noisy[0,0,0]).shape
   cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
   print('Pattern shape: ', pattern.shape)
-  if len(pattern.shape) > 2:
-    omega = crop(pattern[0])
-  else:
-    omega = crop(pattern)
   for n in range(noisy.shape[0]):
+    if len(pattern.shape) > 2:
+      if pattern.shape[0] == 1:
+        idx = 0
+      else:
+        idx = n
+      omega = crop(pattern[idx])
+    else:
+      omega = crop(pattern)
     for k in range(noisy.shape[1]):
       for j in range(noisy.shape[2]):
         im = crop(original[0,k,j])
@@ -97,7 +100,11 @@ def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar'
   first = original[0,0,0]
   wsz = pywt2array(pywt.wavedec2(crop(first), wavelet=wvlt, mode='periodization'), imsz).shape
   for n in range(0, data.shape[0], interval):
-    p = Process(target=recover, args=(data[n:n+interval], original, pattern, noise_percent, int(n/interval), return_dict, wvlt, mode))
+    if pattern.shape[0] > 1:
+      pattern_sample = pattern[n:(n+interval)]
+    else:
+      pattern_sample = pattern
+    p = Process(target=recover, args=(data[n:n+interval], original, pattern_sample, noise_percent, int(n/interval), return_dict, wvlt, mode))
     jobs.append(p)
     p.start()
   for job in jobs:
@@ -159,7 +166,10 @@ def linear_reconstruction(fourier_file, omega=None):
 def getFiles(args):
   # Get Default file names
   fourier_file = args.fromdir + 'noisy_noise' + str(int(args.noisepercent*100)) + '_n' + str(args.repetitions) + '.npy'
-  mask_file    = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + args.uType + '.npy'
+  if not args.usemultipatterns: 
+    mask_file    = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + args.uType + '.npy'
+  else:
+    mask_file    = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
   orig_file    = args.fromdir + 'imgs_n1.npy'
   rec_file     = args.recdir + 'rec_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy' 
   
@@ -321,6 +331,19 @@ if __name__ == '__main__':
                       required=False,
                       help='Evaluate linear reconstructions',
                       dest='evallinrec')    
+    
+  # useMultiPatterns = False
+  parser.add_argument('-um', '--usemultipatterns',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default=False,
+                      type=bool,
+                      choices=[0, 1],
+                      required=False,
+                      help='whether to use a unique undersamp. pattern for each noise realization',
+                      metavar='',
+                      dest='usemultipatterns')
 
   # save velocities
   parser.add_argument('--savevels',
