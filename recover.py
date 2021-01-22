@@ -33,6 +33,8 @@ def recoverOne(kspace,imsz,eta,omega,wvlt='haar',solver_mode=CS_MODE):
   A   = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=omega, waveletName=wvlt, waveletMode='periodization' )
   yim = A.eval( wim, 1 )
   
+  # each recovery method returns (solution, norm) 
+  # here we're only interested in the solution
   if(solver_mode == OMP_MODE):
     # OMP Recovery
     tol = eta/np.linalg.norm(yim.ravel(),2)
@@ -42,13 +44,10 @@ def recoverOne(kspace,imsz,eta,omega,wvlt='haar',solver_mode=CS_MODE):
   else:
     # CS Recovery
     print('Recovering using CS with eta =', eta)
-    wim =  CSRecovery(eta, yim, A, np.zeros(wsz), disp=1)
-  if isinstance(wim, tuple):
-    wim = wim[0] # for the case where ynrm is less than eta
+    wim =  CSRecovery(eta, yim, A, np.zeros(wsz), disp=1)[0]
   if solver_mode == DEBIAS_MODE:
-    wim =  CSRecoveryDebiasing( yim, A, wim)
-    if isinstance(wim, tuple):
-      wim = wim[0] # for the case where ynrm is less than eta
+    # CS + debias recovery
+    wim =  CSRecoveryDebiasing( yim, A, wim)[0]
   csim = pywt.waverec2(array2pywt( wim ), wavelet=wvlt, mode='periodization')
   return csim
   
@@ -334,15 +333,10 @@ if __name__ == '__main__':
     
   # useMultiPatterns = False
   parser.add_argument('-um', '--usemultipatterns',
-                      action=None,
-                      # nargs='+',
-                      const=None,
+                      action='store_true',
                       default=False,
-                      type=bool,
-                      choices=[0, 1],
                       required=False,
-                      help='whether to use a unique undersamp. pattern for each noise realization',
-                      metavar='',
+                      help='generate a unique undersamp. pattern for each noise realization',
                       dest='usemultipatterns')
 
   # save velocities

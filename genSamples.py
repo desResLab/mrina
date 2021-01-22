@@ -239,15 +239,10 @@ if __name__ == '__main__':
     
     # useMultiPatterns = False
     parser.add_argument('-um', '--usemultipatterns',
-                        action=None,
-                        # nargs='+',
-                        const=None,
+                        action='store_true',
                         default=False,
-                        type=bool,
-                        choices=[0,1],
                         required=False,
-                        help='whether to generate a unique undersamp. pattern for each noise realization',
-                        metavar='',
+                        help='generate a unique undersamp. pattern for each noise realization',
                         dest='usemultipatterns')
 
 
