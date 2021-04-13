@@ -299,7 +299,8 @@ class RootSolverL1NormNoisy():
         else:
             tNear = 1
 
-        xinit = self._xinit[tNear]
+        theta = np.abs(t - self._t[0]) / (np.abs(t - self._t[0]) + np.abs(t - self._t[1]))
+        xinit = theta * self._xinit[0] + (1.0 - theta) * self._xinit[1]
 
         if self.method == 'SoS-L1Ball':
             xopt, _ = MinimizeSumOfSquaresL1Ball(t, y, A, xinit=xinit, L=self.L,
@@ -315,9 +316,26 @@ class RootSolverL1NormNoisy():
                                     dpAbsTol=self.dpAbsTol, dpRelTol=self.dpRelTol,
                                     disp=False, printEvery=self.printEvery,
                                     restart=self.restart)
-        self._t[tNear] = t
-        self._ft[tNear] = la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
-        self._xinit[tNear] = xopt
+        if t > self._t[1]:
+            self._t[0] = self._t[1]
+            self._ft[0] = self._ft[1]
+            self._xinit[0] = self._xinit[1]
+
+            self._t[1] = t
+            self._ft[1] = la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
+            self._xinit[1] = xopt
+        elif t < self._t[0]:
+            self._t[1] = self._t[0]
+            self._ft[1] = self._ft[0]
+            self._xinit[1] = self._xinit[0]
+
+            self._t[0] = t
+            self._ft[0] = la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
+            self._xinit[0] = xopt
+        else:
+            self._t[tNear] = t
+            self._ft[tNear] = la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
+            self._xinit[tNear] = xopt
 
         return la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
 
