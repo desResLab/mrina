@@ -339,8 +339,7 @@ def RecoveryNuclearNormNoisy(eta, y, A,
     return Xopt, la.norm(Xopt.ravel(), 1)
 
 # %%
-# if __name__ == '__main__':
-if True:
+if __name__ == '__main__':
     # Import
     from maps import OperatorFourierLowRank
     
@@ -373,29 +372,4 @@ if True:
     print('         Objective:    {:1.5e}'.format(np.abs(fmin - _fmin)))
     print('         Solution:     {:1.5e}'.format(la.norm((xsol - _xsol).ravel())))
 
-    # # *** EXPERIMENTS FOR MULTIPLE IMAGES AND SUBSAMPLING - L1-NORM
-    # samplingSet = np.where(np.random.uniform(size=imShape + (4,)) < 0.75, True, False)
-    # A = OperatorFourierWaveletX4(imShape, samplingSet=samplingSet, waveletName='db4')
-    # xinit = np.random.normal(size=A.inShape) + 1j * np.random.normal(size=A.inShape)
-    # y = A.eval(xinit)
-    # print('[4 IMAGES - RANDOM UNDERSAMPLING - L1-NORM RECOVERY]')
-    # print('    Input shape:    {:d} x {:d} x {:d}'.format(A.inShape[0], A.inShape[1], A.inShape[2]))
-    # print('    Output shape:   {:d} x {:d}'.format(A.outShape[0], 1))
-    # print('    Operator norm:  {:1.3e}'.format(A.norm()))
-    # # Tests
-    # print('[TEST: MinimizeSumOfSquares]')
-    # xsol, fmin = MinimizeSumOfSquares(y, A, disp=True)
-    # print('[TEST: MinimizeSumOfSquaresL1Ball]')
-    # print('  ---> with no restart...')
-    # xsol, fmin = MinimizeSumOfSquaresL1Ball(0.25, y, A, disp=True, restart=False)
-    # print('  ---> with restart...')
-    # _xsol, _fmin = MinimizeSumOfSquaresL1Ball(0.25, y, A, disp=True, restart=True)
-    # print('  ---> Difference:     {:1.5e}'.format(la.norm((xsol - _xsol).ravel())))
-    # print('[TEST: RecoveryL1Noisy - SoS-L1Ball]')
-    # xsol, fmin = RecoveryL1Noisy(10, y, A, maxItns=1E4, disp=True, printEvery=100, method='SoS-L1Ball')
-    # print('[TEST: RecoveryL1Noisy - BPDN]')
-    # _xsol, _fmin = RecoveryL1Noisy(10, y, A, maxItns=1E4, disp=True, printEvery=100, method='BPDN')
-    # print('  ---> Difference:')
-    # print('         Objective:    {:1.5e}'.format(np.abs(fmin - _fmin)))
-    # print('         Solution:     {:1.5e}'.format(la.norm((xsol - _xsol).ravel())))
 # %%
