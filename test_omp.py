@@ -1,9 +1,7 @@
-import sys
 import numpy as np
-sys.path.append('../../')
-from CSRecoverySuite import OMPRecovery
-from CSRecoverySuite import OperatorLinear
-from lsqr            import lsQR
+from CSRecoverySuite import OperatorLinear,lsQR,OMPRecovery
+# from solver_omp import OperatorLinear,lsQR,OMPRecovery
+import time
 
 def linearTest():
   print('')
@@ -61,15 +59,18 @@ def ompTest():
   ompSol = OMPRecovery(A, b, progressInt=1)[0]
 
   # Print the original and reconstructed solution
+  print()
+  print("{:<15s} {:<15s}".format('True Sol.','Recovered Sol.'))
   for loopA in range(n):
-    print(x[loopA],ompSol[loopA])
+    print('{:<15.3f} {:<15.3f}'.format(x[loopA],ompSol[loopA]))
 
 # MAIN
 if __name__ == '__main__':
 
+  start_time = time.time()
   # Perform Simple Linear Test
   linearTest()
   # Perform Test for OMP with linear operators
   ompTest()
-
-
+  print()
+  print("Total time: %s s" % (time.time() - start_time))

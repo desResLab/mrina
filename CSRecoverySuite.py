@@ -175,6 +175,7 @@ class OperatorLinear(genericOperator):
       return self.__mul_scalar(x)
     if isinstance(x, np.ndarray):
       return self.__mul_vector(x)
+    print(x)
     raise ValueError('Cannot multiply')
 
   def colRestrict(self,idxSet=None):

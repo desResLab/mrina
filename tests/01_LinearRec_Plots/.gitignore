@@ -1,7 +1,0 @@
-# Byte-compiled files
-__pycache__/
-*.pdf
-*.png
-*.jpg
-*.npy
-.DS_Store

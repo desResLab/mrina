@@ -1,6 +1,12 @@
 # Byte-compiled files
 __pycache__/
+build/
 *.pyc
 *.npy
+*.c
+*.so
+*.html
 # Test files
 _test*
+
+
