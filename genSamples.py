@@ -78,7 +78,7 @@ def add_noise(kspace, noise_percent, num_realizations, num_components=4):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
-def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noisePercent,printlevel):
+def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noisePercent,useMultiPatterns, printlevel):
     
     #p: percent not sampled, uType: bernoulli, vardengauss, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create
@@ -105,8 +105,16 @@ def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noise
     # Generate undersampling mask
     if(printlevel>0):
         print('Generate and save sampling mask...')  
-    mask = generateSamplingMask(kspace.shape[3:], uVal, saType=uType, num_patterns=1, seed=uSeed)
+    
+
     undfile = tosavedir + 'undersamplpattern_p' + str(int(uVal*100)) + uType # + '_seed' + str(uSeed)       
+    if useMultiPatterns:
+      numPatterns = numRealizations
+      undfile = undfile + "_n" + str(numPatterns)
+    else:  
+      numPatterns = 1
+
+    mask = generateSamplingMask(kspace.shape[3:], uVal, saType=uType, num_patterns=numPatterns, seed=uSeed)
     np.save(undfile, mask)
 
     # Add noise to image
@@ -228,8 +236,17 @@ if __name__ == '__main__':
                         help='noise percent based the average two-norm of the k-space image',
                         metavar='',
                         dest='noisepercent')
+    
+    # useMultiPatterns = False
+    parser.add_argument('-um', '--usemultipatterns',
+                        action='store_true',
+                        default=False,
+                        required=False,
+                        help='generate a unique undersamp. pattern for each noise realization',
+                        dest='usemultipatterns')
 
-    # noisePercent    = 0.0
+
+    # printlevel = 0
     parser.add_argument('-p', '--printlevel',
                         action=None,
                         # nargs='+',
@@ -255,6 +272,7 @@ if __name__ == '__main__':
                args.uVal,
                args.seed,
                args.noisepercent,
+               args.usemultipatterns,
                args.printlevel)
 
     if(args.printlevel > 0):

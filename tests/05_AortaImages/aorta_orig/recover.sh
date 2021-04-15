@@ -8,4 +8,5 @@ python3 ../../../recover.py --noisepercent 0.0 \
                             --maskdir ./ \
                             --method 0 \
                             --wavelet 'haar' \
+                            --usemultipatterns \
 
