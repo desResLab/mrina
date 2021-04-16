@@ -47,7 +47,7 @@ def MinimizeSumOfSquares(y, A, xinit=None,
                             maxItns=1E4, 
                             dxAbsTol=1E-6, dxRelTol=1E-9,
                             gradAbsTol=1E-5, gradRelTol=1E-8,
-                            disp=False, printEvery=10):
+                            disp=False, printEvery=100):
     # Find Lipschitz constant of the gradient
     L = 2.05 * A.norm() ** 2
     # Initialize variables
@@ -118,7 +118,8 @@ def MinimizeSumOfSquaresL1Ball(t, y, A, xinit=None, L=None,
         print(' Initial residual:    {:1.6e}'.format(rpxNrm))
     while not stop:
         itn = itn + 1
-        xp = project_l1_ball(z - gx/L, t)
+        gz = 2.0 * A.adjoint(A.eval(z, 1) - y)
+        xp = project_l1_ball(z - gz/L, t)
         sp = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * s ** 2))
         zp = xp + ((s - 1.0)/sp) * (xp - x)
 
@@ -129,7 +130,7 @@ def MinimizeSumOfSquaresL1Ball(t, y, A, xinit=None, L=None,
         dfx = fxp - fx
         dxNrm = la.norm((xp - x).ravel())
 
-        if restart and dfx > 0:
+        if restart and dfx > 1E-12:
             z = x
             s = 1.0
             dfx = np.inf
@@ -166,6 +167,7 @@ def MinimizeBPDN(t, y, A, xinit=None, L=None,
         x = np.zeros(A.inShape, dtype=np.complex)
     else:
         x = project_l1_ball(xinit, t)
+    z = x
     if L is None:
         L = 2.05 * A.norm() ** 2
     rx = A.eval(x) - y
@@ -179,7 +181,6 @@ def MinimizeBPDN(t, y, A, xinit=None, L=None,
     dfx = -np.inf
     itn = 0
     s = 1.0
-    z = x
     # Optimization loop
     stop = False
     if disp:
@@ -188,7 +189,8 @@ def MinimizeBPDN(t, y, A, xinit=None, L=None,
         print(' Initial residual:    {:1.6e}'.format(rpxNrm))
     while not stop:
         itn = itn + 1
-        xp = sft(z - gx/L, t/L)
+        gz = 2.0 * A.adjoint(A.eval(z, 1) - y)
+        xp = sft(z - gz/L, t/L)
         sp = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * s ** 2))
         zp = xp + ((s - 1.0)/sp) * (xp - x)
 
@@ -199,7 +201,7 @@ def MinimizeBPDN(t, y, A, xinit=None, L=None,
         dfx = fxp - fx
         dxNrm = la.norm((xp - x).ravel())
 
-        if restart and dfx > 0:
+        if restart and dfx > 1E-12:
             z = x
             s = 1.0
             dfx = np.inf
@@ -231,11 +233,12 @@ class RootSolverL1NormNoisy():
                     dpAbsTol=1E-5, dpRelTol=1E-8,
                     disp=False, printEvery=10,
                     restart=True,
-                    method='SoS-L1Ball'):
+                    method='SoS-L1Ball', disp_method=False):
         # Problem parameters
         self.eta = eta
         self.y = y
         self.A = A
+        self.disp_method = disp_method
 
         self.ANrm = A.norm()
         self.L = 2.05 * self.ANrm ** 2
@@ -245,27 +248,24 @@ class RootSolverL1NormNoisy():
         self._t = [ None, None ]
         self._ft = [ None, None ]
         self._xinit = [ None, None ]
+
+        _xopt, _ = MinimizeSumOfSquares(y, A, 
+                                            maxItns=maxItns, 
+                                            dxAbsTol=dxAbsTol, dxRelTol=dxRelTol,
+                                            gradAbsTol=dpAbsTol, gradRelTol=dpRelTol,
+                                            disp=False)
+        _ropt = A.eval(_xopt) - y
         if method == 'SoS-L1Ball':
             # Lower bound
             self._t[0] = 0.0
             self._ft[0] = la.norm(y.ravel()) - eta
             self._xinit[0] = np.zeros(A.inShape, dtype=np.complex)
             # Upper bound
-            _xopt, _ = MinimizeSumOfSquares(y, A, 
-                                                maxItns=maxItns, 
-                                                dxAbsTol=dxAbsTol, dxRelTol=dxRelTol,
-                                                gradAbsTol=dpAbsTol, gradRelTol=dpRelTol,
-                                                disp=False)
             self._t[1] = la.norm(_xopt.ravel(), 1)
-            self._ft[1] = la.norm((A.eval(_xopt) - y).ravel(), 2) - eta
+            self._ft[1] = la.norm(_ropt.ravel(), 2) - eta
             self._xinit[1] = _xopt
         elif method == 'BPDN':
             # Lower bound
-            _xopt, _fopt = MinimizeSumOfSquares(y, A, 
-                                                maxItns=maxItns, 
-                                                dxAbsTol=dxAbsTol, dxRelTol=dxRelTol,
-                                                gradAbsTol=dpAbsTol, gradRelTol=dpRelTol,
-                                                disp=False)            
             self._t[0] = 0.0
             self._ft[0] = -eta
             self._xinit[0] = _xopt
@@ -303,26 +303,29 @@ class RootSolverL1NormNoisy():
         xinit = theta * self._xinit[0] + (1.0 - theta) * self._xinit[1]
 
         if self.method == 'SoS-L1Ball':
-            xopt, _ = MinimizeSumOfSquaresL1Ball(t, y, A, xinit=xinit, L=self.L,
+            xopt, _ = MinimizeSumOfSquaresL1Ball(t, self.y, self.A, xinit=xinit, L=self.L,
                                                     maxItns=self.maxItns, 
                                                     dxAbsTol=self.dxAbsTol, dxRelTol=self.dxRelTol,
                                                     dpAbsTol=self.dpAbsTol, dpRelTol=self.dpRelTol,
-                                                    disp=False, printEvery=self.printEvery,
+                                                    disp=self.disp_method, printEvery=self.printEvery,
                                                     restart=self.restart)
         elif self.method == 'BPDN':
-            xopt, _ = MinimizeBPDN(t, y, A, xinit=xinit, L=self.L,
+            xopt, _ = MinimizeBPDN(t, self.y, self.A, xinit=xinit, L=self.L,
                                     maxItns=self.maxItns, 
                                     dxAbsTol=self.dxAbsTol, dxRelTol=self.dxRelTol,
                                     dpAbsTol=self.dpAbsTol, dpRelTol=self.dpRelTol,
-                                    disp=False, printEvery=self.printEvery,
+                                    disp=self.disp_method, printEvery=self.printEvery,
                                     restart=self.restart)
+
+        ft = la.norm((self.A.eval(xopt) - self.y).ravel(), 2) - self.eta
+
         if t > self._t[1]:
             self._t[0] = self._t[1]
             self._ft[0] = self._ft[1]
             self._xinit[0] = self._xinit[1]
 
             self._t[1] = t
-            self._ft[1] = la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
+            self._ft[1] = ft
             self._xinit[1] = xopt
         elif t < self._t[0]:
             self._t[1] = self._t[0]
@@ -330,21 +333,21 @@ class RootSolverL1NormNoisy():
             self._xinit[1] = self._xinit[0]
 
             self._t[0] = t
-            self._ft[0] = la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
+            self._ft[0] = ft
             self._xinit[0] = xopt
         else:
             self._t[tNear] = t
-            self._ft[tNear] = la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
+            self._ft[tNear] = ft
             self._xinit[tNear] = xopt
 
-        return la.norm((A.eval(xopt) - y).ravel(), 2) - self.eta
+        return ft
 
 def RecoveryL1NormNoisy(eta, y, A, 
                     maxItns=1E4, 
                     dxAbsTol=1E-4, dxRelTol=1E-6,
                     dpAbsTol=1E-5, dpRelTol=1E-8,
                     disp=False, printEvery=100,
-                    method='BPDN'):
+                    method='BPDN', disp_method=False):
 
     # Create solver object
     T = RootSolverL1NormNoisy(eta, y, A,
@@ -352,7 +355,7 @@ def RecoveryL1NormNoisy(eta, y, A,
                             dxAbsTol=dxAbsTol, dxRelTol=dxRelTol,
                             dpAbsTol=dpAbsTol, dpRelTol=dpRelTol,
                             disp=disp, printEvery=printEvery,
-                            restart=True, method=method)
+                            restart=True, method=method, disp_method=disp_method)
     if disp:
         print('[RECOVERY: L1-NOISY]' )
         print(' Method:          {:s}'.format(method) )
