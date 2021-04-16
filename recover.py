@@ -11,6 +11,9 @@ from genSamples import getKspace,getVenc
 from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing,OMPRecovery, Operator4dFlow, pywt2array, array2pywt, crop
 import argparse
 
+from maps import OperatorWaveletToFourier
+from solver_l1_norm import RecoveryL1NormNoisy, MinimizeSumOfSquares
+
 home = os.getenv('HOME')
 
 CS_MODE     = 0
@@ -27,11 +30,13 @@ def get_eta(im, imNrm, noise_percent, m):
     eta = 1E-3
   return eta
 
-def recoverOne(kspace,imsz,eta,omega,wvlt='haar',solver_mode=CS_MODE):
-  wim = pywt2array( pywt.wavedec2(fft.ifft2(kspace), wavelet=wvlt, mode='periodization'), imsz)
-  wsz = wim.shape
-  A   = Operator4dFlow( imsz=imsz, insz=wsz, samplingSet=omega, waveletName=wvlt, waveletMode='periodization' )
-  yim = A.eval( wim, 1 )
+def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE):
+  A = OperatorWaveletToFourier(imsz, samplingSet=omega, waveletName=wvlt)
+  
+  wim = pywt.wavedec2(fft.ifft2(kspace, norm='ortho'), wavelet=wvlt, mode='zero')
+  wim = pywt.coeffs_to_array(wim)[0]
+
+  yim = A.eval(wim, 1)
   
   # each recovery method returns (solution, norm) 
   # here we're only interested in the solution
@@ -44,11 +49,17 @@ def recoverOne(kspace,imsz,eta,omega,wvlt='haar',solver_mode=CS_MODE):
   else:
     # CS Recovery
     print('Recovering using CS with eta =', eta)
-    wim =  CSRecovery(eta, yim, A, np.zeros(wsz), disp=1)[0]
+    wim =  RecoveryL1NormNoisy(eta, yim, A, disp=True)
+
+  if isinstance(wim, tuple):
+    wim = wim[0] # for the case where ynrm is less than eta
   if solver_mode == DEBIAS_MODE:
-    # CS + debias recovery
-    wim =  CSRecoveryDebiasing( yim, A, wim)[0]
-  csim = pywt.waverec2(array2pywt( wim ), wavelet=wvlt, mode='periodization')
+    Adeb = A.colRestrict(np.where(np.abs(wim) > 1E-3, wim, 0.0)[0])
+    wim =  MinimizeSumOfSquares(yim, Adeb)
+    if isinstance(wim, tuple):
+      wim = wim[0] # for the case where ynrm is less than eta
+  csim = A.getImageFromWavelet(wim)
+  
   return csim
   
 def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wvlt='haar', solver_mode=CS_MODE):    
