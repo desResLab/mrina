@@ -64,6 +64,7 @@ class OperatorWaveletToFourier(genericOperator):
         self.wavShape = getWaveletTransformShape(imShape, waveletName, waveletLevel)
         self.wavSlices = getWaveletTransformSlices(imShape, waveletName, waveletLevel)
         self.isTransposed = isTransposed
+        self._norm = None
         # Test if the image shape produces a consistent reconstruction
         # using pyWavelets or not
         xrecShape = getWaveletReconstructionShape(imShape, waveletName, waveletLevel)
@@ -157,6 +158,8 @@ class OperatorWaveletToFourier(genericOperator):
         return self.eval(x, mode=2)
 
     def norm(self, maxItns=1E3, absTol=1E-6, relTol=1E-9):
+        if self._norm is not None:
+            return self._norm
         # Initialize variables
         x = np.random.normal(size=self.inShape) + 1j * np.random.normal(size=self.inShape)
         x = x / la.norm(x)
@@ -247,6 +250,7 @@ class OperatorWaveletToFourierX4(genericOperator):
         self.isTransposed = isTransposed
         self.samplingSet = samplingSet
         self.basisSet = basisSet
+        self._norm = None
         # Generate array of maps
         if samplingSet is None and basisSet is None:
             self.map = [ OperatorWaveletToFourier(imShape=imShape, samplingSet=None, basisSet=None, isTransposed=isTransposed, waveletName=waveletName, waveletLevel=waveletLevel) for I in range(4) ]
@@ -344,6 +348,8 @@ class OperatorWaveletToFourierX4(genericOperator):
         return self.eval(x, mode=2)
 
     def norm(self, maxItns=1E3, absTol=1E-6, relTol=1E-9):
+        if self._norm is not None:
+            return self._norm        
         # Initialize variables
         x = np.random.normal(size=self._inShape) + 1j * np.random.normal(size=self._inShape)
         x = x / la.norm(x)
