@@ -77,7 +77,8 @@ def MinimizeSumOfSquaresNuclearBall(t, y, A, Xinit=None, L=None,
         print(' Initial residual:    {:1.6e}'.format(rpXNrm))
     while not stop:
         itn = itn + 1
-        Xp = project_nuclear_ball(Z - gX/L, t)
+        gZ = 2.0 * A.adjoint(A.eval(Z) - y)
+        Xp = project_nuclear_ball(Z - gZ/L, t)
         sp = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * s ** 2))
         Zp = Xp + ((s - 1.0)/sp) * (Xp - X)
 
@@ -149,7 +150,8 @@ def MinimizeNNDN(t, y, A, Xinit=None, L=None,
         print(' Initial residual:    {:1.6e}'.format(rpXNrm))
     while not stop:
         itn = itn + 1
-        Xp = svt(Z - gX/L, t/L)
+        gZ = 2.0 * A.adjoint(A.eval(Z) - y)
+        Xp = svt(Z - gZ/L, t/L)
         sp = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * s ** 2))
         Zp = Xp + ((s - 1.0)/sp) * (Xp - X)
 
@@ -190,7 +192,7 @@ class RootSolverNuclearNormNoisy():
                     dpAbsTol=1E-5, dpRelTol=1E-8,
                     disp=False, printEvery=10,
                     restart=True,
-                    method='SoS-NucBall'):
+                    method='NNDN'):
         # Problem parameters
         self.eta = eta
         self.y = y
