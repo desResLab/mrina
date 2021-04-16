@@ -478,7 +478,7 @@ def CSRecovery(eta, y, A, x0, disp=0, printEvery=0):
         print('      Error level:        {:5.3E}'.format(eta) )
         print('      l2-norm of y:       {:5.3E}'.format(yNrm) )
     if( yNrm <= eta ):
-        return 0, np.zeros( x0.shape )
+        return np.zeros( x0.shape ), 0
         print('  Summary')
         print('      Optimal value:      {:5.3E}'.format(yNrm) )
         print('      Elapsed time:       {:8.4f} seconds'.format(0.0) )
@@ -694,7 +694,7 @@ def generateSamplingMask(imsz, p, saType='bernoulli', num_patterns=1, seed=12343
         sys.exit(-1)
       mask[k] = np.ma.make_mask(indices)
       # Return the complement of the mask
-      return mask
+    return mask
 
 ################################
 #### OMP RECOVERY   ############
