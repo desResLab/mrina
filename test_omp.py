@@ -1,6 +1,11 @@
+import cv2
 import numpy as np
-from CSRecoverySuite import OperatorLinear,lsQR,OMPRecovery
-# from solver_omp import OperatorLinear,lsQR,OMPRecovery
+import pywt
+import matplotlib.pyplot as plt
+# Import from suite
+from maps import OperatorLinear, OperatorWaveletToFourier
+from solver_omp import lsQR,OMPRecovery
+from CSRecoverySuite import generateSamplingMask
 import time
 
 def linearTest():
@@ -60,17 +65,82 @@ def ompTest():
 
   # Print the original and reconstructed solution
   print()
-  print("{:<15s} {:<15s}".format('True Sol.','Recovered Sol.'))
+  print("{:<6s} {:<15s} {:<15s}".format('Index','True Sol.','Recovered Sol.'))
   for loopA in range(n):
-    print('{:<15.3f} {:<15.3f}'.format(x[loopA],ompSol[loopA]))
+    if(x[loopA] > 0.0):
+      print('{:<6d} {:<15.3f} {:<15.3f}'.format(loopA,x[loopA],ompSol[loopA]))
+
+def imageTest():
+
+  print('')
+  print('--- OMP RECONSTRUCTION ON IMAGE')
+  print('')
+
+  # Set parameters
+  wType = 'haar'  
+  waveMode = 'zero'
+  size_ratio = 0.5
+  uratio = 0.75
+
+  # Open Image
+  im = cv2.imread('verification/city.png', cv2.IMREAD_GRAYSCALE)
+
+  # Rescale Image
+  im = cv2.resize(im,    # original image
+                  (0,0), # set fx and fy, not the final size
+                  fx=size_ratio, 
+                  fy=size_ratio, 
+                  interpolation=cv2.INTER_NEAREST)
+
+
+  # Compute Wavelet Coefficient
+  wim = pywt.coeffs_to_array(pywt.wavedec2(im, wavelet=wType, mode=waveMode))[0]
+
+  # Generate undersampling mask
+  omega = generateSamplingMask(im.shape, uratio, 'vardengauss')
+
+  # Create WtF operator
+  A = OperatorWaveletToFourier(im.shape, samplingSet=omega[0], waveletName=wType)
+
+  # Generate undersampled measurements
+  yim = A.eval(wim, 1)
+
+  print('[SINGLE IMAGE - RANDOM UNDERSAMPLING - L1-NORM RECOVERY]')
+  print('    Input shape:    {:d} x {:d}'.format(A.inShape[0], A.inShape[1]))
+  print('    Output shape:   {:d} x {:d}'.format(A.outShape[0], 1))
+  print('    Operator norm:  {:1.3e}'.format(A.norm()))
+
+  # Recover Image
+  wimrec_noisy_cpx, _ = OMPRecovery(A, yim)
+  imrec_noisy_cpx = A.getImageFromWavelet(wimrec_noisy_cpx)
+  imrec_noisy = np.abs(imrec_noisy_cpx)
+
+  # Compare true vs reconstructed image
+  print('Reconstruction error')
+  print('   Absolute ', np.linalg.norm((im - imrec_noisy_cpx).ravel()))
+  print('   Relative ', np.linalg.norm((im - imrec_noisy_cpx).ravel())/np.linalg.norm(im.ravel()))
+
+  # Plot Comparison
+  plt.figure(figsize=(6,3))
+  plt.subplot(1,2,1)
+  plt.imshow(im, cmap='gray')
+  plt.title('true')
+  plt.axis('off')
+  plt.subplot(1,2,2)
+  plt.imshow(imrec_noisy, cmap='gray')
+  plt.title('OMP recovery')
+  plt.axis('off')
+  plt.show()
 
 # MAIN
 if __name__ == '__main__':
 
   start_time = time.time()
   # Perform Simple Linear Test
-  linearTest()
+  # linearTest()
   # Perform Test for OMP with linear operators
-  ompTest()
+  # ompTest()
+  # Perform Test on an image reconstruction using a Fourier-Wavelet operator
+  imageTest()
   print()
   print("Total time: %s s" % (time.time() - start_time))

@@ -3,7 +3,6 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libc.math cimport sqrt
-from CSRecoverySuite import OperatorLinear
 
 ################################
 #### OMP RECOVERY   ############
@@ -97,9 +96,9 @@ class lsQR(object):
         self.iterates = []
         return
 
-    @cython.boundscheck(False)
-    @cython.wraparound(False)
-    @cython.nonecheck(False)
+    # @cython.boundscheck(False)
+    # @cython.wraparound(False)
+    # @cython.nonecheck(False)
     def solve(self, b, long itnlim=0, double damp=0.0, M=None, N=None, double atol=1.0e-9,
                 double btol=1.0e-9, double conlim=1.0e+8, show=False, wantvar=False, **kwargs):
         """
@@ -160,12 +159,16 @@ class lsQR(object):
         A = self.A
         cdef int m
         cdef int n
-        m, n = A.shape
+        m, n = A.shape        
+
+        # print('---')
+        # print('Operator Size in lsQR Solve: m=%5d n=%5d' % (m,n))
+        # print('---')
 
         if itnlim == 0: itnlim = 3*n
 
         if wantvar:
-            var = np.zeros(n,1)
+            var = np.zeros(n,1,dtype=np.complex)
         else:
             var = None
 
@@ -217,8 +220,11 @@ class lsQR(object):
         if beta > 0:
             u /= beta
             if M is not None: Mu /= beta
-
-            Nv = A.T * u
+            ###
+            tmp = np.zeros(A.imShape,dtype=np.complex)
+            tmp[A.samplingSet] = u[:]
+            Nv = A.adjoint(tmp)[A.basisSet]
+            ###
             if N is not None:
                 v = N(Nv)
             else:
@@ -274,8 +280,12 @@ class lsQR(object):
             #   next  beta, u, alpha, v.  These satisfy the relations
             #               beta*M*u  =  A*v   -  alpha*M*u,
             #              alpha*N*v  =  A'*u  -   beta*N*v.
-
-            Mu = A*v - alpha*Mu
+            
+            ###
+            tmp = np.zeros(A.wavShape, dtype=np.complex)
+            tmp[A.basisSet] = v[:]
+            Mu = A.eval(tmp)[A.samplingSet] - alpha*Mu
+            ###
             if M is not None:
                 u = M(Mu)
             else:
@@ -287,7 +297,11 @@ class lsQR(object):
                 u /= beta
                 if M is not None: Mu /= beta
                 Anorm = normof4(Anorm, alpha, beta, damp)
-                Nv = A.T*u - beta*Nv
+                ###
+                tmp = np.zeros(A.imShape,dtype=np.complex)
+                tmp[A.samplingSet] = u[:]
+                Nv = A.adjoint(tmp)[A.basisSet] - beta*Nv
+                ###
                 if N is not None:
                     v = N(Nv)
                 else:
@@ -490,7 +504,7 @@ class lsQR(object):
         self.var = var
         return
 
-def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=10, maxItns=None):
+def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, maxItns=10, ompMethod='stomp',ts_factor=2.0):
 
   #gives the OMP solution x given the matrix A and vector b and error 
   #parameter, Tr, to find a stopping point
@@ -500,12 +514,20 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=10, ma
   if maxItns is None:
     maxItns=m
 
+  # print('---')
+  # print('Operator Size in OMPRecovery: m=%5d n=%5d' % (A.shape[0],A.shape[1]))
+  # print('Operator Input Set: d1=%5d d2=%5d' % (A.inShape[0],A.inShape[1]))
+  # print('Operator Output Set: d1=%5d d2=%5d' % (A.outShape[0],A.outShape[1]))
+  # print('---')
+
   # Create a new vector for the residual starting from b
-  curr_res = b.copy()
+  vec_b = b[A.samplingSet]
+  curr_res = vec_b.copy()
   cdef double iniResNorm = 0.0
   iniResNorm = np.linalg.norm(curr_res, ord=2)
 
   # Intialize Empty index set
+  # indexSet = [loopA for loopA in range(2500,4096,1)]
   indexSet = []
   notIndexSet = [loopA for loopA in range(n)]
 
@@ -514,7 +536,10 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=10, ma
   
   # Print Header
   if(showProgress):
-    print('%10s %15s' % ('OMP Iter.','Res. Norm'))
+    if(ompMethod == 'omp'):
+      print('%10s %15s' % ('OMP Iter.','Res. Norm'))
+    elif(ompMethod == 'stomp'):
+      print('%10s %15s %15s %8s' % ('OMP Iter.','Res. Norm','Sel. threshold','Supp.'))
 
   # OMP Main Loop 
   Finished = False
@@ -529,28 +554,51 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=10, ma
     # Start with the Norm of b
     minepsilon = np.linalg.norm(b, ord=2)**2
 
-    # Get index with maximum correlation
-    selectedCol = notIndexSet[np.argmax(np.absolute(A.T * curr_res)[notIndexSet])]
-              
-    # Add index to index set
-    indexSet.append(selectedCol)
+    tmp = np.zeros(A.imShape,dtype=np.complex)
+    tmp[A.samplingSet] = curr_res[:]
 
-    # Remove from not index set
-    notIndexSet.remove(selectedCol)
+    if(ompMethod == 'omp'):
+
+      # Get index with maximum correlation
+      # Select a single column       
+      selectedCol = notIndexSet[np.argmax(np.absolute(A.adjoint(tmp).flatten())[notIndexSet])]              
+      # Add index to index set
+      indexSet.append(selectedCol)
+      indexSet.sort()
+      # Remove from not index set
+      notIndexSet.remove(selectedCol)
+      notIndexSet.sort()
+
+    elif(ompMethod == 'stomp'):
+
+      thr = np.linalg.norm(curr_res)/np.sqrt(A.samplingSet.sum())*ts_factor
+      # print("Threshold: ",thr)
+      matchCoeffs = np.absolute(A.adjoint(tmp).flatten())
+      addIdx = np.argwhere(matchCoeffs > thr)[:,0].tolist()
+      # print(addIdx)
+
+      for loopA in range(len(addIdx)):
+        if not(addIdx[loopA] in indexSet):
+          indexSet.append(addIdx[loopA])
+          notIndexSet.remove(addIdx[loopA])
+      indexSet.sort()
+      notIndexSet.sort()
+
+    else:
+      raise ValueError('ERROR: Invalid OMP algorithm.')
 
     # Initialize lsQR
     B = A.colRestrict(indexSet)
+    # print(B)
+    # exit(-1)
     lsqr = lsQR(B)
     
     # Solve least Squares    
-    # lsqr.solve(b, show=True)
-    # print('LSQR...',end=' '); sys.stdout.flush()
-    lsqr.solve(b)
-    # print('OK'); sys.stdout.flush()
+    lsqr.solve(vec_b)
     ompSol[indexSet] = lsqr.x
 
-    # Update residual    
-    curr_res = b - A * ompSol
+    # Update residual
+    curr_res = vec_b - A.eval(ompSol.reshape(A.wavShape))[A.samplingSet]
 
     # Compute relative residual norm
     resNorm = np.linalg.norm(curr_res, ord = 2)/iniResNorm
@@ -558,11 +606,15 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=10, ma
     # Print Message
     if(showProgress):
       if(count % progressInt == 0)and(count >= progressInt):
-        print('%10d %15e' % (count,resNorm))
+
+        if(ompMethod == 'omp'):
+          print('%10d %15e' % (count,resNorm))
+        elif(ompMethod == 'stomp'):
+          print('%10d %15e %15.1f %8d' % (count,resNorm,thr,len(indexSet)))
     
     # Check finished
     if (resNorm < tol or count > maxItns):
       Finished = True
     
   # Return Result
-  return ompSol.reshape(A.input_size()), np.linalg.norm(ompSol.ravel(),1)
+  return ompSol.reshape(A.inShape), np.linalg.norm(ompSol.ravel(),1)

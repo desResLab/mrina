@@ -8,11 +8,13 @@ import scipy.misc
 from scipy.stats import norm
 from multiprocessing import Process, cpu_count, Manager
 from genSamples import getKspace,getVenc
-from CSRecoverySuite import CSRecovery,CSRecoveryDebiasing,OMPRecovery, Operator4dFlow, pywt2array, array2pywt, crop
-import argparse
-
+from CSRecoverySuite import CSRecovery, CSRecoveryDebiasing, Operator4dFlow, pywt2array, array2pywt, crop
+# Import Solvers
 from maps import OperatorWaveletToFourier
 from solver_l1_norm import RecoveryL1NormNoisy, MinimizeSumOfSquares
+from solver_omp import OMPRecovery
+
+import argparse
 
 home = os.getenv('HOME')
 
@@ -43,8 +45,8 @@ def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE):
   if(solver_mode == OMP_MODE):
     # OMP Recovery
     tol = eta/np.linalg.norm(yim.ravel(),2)
-    print('Recovering using OMP with tol =', tol)
-    wim = OMPRecovery(A, yim, tol=tol, showProgress=True, progressInt=250, maxItns=2000)[0]
+    print('Recovering using OMP with tol = %8.3e' % (tol))
+    wim = OMPRecovery(A, yim, tol=tol, showProgress=True, progressInt=10, maxItns=500)[0]
 
   else:
     # CS Recovery

@@ -52,7 +52,7 @@ def MinimizeSumOfSquares(y, A, xinit=None,
     L = 2.05 * A.norm() ** 2
     # Initialize variables
     if xinit is None:
-        x = np.zeros(A.inShape, dtype=np.complex)
+        x = np.zeros(A.wavShape, dtype=np.complex)
     else:
         x = xinit
     xNrm = la.norm(x.ravel(), 2)

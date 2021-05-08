@@ -245,7 +245,6 @@ if __name__ == '__main__':
                         help='generate a unique undersamp. pattern for each noise realization',
                         dest='usemultipatterns')
 
-
     # printlevel = 0
     parser.add_argument('-p', '--printlevel',
                         action=None,

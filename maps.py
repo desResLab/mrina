@@ -4,6 +4,76 @@ import numpy.fft as fft
 import numpy.linalg as la
 import pywt
 
+# Generic Operator
+class genericOperator(object):
+    pass
+
+# Implementation of a simple linear operator
+class OperatorLinear(genericOperator):
+  def __init__(self, mat, samplingSet=None, basisSet=None):
+    self.__mat = mat
+    self.__shape = mat.shape
+    # Define input and output shape for post-multiplication
+    self.inShape = self.__mat.shape[1]
+    self.outShape = self.__mat.shape[0]
+    # Assign Sampling and Basis Sets
+    self.samplingSet = samplingSet
+    self.basisSet = basisSet
+
+  def eval(self, x, mode=1):
+    if(mode==1):
+      
+      # Direct map
+
+      if(self.basisSet is not None):
+        tmp = np.dot(self.__mat[:,self.basisSet],x[self.basisSet])
+      else: 
+        tmp = np.dot(self.__mat,x)
+
+      if(self.samplingSet is not None):
+        return tmp[self.samplingSet]
+      else:
+        return tmp
+
+    elif(mode==2):
+      
+      # Adjoint map
+
+      if(self.samplingSet is not None):
+        tmp = np.dot(np.conjugate(self.__mat.T[:,self.samplingSet]),x[self.samplingSet])
+      else:
+        tmp = np.dot(np.conjugate(self.__mat.T),x)
+
+      if(self.basisSet is not None):
+        return tmp[self.basisSet]
+      else: 
+        return tmp
+
+  def adjoint(self, x):
+      return self.eval(x, mode=2)
+
+  @property
+  def shape(self):
+    "The shape of the operator."
+    return self.__shape
+
+  def input_size(self):
+    return self.__shape[1]
+
+  @property
+  def T(self):
+    "Transposed of the operator."
+    return OperatorLinear(np.conjugate(self.__mat.T))
+
+  def __matmul__(self, x):
+    return np.dot(self.__mat,x)
+
+  def colRestrict(self,idxSet=None):
+    return OperatorLinear(self.__mat[:,idxSet])
+
+  def norm(self):
+    return np.linalg.norm(self.__mat,2)
+
 # %%
 # Find the name of the wavelet associated to the adjoint of
 # the wavelet transform
@@ -42,9 +112,6 @@ def getWaveletReconstructionShape(imShape, waveletName, waveletLevel=None):
 
     return pywt.waverec2(Wx, wavelet=waveletName, mode='zero').shape
 
-class genericOperator(object):
-    pass
-
 # OperatorWaveletToFourier
 #   This implements the linear map that takes as inputs
 #   the wavelet coefficients of a complex image, and 
@@ -52,7 +119,7 @@ class genericOperator(object):
 #   map supports restricting the support of the wavelet
 #   coefficients, and subsampling the Fourier coefficients
 class OperatorWaveletToFourier(genericOperator):
-    def __init__(self, imShape, samplingSet=None, basisSet=None, isTransposed=False, waveletName=None, waveletLevel=None):                   
+    def __init__(self, imShape, samplingSet=None, basisSet=None, isTransposed=False, waveletName=None, waveletLevel=None):
         # Check for boundary case
         if waveletName == 'None':
             waveletName = None
@@ -72,11 +139,32 @@ class OperatorWaveletToFourier(genericOperator):
                              xrecShape[1] != imShape[1] ]
         # Validate shapes
         if samplingSet is not None:
+
+            # The sampling set should represent a 2D complex image
+            if isinstance(samplingSet, list):
+                samplingSet = np.array(samplingSet)
+            if(samplingSet.ndim < 2):
+                tmp = np.zeros(self.imShape,dtype=bool).flatten()
+                tmp[samplingSet] = True
+                samplingSet = tmp.reshape(self.imShape)
+            # Check if the size is correct
             if samplingSet.shape[0] != self.imShape[0] or samplingSet.shape[1] != self.imShape[1]:
                 raise ValueError('The sampling array does not match the shape of the image.')
+
         if basisSet is not None:
+
+            # If the basisSet is given in terms of an indexset and not a binary mask, convert it to a binary mask
+            # Basis Set should refer to a 2D Wavelet coefficient representation
+            if isinstance(basisSet, list):
+                basisSet = np.array(basisSet)
+            if(basisSet.ndim < 2):
+                tmp = np.zeros(self.wavShape,dtype=bool).flatten()
+                tmp[basisSet] = True
+                basisSet = tmp.reshape(self.wavShape)
+            # Check if the size is correct
             if basisSet.shape[0] != self.wavShape[0] or basisSet.shape[1] != self.wavShape[1]:
                 raise ValueError('The basis indices do not match the shape of the wavelet transform.') 
+
         # Restriction of the support of the wavelet coefficients
         self.basisSet = basisSet
         if basisSet is None:
@@ -89,7 +177,7 @@ class OperatorWaveletToFourier(genericOperator):
             samplingShape = self.imShape
         else:
             samplingShape = (np.count_nonzero(samplingSet),)
-        # Input shape
+        # Input and output shapes
         if isTransposed:
             self.inShape = samplingShape
             self.outShape = basisShape
@@ -99,6 +187,7 @@ class OperatorWaveletToFourier(genericOperator):
 
     # The method eval is the only one that should use the self.isTransposed flag.
     def eval(self, x, mode=1):
+        # print("shape of x: ",x.shape)
         # Verify if the instance is transposed
         if self.isTransposed:
             if mode == 1:
@@ -107,20 +196,28 @@ class OperatorWaveletToFourier(genericOperator):
                 mode = 1
         # Evaluate forward map
         if mode == 1:
+
+            # Check input dimension
+            if(x.shape != self.wavShape):
+              raise ValueError('ERROR: Input for direct application of the operator has not the correct size.')
+
             # Verify if the support of the wavelet transform is restricted
             if self.waveletName is None:
                 if self.basisSet is None:
                     _x = x
                 else:
-                    _x = np.zeros(self.imShape, dtype=np.complex)
-                    _x[self.basisSet] = x[:]
+                    _x = np.zeros(self.wavShape, dtype=np.complex)
+                    _x[self.basisSet] = x[self.basisSet]
             else:
                 if self.basisSet is None:
                     _w = pywt.array_to_coeffs(x, self.wavSlices, output_format='wavedec2')
                 else:
-                    _w = np.zeros(self.wavShape, dtype=np.complex)
-                    _w[self.basisSet] = x[:]
-                    _w = pywt.array_to_coeffs(_w, self.wavSlices, output_format='wavedec2')
+                    # _w = np.zeros(self.wavShape, dtype=np.complex)
+                    # print(self.basisSet)
+                    # exit(-1)
+                    # _w[self.basisSet] = x[:]
+                    # _w = pywt.array_to_coeffs(_w, self.wavSlices, output_format='wavedec2')
+                    _w = pywt.array_to_coeffs(x, self.wavSlices, output_format='wavedec2')
                 # Compute image from wavelet coefficients
                 _x = pywt.waverec2(_w, wavelet=self.waveletName, mode='zero')
             # Verify if reconstruction is consistent
@@ -133,15 +230,25 @@ class OperatorWaveletToFourier(genericOperator):
                 return fft.fft2(_x, norm='ortho')
             else:
                 _f = fft.fft2(_x, norm='ortho')
-                return _f[self.samplingSet]
+                _f[np.logical_not(self.samplingSet)] = 0.0 # Set the Fourier coefficients outside the set to zero
+                # return _f[self.samplingSet]
+                return _f
+
         # Evaluate adjoint
         if mode == 2:
+
+            # Check input dimension
+            if(x.shape != self.imShape):
+              raise ValueError('ERROR: Input for inverse application of the operator has not the correct size.')
+
             # Verify if there is subsampling of the Fourier coefficients
             if self.samplingSet is None:
                 _im = fft.ifft2(x, norm='ortho')
             else:
                 _f = np.zeros(self.imShape, dtype=np.complex)
-                _f[self.samplingSet] = x[:]
+                _f[self.samplingSet] = x[self.samplingSet]
+                # _f = x
+                # _f[np.logical_not(self.samplingSet)] = 0.0
                 _im = fft.ifft2(_f, norm='ortho')
             if self.waveletName is None:
                 _w = _im
@@ -152,7 +259,9 @@ class OperatorWaveletToFourier(genericOperator):
             if self.basisSet is None:
                 return _w
             else:
-                return _w[self.basisSet]
+                _w[np.logical_not(self.basisSet)] = 0.0
+                # return _w[self.basisSet]
+                return _w
 
     def adjoint(self, x):
         return self.eval(x, mode=2)
@@ -161,7 +270,7 @@ class OperatorWaveletToFourier(genericOperator):
         if self._norm is not None:
             return self._norm
         # Initialize variables
-        x = np.random.normal(size=self.inShape) + 1j * np.random.normal(size=self.inShape)
+        x = np.random.normal(size=self.wavShape) + 1j * np.random.normal(size=self.wavShape)
         x = x / la.norm(x)
         s = 0
         ds = np.inf
@@ -182,6 +291,8 @@ class OperatorWaveletToFourier(genericOperator):
         return s
 
     def getImageFromWavelet(self, x):
+        if(x.shape != self.wavShape):
+            raise ValueError('ERROR: Invalid input size for getImageFromWavelet.')
         if self.waveletName is None:
             if self.basisSet is None:
                 _x = x
@@ -192,8 +303,8 @@ class OperatorWaveletToFourier(genericOperator):
             if self.basisSet is None:
                 _w = pywt.array_to_coeffs(x, self.wavSlices, output_format='wavedec2')
             else:
-                _w = np.zeros(self.wavShape, dtype=np.complex)
-                _w[self.basisSet] = x[:]
+                _w = np.zeros(self.wavShape, dtype=np.complex)                
+                _w[self.basisSet] = x[self.basisSet]
                 _w = pywt.array_to_coeffs(_w, self.wavSlices, output_format='wavedec2')
             # Compute image from wavelet coefficients
             _x = pywt.waverec2(_w, wavelet=self.waveletName, mode='zero')
@@ -231,6 +342,32 @@ class OperatorWaveletToFourier(genericOperator):
     def colRestrict(self, basisSet=None):
         # Instantiate operator restricted to some entries
         return OperatorWaveletToFourier(imShape=self.imShape, samplingSet=self.samplingSet, basisSet=basisSet, isTransposed=self.isTransposed, waveletName=self.waveletName, waveletLevel=self.waveletLevel)
+
+    # Print Operator
+    def __str__(self):
+        res  = '--- Wavelet to Fourier Operator\n'
+        res += 'Shape of the original image: %d x %d\n' % (self.imShape[0],self.imShape[1])
+        res += 'Wavelet name: %s\n' % (self.waveletName)
+        res += 'Wavelet adjoint name: %s\n' % (self.waveletNameAdj)
+        if self.waveletLevel is not None:
+            res += 'Wavelet level: %d\n' % (self.waveletLevel)
+        else:
+            res += 'Wavelet level is not defined\n'
+        res += 'Shape of the wavelet transform: %d x %d\n' % (self.wavShape[0],self.wavShape[1])
+        res += 'Is operator transposed: ' + str(self.isTransposed) + '\n'
+        # Sampling and basis sets
+        if self.samplingSet is not None:
+            res += 'Sampling set has size: %d x %d\n' % (self.samplingSet.shape[0],self.samplingSet.shape[1])
+        else:
+            res += 'Sampling set is not defined\n'
+        if self.basisSet is not None:
+            res += 'Basis set has size: %d x %d\n' % (self.basisSet.shape[0],self.basisSet.shape[1])
+        else:
+            res += 'Basis set is not defined\n'
+        # Input and output shapes
+        res += 'Input shape is: ' + str(self.inShape) + '\n'
+        res += 'Output shape is: ' + str(self.outShape) + '\n'
+        return res
 
 # OperatorWaveletToFourierX4
 #   This implements the linear map that takes as inputs

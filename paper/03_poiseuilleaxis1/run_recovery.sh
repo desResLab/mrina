@@ -1,9 +1,16 @@
 #!/bin/bash
+
+# Limit numpy to a single thread
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+
+# Set Parameters 
 KSPACEDIR="./"
 RECDIR="./"
 PATTERNDIR="./"
-WAVELETTYPE="db4"
-PROCESSES=2
+WAVELETTYPE="haar"
+PROCESSES=1
 REALIZATIONS=2
 SOLVERMODE=2 #0 cs, 1 csdebias, 2 omp
 
