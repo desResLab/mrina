@@ -22,6 +22,10 @@ CS_MODE     = 0
 DEBIAS_MODE = 1
 OMP_MODE    = 2
 
+def_omp_mode = 'stomp'
+def_omp_iter = 10
+def_omp_ts   = 2.0
+
 def get_eta(im, imNrm, noise_percent, m):
   avgnorm = imNrm/math.sqrt(im.size)
   stdev   = noise_percent * avgnorm
@@ -32,7 +36,7 @@ def get_eta(im, imNrm, noise_percent, m):
     eta = 1E-3
   return eta
 
-def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE):
+def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts):
   A = OperatorWaveletToFourier(imsz, samplingSet=omega, waveletName=wvlt)
   
   wim = pywt.wavedec2(fft.ifft2(kspace, norm='ortho'), wavelet=wvlt, mode='zero')
@@ -47,7 +51,8 @@ def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE):
     # OMP Recovery
     tol = eta/np.linalg.norm(yim.ravel(),2)
     print('Recovering using OMP with tol = %8.3e' % (tol))
-    wim = OMPRecovery(A, yim, tol=tol)[0]
+
+    wim = OMPRecovery(A, yim, tol=tol, ompMethod=omp_mode, maxItns=omp_iter, ts_factor=omp_ts)[0]
 
   else:
     # CS Recovery
@@ -68,7 +73,7 @@ def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE):
   
   return csim
   
-def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wvlt='haar', solver_mode=CS_MODE):    
+def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wvlt='haar', solver_mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts):    
   imsz = crop(noisy[0,0,0]).shape
   cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
   print('Pattern shape: ', pattern.shape)
@@ -86,13 +91,13 @@ def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wv
         im = crop(original[0,k,j])
         imNrm=np.linalg.norm(im.ravel(), 2)
         eta = get_eta(im, imNrm, noise_percent, imsz[0])
-        cs[n,k,j] = recoverOne(crop(noisy[n,k,j]), imsz, eta, omega, wvlt, solver_mode)
+        cs[n,k,j] = recoverOne(crop(noisy[n,k,j]), imsz, eta, omega, wvlt, solver_mode, omp_mode, omp_iter, omp_ts)
         print('Recovered! Repetition: %d, Image: %d, Third: %d' % (n,k,j))
 
   return_dict[processnum] = cs
   return cs
 
-def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar', mode=CS_MODE):
+def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar', mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts):
 	
   # Load data
   if isinstance(fourier_file,str):
@@ -120,7 +125,7 @@ def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar'
       pattern_sample = pattern[n:(n+interval)]
     else:
       pattern_sample = pattern
-    p = Process(target=recover, args=(data[n:n+interval], original, pattern_sample, noise_percent, int(n/interval), return_dict, wvlt, mode))
+    p = Process(target=recover, args=(data[n:n+interval], original, pattern_sample, noise_percent, int(n/interval), return_dict, wvlt, mode, omp_mode, omp_iter, omp_ts))
     jobs.append(p)
     p.start()
   for job in jobs:
@@ -288,7 +293,7 @@ if __name__ == '__main__':
                       metavar='',
                       dest='fromdir')
 
-    # recdir         = '\.'
+  # recdir         = '\.'
   parser.add_argument('-d', '--recdir',
                       action=None,
                       # nargs='+',
@@ -327,6 +332,44 @@ if __name__ == '__main__':
                       metavar='',
                       dest='method')
 
+  # Type of OMP solver
+  parser.add_argument('--ompmode',
+                      action=None,
+                      # nargs='*',
+                      const=None,
+                      default='stomp',
+                      type=str,
+                      choices=['stomp','omp'],
+                      required=False,
+                      help='Greedy reconstruction method, either omp or stomp',
+                      metavar='',
+                      dest='ompmode')
+
+  # omp threshold factor
+  parser.add_argument('--ompts',
+                      action=None,
+                      const=None,
+                      default=2.0,
+                      type=float,
+                      choices=None,
+                      required=False,
+                      help='threshold factor in stomp',
+                      metavar='',
+                      dest='ompts')
+  
+  # Maximum number of iterations for OMP/STOMP
+  parser.add_argument('--ompiter',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default=10,
+                      type=int,
+                      choices=None,
+                      required=False,
+                      help='maximum number of iterations for OMP/STOMP',
+                      metavar='',
+                      dest='ompiter')
+
   # wavelet type
   parser.add_argument('-w', '--wavelet',
                       action=None,
@@ -334,7 +377,7 @@ if __name__ == '__main__':
                       const=None,
                       default='haar',
                       type=str,
-                      choices=['haar','db4'],
+                      choices=['haar','db4','db8'],
                       required=False,
                       help='wavelet family',
                       metavar='',
@@ -348,7 +391,7 @@ if __name__ == '__main__':
                       help='Evaluate linear reconstructions',
                       dest='evallinrec')    
     
-  # useMultiPatterns = False
+  # use unique undesampling pattern for each reconstruction (false) or change every time
   parser.add_argument('-um', '--usemultipatterns',
                       action='store_true',
                       default=False,
@@ -381,7 +424,16 @@ if __name__ == '__main__':
       sys.exit(-1)
 
     print('Computing reconstructions...')
-    recovered = recoverAll(fourier_file, orig_file, umask, args.noisepercent, c=args.numprocesses, wvlt=args.wavelet, mode=args.method)
+    recovered = recoverAll(fourier_file, 
+                           orig_file, 
+                           umask, 
+                           args.noisepercent, 
+                           c=args.numprocesses, 
+                           wvlt=args.wavelet, 
+                           mode=args.method,
+                           omp_mode=args.ompmode, 
+                           omp_iter=args.ompiter, 
+                           omp_ts=args.ompts)
     print('Saving reconstruction to file: ',rec_file)
     np.save(rec_file, recovered)
   else:
