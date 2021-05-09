@@ -50,7 +50,7 @@ def ompTest():
   n = 200
   p = 10
 
-  np.random.seed(1344)
+  np.random.seed(1345)
   aMat = np.random.randn(m,n) + 1j * np.random.randn(m,n)
   x = np.zeros(n,dtype=np.complex)
   index_set = np.random.randint(0, n, size=p)
@@ -61,13 +61,13 @@ def ompTest():
   A = OperatorLinear(aMat)
 
   # Solve with OMP
-  ompSol = OMPRecovery(A, b, progressInt=1)[0]
+  ompSol = OMPRecovery(A, b, tol=1E-12, progressInt=1, ompMethod='omp')[0]
 
   # Print the original and reconstructed solution
   print()
   print("{:<6s} {:<15s} {:<15s}".format('Index','True Sol.','Recovered Sol.'))
   for loopA in range(n):
-    if(x[loopA] > 0.0):
+    if(ompSol[loopA] > 0.0):
       print('{:<6d} {:<15.3f} {:<15.3f}'.format(loopA,x[loopA],ompSol[loopA]))
 
 def imageTest():
@@ -91,7 +91,6 @@ def imageTest():
                   fx=size_ratio, 
                   fy=size_ratio, 
                   interpolation=cv2.INTER_NEAREST)
-
 
   # Compute Wavelet Coefficient
   wim = pywt.coeffs_to_array(pywt.wavedec2(im, wavelet=wType, mode=waveMode))[0]
@@ -137,9 +136,9 @@ if __name__ == '__main__':
 
   start_time = time.time()
   # Perform Simple Linear Test
-  # linearTest()
+  linearTest()
   # Perform Test for OMP with linear operators
-  # ompTest()
+  ompTest()
   # Perform Test on an image reconstruction using a Fourier-Wavelet operator
   imageTest()
   print()

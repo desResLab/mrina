@@ -14,7 +14,7 @@ def getVenc(vel):
     # less than 1/2: let it be equal to 1/3
     # Shouldn'd be max*1.5????
     # CHECK THIS !!!
-    venc = mx*3
+    venc = mx*1.5
     return venc
 
 def getKspace(sample, venc, magnitudes=None, referencephase=None):

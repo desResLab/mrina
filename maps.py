@@ -13,12 +13,28 @@ class OperatorLinear(genericOperator):
   def __init__(self, mat, samplingSet=None, basisSet=None):
     self.__mat = mat
     self.__shape = mat.shape
+
     # Define input and output shape for post-multiplication
     self.inShape = self.__mat.shape[1]
     self.outShape = self.__mat.shape[0]
-    # Assign Sampling and Basis Sets
-    self.samplingSet = samplingSet
-    self.basisSet = basisSet
+
+    # Define input and output shape for post-multiplication
+    self.wavShape = self.__mat.shape[1]
+    self.imShape = self.__mat.shape[0]
+
+    # Assign sampling set
+    if isinstance(samplingSet, list):
+      samplingSet = np.array(samplingSet)
+    tmp = np.zeros(self.outShape,dtype=bool)
+    tmp[samplingSet] = True
+    self.samplingSet = tmp
+
+    # Assign basis set
+    if isinstance(basisSet, list):
+      basisSet = np.array(basisSet)
+    tmp = np.zeros(self.inShape,dtype=bool)
+    tmp[basisSet] = True
+    self.basisSet = tmp
 
   def eval(self, x, mode=1):
     if(mode==1):
@@ -171,7 +187,7 @@ class OperatorWaveletToFourier(genericOperator):
             basisShape = self.wavShape
         else:
             basisShape = (np.count_nonzero(basisSet),)
-        # Saubsampling of Fourier coefficients
+        # Subsampling of Fourier coefficients
         self.samplingSet = samplingSet
         if samplingSet is None:
             samplingShape = self.imShape
@@ -212,11 +228,8 @@ class OperatorWaveletToFourier(genericOperator):
                 if self.basisSet is None:
                     _w = pywt.array_to_coeffs(x, self.wavSlices, output_format='wavedec2')
                 else:
-                    # _w = np.zeros(self.wavShape, dtype=np.complex)
-                    # print(self.basisSet)
-                    # exit(-1)
-                    # _w[self.basisSet] = x[:]
-                    # _w = pywt.array_to_coeffs(_w, self.wavSlices, output_format='wavedec2')
+                    # Remove the wavelet coefficients not in the basis set
+                    x[np.logical_not(self.basisSet)] = 0.0                    
                     _w = pywt.array_to_coeffs(x, self.wavSlices, output_format='wavedec2')
                 # Compute image from wavelet coefficients
                 _x = pywt.waverec2(_w, wavelet=self.waveletName, mode='zero')
@@ -303,9 +316,9 @@ class OperatorWaveletToFourier(genericOperator):
             if self.basisSet is None:
                 _w = pywt.array_to_coeffs(x, self.wavSlices, output_format='wavedec2')
             else:
-                _w = np.zeros(self.wavShape, dtype=np.complex)                
-                _w[self.basisSet] = x[self.basisSet]
-                _w = pywt.array_to_coeffs(_w, self.wavSlices, output_format='wavedec2')
+                # Set to zero wavelet coefficients not in the basis set 
+                x[np.logical_not(self.basisSet)] = 0.0
+                _w = pywt.array_to_coeffs(x, self.wavSlices, output_format='wavedec2')
             # Compute image from wavelet coefficients
             _x = pywt.waverec2(_w, wavelet=self.waveletName, mode='zero')
         # Verify if reconstruction is consistent
@@ -317,11 +330,10 @@ class OperatorWaveletToFourier(genericOperator):
 
     def getImageFromFourier(self, y):
         if self.samplingSet is None:
-            _im = fft.ifft2(x, norm='ortho')
+            _im = fft.ifft2(y, norm='ortho')
         else:
-            _f = np.zeros(self.imShape, dtype=np.complex)
-            _f[self.samplingSet] = x[:]
-            _im = fft.ifft2(_f, norm='ortho')
+            y[np.logical_not(self.samplingSet)] = 0.0
+            _im = fft.ifft2(y, norm='ortho')
 
     @property
     def shape(self):

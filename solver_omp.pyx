@@ -511,14 +511,10 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
   cdef long m = 0
   cdef long n = 0
   m,n = A.shape
+
+  # Set the maximum number of iterations as per omp
   if maxItns is None:
     maxItns=m
-
-  # print('---')
-  # print('Operator Size in OMPRecovery: m=%5d n=%5d' % (A.shape[0],A.shape[1]))
-  # print('Operator Input Set: d1=%5d d2=%5d' % (A.inShape[0],A.inShape[1]))
-  # print('Operator Output Set: d1=%5d d2=%5d' % (A.outShape[0],A.outShape[1]))
-  # print('---')
 
   # Create a new vector for the residual starting from b
   vec_b = b[A.samplingSet]
@@ -570,17 +566,16 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
       notIndexSet.sort()
 
     elif(ompMethod == 'stomp'):
-
+      
+      # Set threshold as per D.L. Donoho et al. 2012 paper 
       thr = np.linalg.norm(curr_res)/np.sqrt(A.samplingSet.sum())*ts_factor
-      # print("Threshold: ",thr)
+      
       matchCoeffs = np.absolute(A.adjoint(tmp).flatten())
-      addIdx = np.argwhere(matchCoeffs > thr)[:,0].tolist()
-      # print(addIdx)
-
-      for loopA in range(len(addIdx)):
-        if not(addIdx[loopA] in indexSet):
-          indexSet.append(addIdx[loopA])
-          notIndexSet.remove(addIdx[loopA])
+      for loopA in range(len(matchCoeffs)):
+        if(matchCoeffs[loopA] >= thr):
+          if not(loopA in indexSet):
+            indexSet.append(loopA)
+            notIndexSet.remove(loopA)
       indexSet.sort()
       notIndexSet.sort()
 
@@ -589,11 +584,9 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
 
     # Initialize lsQR
     B = A.colRestrict(indexSet)
-    # print(B)
-    # exit(-1)
-    lsqr = lsQR(B)
     
     # Solve least Squares    
+    lsqr = lsQR(B)    
     lsqr.solve(vec_b)
     ompSol[indexSet] = lsqr.x
 
@@ -617,4 +610,4 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
       Finished = True
     
   # Return Result
-  return ompSol.reshape(A.inShape), np.linalg.norm(ompSol.ravel(),1)
+  return ompSol.reshape(A.wavShape), np.linalg.norm(ompSol.ravel(),1)

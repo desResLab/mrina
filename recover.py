@@ -43,10 +43,11 @@ def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE):
   # each recovery method returns (solution, norm) 
   # here we're only interested in the solution
   if(solver_mode == OMP_MODE):
+    
     # OMP Recovery
     tol = eta/np.linalg.norm(yim.ravel(),2)
     print('Recovering using OMP with tol = %8.3e' % (tol))
-    wim = OMPRecovery(A, yim, tol=tol, showProgress=True, progressInt=10, maxItns=500)[0]
+    wim = OMPRecovery(A, yim, tol=tol)[0]
 
   else:
     # CS Recovery
@@ -55,8 +56,11 @@ def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE):
 
   if isinstance(wim, tuple):
     wim = wim[0] # for the case where ynrm is less than eta
-  if solver_mode == DEBIAS_MODE:
-    Adeb = A.colRestrict(np.where(np.abs(wim) > 1E-3, wim, 0.0)[0])
+  
+  # CS-DEBIAS Recovery
+  if(solver_mode == DEBIAS_MODE):
+    support = (np.abs(wim.flatten()) > 1E-3)
+    Adeb = A.colRestrict(basisSet=support)
     wim =  MinimizeSumOfSquares(yim, Adeb)
     if isinstance(wim, tuple):
       wim = wim[0] # for the case where ynrm is less than eta
