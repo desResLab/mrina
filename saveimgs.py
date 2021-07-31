@@ -1,6 +1,7 @@
 import sys,os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import cv2
 sys.path.append('../')
 from recover import recover_vel, linear_reconstruction
@@ -53,7 +54,7 @@ def save_mask(maskFile, outputFile):
   plt.savefig(outputFile, bbox_inches='tight', pad_inches=0)
   plt.close()
 
-def save_rec(infilename, venc, p, samptype, noise_percent, prefix, outputdir, singleChannel=False, relative=False):
+def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, prefix, outputdir, singleChannel=False, relative=False):
   
   recovered = np.load(infilename)
 
@@ -68,8 +69,8 @@ def save_rec(infilename, venc, p, samptype, noise_percent, prefix, outputdir, si
   # Only the first reconstructed Sample
   for n in range(1): #range(imgs.shape[0]):
     for k in range(imgs.shape[1]):
-      # Custom mage Scaling for Comparison
-      if(False)
+      # Custom image Scaling for Comparison
+      if(False):
         if(k==0):
           myvmin = 0.0
           myvmax = 184.2392788833003
@@ -88,9 +89,14 @@ def save_rec(infilename, venc, p, samptype, noise_percent, prefix, outputdir, si
 
       plt.imshow(imgs[n,k,0], cmap='gray',vmin=myvmin,vmax=myvmax)
       plt.axis('off')
-      plt.savefig(outputdir + prefix + 'rec_p' + str(int(p*100)) + samptype + '_noise' + str(int(noise_percent*100)) + '_n' + str(n) + '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
+      plt.savefig(outputdir + prefix + 'rec_p' + str(int(p*100)) + samptype + \
+                                      '_noise' + str(int(noise_percent*100)) + \
+                                          '_n' + str(n) + \
+                                          '_w' + str(wavetype) + \
+                                          '_a' + str(algtype) + \
+                                          '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
 
-def save_rec_noise(recnpyFile, orig_file, venc, p, samptype, noise_percent, prefix, outputdir, singleChannel=False, use_truth=False, ext='.png'):
+def save_rec_noise(recnpyFile, orig_file, venc, p, samptype, noise_percent, wavetype, algtype, prefix, outputdir, singleChannel=False, use_truth=False, ext='.png'):
   
   # Read File with CS Reconstructions 
   recovered = np.load(recnpyFile)
@@ -137,7 +143,12 @@ def save_rec_noise(recnpyFile, orig_file, venc, p, samptype, noise_percent, pref
     for k in range(imgs.shape[1]):
       plt.imshow(imgs[n,k,0], cmap='seismic', vmin=-2, vmax=2)
       plt.axis('off')
-      plt.savefig(outputdir + prefix + desc + 'recerror' + '_p' + str(int(p*100)) + samptype + '_noise' + str(int(noise_percent*100)) +  '_n' + str(n) + '_k' + str(k) + ext, bbox_inches='tight', pad_inches=0)
+      plt.savefig(outputdir + prefix + desc + 'recerror' + '_p' + str(int(p*100)) + samptype + \
+                                                       '_noise' + str(int(noise_percent*100)) + \
+                                                           '_n' + str(n) + \
+                                                           '_w' + str(wavetype) + \
+                                                           '_a' + str(algtype) + \
+                                                           '_k' + str(k) + ext, bbox_inches='tight', pad_inches=0)
       
 def save_noisy(noise_percent, dir, recdir, venc, num_samples, relative=False, ext='.png'):
     noisy = np.load(dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy')
@@ -199,18 +210,24 @@ def save_all(args,relativeScale=False):
           maskoutFile = args.outputdir + prefstr + 'undersamplpattern_p' + str(int(p*100)) + samptype + '_n' + str(args.numsamples) + '.png'
           if(args.printlevel > 0):
             print('Saving undersampling mask: ',maskFile)
-          save_mask(maskFile, maskoutFile) 
+          save_mask(maskFile, maskoutFile)           
 
       for noise_percent in [0.0, 0.01, 0.05, 0.1, 0.3]:
-        if(args.saverec):
-          recnpy = args.recdir + 'rec_noise'+str(int(noise_percent*100))+ '_p' + str(int(p*100)) + samptype + '_n' + str(args.numsamples) + '.npy'
-          if(os.path.exists(recnpy)):
-            if(args.printlevel > 0):
-              print('Saving image reconstructions: ',recnpy)
-            save_rec(recnpy, venc, p, samptype, noise_percent, prefstr, args.outputdir, singleChannel=args.singlechannel,relative=relativeScale)
-            if(args.printlevel > 0):
-              print('Saving image reconstruction errors')
-            save_rec_noise(recnpy, trueFileName, venc, p, samptype, noise_percent, prefstr, args.outputdir, use_truth=args.usetrueasref, singleChannel=args.singlechannel)
+        for wavetype in ['HAAR','DB8']:
+          for algtype in ['CS','CSDEB','OMP']:
+            if(args.saverec):
+              recnpy = args.recdir + 'rec_noise' + str(int(noise_percent*100)) + \
+                                            '_p' + str(int(p*100)) + samptype + \
+                                            '_n' + str(args.numsamples) + \
+                                            '_w' + str(wavetype) + \
+                                            '_a' + str(algtype) + '.npy'
+              if(os.path.exists(recnpy)):
+                if(args.printlevel > 0):
+                  print('Saving image reconstructions: ',recnpy)
+                save_rec(recnpy, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.outputdir, singleChannel=args.singlechannel,relative=relativeScale)
+                if(args.printlevel > 0):
+                  print('Saving image reconstruction errors')
+                save_rec_noise(recnpy, trueFileName, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.outputdir, use_truth=args.usetrueasref, singleChannel=args.singlechannel)
   
 # MAIN 
 if __name__ == '__main__':

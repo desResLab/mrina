@@ -27,11 +27,20 @@ def get_method_string(method):
   if(method == 'cs'):
     return 'CS'
   elif(method == 'csdebias'):
-    return 'CS+Deb.'
+    return 'CSDEB'
   elif(method == 'omp'):
     return 'OMP'    
   else:
-    print('ERROR: Invalid mask type')
+    print('ERROR: Invalid recovery method')
+    sys.exit(-1)
+
+def get_wavelet_string(wavelet):
+  if(wavelet == 'haar'):
+    return 'HAAR'
+  elif(wavelet == 'db8'):
+    return 'DB8'
+  else:
+    print('ERROR: Invalid wavelet type')
     sys.exit(-1)
 
 def toSlice(idx):

@@ -8,7 +8,7 @@ import numpy.fft as fft
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter, ScalarFormatter
 from CSRecoverySuite import crop, isvalidcrop, extractFluidMask
-from CSRecoverySuite import get_umask_string, get_method_string
+from CSRecoverySuite import get_umask_string, get_method_string, get_wavelet_string
 import argparse
 
 home = os.getenv('HOME')
@@ -185,17 +185,25 @@ def generateBarPlot(lgd,xlabel,ylabel,
 
   return fig
 
-def get_files(dir, maskdir, noise, uval, utype, method, numsamples):
+def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples):
   # Get Image File Names
   orig_file        = dir + 'imgs_n1.npy'
   fourier_file     = dir + 'noisy_noise' + str(int(noise*100)) + '_n' + str(numsamples) + '.npy'
-  mask_file        = maskdir + 'undersamplpattern_p' + str(int(uval*100)) + utype + '_n' + str(numsamples) + '.npy'
-  recovered_file   = dir + method + '/' + 'rec_noise' + str(int(noise*100)) + '_p' + str(int(uval*100)) + utype + '_n' + str(numsamples) + '.npy'
-  
+  mask_file        = maskdir + 'undersamplpattern_p' + str(int(uval*100)) + utype + '.npy'
+  recovered_file   = dir + get_method_string(method) + '/' + 'rec_noise' + str(int(noise*100)) + \
+                                          '_p' + str(int(uval*100)) + utype + \
+                                          '_n' + str(numsamples) + \
+                                          '_w' + str(get_wavelet_string(wavelet)) + \
+                                          '_a' + str(get_method_string(method)) + '.npy'
+
   # Check if files exist and open the images
   # Original image
   if(os.path.exists(orig_file)):
-    orig = np.load(orig_file).astype(np.complex)
+    try:
+      orig = np.load(orig_file).astype(np.complex)
+    except:
+      print('ERROR: Cannot read original image - ',orig)
+      sys.exit(-1)
     if(not(isvalidcrop(orig))):
       print('ERROR: Invalid original image file.')
       sys.exit(-1)
@@ -205,31 +213,43 @@ def get_files(dir, maskdir, noise, uval, utype, method, numsamples):
 
   # Noisy Fourier Image
   if(os.path.exists(fourier_file)):
-    fourier = np.load(fourier_file).astype(np.complex)
+    try:
+      fourier = np.load(fourier_file).astype(np.complex)
+    except:
+      print('ERROR: Cannot read Fourier file - ',fourier_file)
+      sys.exit(-1)
   else:
     print('ERROR: file for noisy Fourier image not found: ',fourier_file)
     sys.exit(-1)
 
   # Undersampling Mask
   if(os.path.exists(mask_file)):
-    mask = np.load(mask_file).astype(bool)
+    try:
+      mask = np.load(mask_file).astype(bool)
+    except:
+      print('ERROR: Cannot read binary mask - ',mask_file)
+      sys.exit(-1)
   else:
     print('ERROR: undersampling mask file not found: ',mask_file)
     sys.exit(-1)
 
   # File with reconstructed image
   if(os.path.exists(recovered_file)):
-    recovered = np.load(recovered_file).astype(np.complex)
+    try:
+      recovered = np.load(recovered_file).astype(np.complex)
+    except:
+      print('ERROR: Cannot read reconstructedd image - ',recovered_file)
+      sys.exit(-1)
   else:
     print('ERROR: file for reconstructed images not found: ',recovered_file)
     sys.exit(-1)
 
   return fourier, orig, mask, recovered
 
-def get_complex(channel, dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec):
+def get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec):
     
   # Get all files
-  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, method, numsamples)
+  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples)
 
   # Compute linear reconstructions if requested
   if(addlinearrec):
@@ -247,10 +267,10 @@ def get_complex(channel, dir, maskdir, noise, uval, utype, method, numsamples, a
     # Return complex images only for the requested channel
     return recovered[:,channel,:,:,:], orig[:,channel,:,:,:], None
 
-def get_final(channel, dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec):
+def get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec):
 
   # Get all files
-  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, method, numsamples)
+  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples)
 
   # Get velocity encoding
   venc_file = dir + 'venc_n1.npy'
@@ -319,13 +339,13 @@ def get_mse_cmx(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
       res = res/np.mean(np.absolute(refimg[0,0])**2)
   return res
 
-def get_error(channel, dir, maskdir, noise, uval, utype, method, numsamples, usecompleximgs, usetrueimg, addlinearrec, useFluidMask):
+def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usecompleximgs, usetrueimg, addlinearrec, useFluidMask):
     
   # Get CS reconstructions, linear reconstruction and original image
   if usecompleximgs:
-    csimgs, orig, linimgs = get_complex(channel, dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec)
+    csimgs, orig, linimgs = get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec)
   else:
-    csimgs, orig, linimgs = get_final(channel, dir, maskdir, noise, uval, utype, method, numsamples, addlinearrec) 
+    csimgs, orig, linimgs = get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec) 
 
   # If use fluid mask, then compute the mask using the original image density+velocities
   fluidMask = None
@@ -391,6 +411,7 @@ def plot_pdiff(args):
   bl_uval   = args.uval[0]
   bl_utype  = args.utype[0]
   bl_method = args.method[0]
+  bl_wavelet = args.wavelet[0]
 
   if(args.singlechannel):
     numChannels = 1
@@ -410,7 +431,7 @@ def plot_pdiff(args):
 
     for i,uval in enumerate(sorted(args.uval)): 
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, bl_noise, uval, bl_utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, bl_noise, uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
       
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -458,6 +479,7 @@ def plot_noisediff(args):
   bl_uval   = args.uval[0]
   bl_utype  = args.utype[0]
   bl_method = args.method[0]
+  bl_wavelet = args.wavelet[0]
 
   if(args.singlechannel):
     numChannels = 1
@@ -477,7 +499,7 @@ def plot_noisediff(args):
 
     for i,noise in enumerate(sorted(args.noise)):
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, noise, bl_uval, bl_utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, noise, bl_uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
 
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -526,6 +548,7 @@ def plot_maskdiff(args):
   bl_uval   = args.uval[0]
   bl_utype  = args.utype[0]
   bl_method = args.method[0]
+  bl_wavelet = args.wavelet[0]
 
   if(args.singlechannel):
     numChannels = 1
@@ -545,7 +568,7 @@ def plot_maskdiff(args):
 
     for i,utype in enumerate(args.utype):
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, utype, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
       
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -594,6 +617,7 @@ def plot_methoddiff(args):
   bl_uval   = args.uval[0]
   bl_utype  = args.utype[0]
   bl_method = args.method[0]
+  bl_wavelet = args.wavelet[0]
 
   if(args.singlechannel):
     numChannels = 1
@@ -613,7 +637,7 @@ def plot_methoddiff(args):
 
     for i,method in enumerate(args.method):
 
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, bl_wavelet, method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
         
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -651,6 +675,76 @@ def plot_methoddiff(args):
     plt.savefig(fname,dpi=200)
     print("MSE Image saved: " + fname)
     plt.close(fig)
+
+# Difference in the wavelet frame
+def plot_waveletdiff(args):
+
+  print('Plotting MSE for various wavelet frames...')
+    
+  # Set the baseline conditions
+  # These are the first element of the lists
+  bl_noise   = args.noise[0]
+  bl_uval    = args.uval[0]
+  bl_utype   = args.utype[0]
+  bl_method  = args.method[0]
+  bl_wavelet = args.wavelet[0]
+
+  if(args.singlechannel):
+    numChannels = 1
+  else:
+    numChannels = 4
+
+  for ch in range(numChannels):
+
+    # CS    
+    allplt_mag = [None]*len(args.wavelet)
+    allplt_ang = [None]*len(args.wavelet)
+    allplt_cmx = [None]*len(args.wavelet)
+    # Linear
+    allplt_mag_lin = [None]*len(args.wavelet)
+    allplt_ang_lin = [None]*len(args.wavelet)
+    allplt_cmx_lin = [None]*len(args.wavelet)
+
+    for i,wavelet in enumerate(args.wavelet):
+
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+        
+      allplt_mag[i] = mse_mag_cs
+      allplt_ang[i] = mse_ang_cs
+      allplt_cmx[i] = mse_cmx_cs
+
+      if(args.addlinearrec):
+        allplt_mag_lin[i] = mse_mag_lin
+        allplt_ang_lin[i] = mse_ang_lin
+        allplt_cmx_lin[i] = mse_cmx_lin
+
+      if(args.usetrueimg):
+        msg = 'tru'
+        ylabel = 'MSE - w.r.t. true image'
+      else:
+        msg = 'avg'
+        ylabel = 'MSE - w.r.t. average image'
+
+      if(args.usecompleximgs):
+        msg += '_cmx'
+      else:
+        msg += '_vel'
+
+    # Generate Plots
+    lgd = []
+    for loopA in range(len(args.wavelet)):
+      lgd.append(get_wavelet_string(args.wavelet[loopA]))
+
+    # fig = generateViolinPlot(lgd,'Reconstruction method',allplt,allplt_lin)    
+    fig = generateBarPlot(lgd,'Wavelet Frame',ylabel,
+                          args.usecompleximgs,args.addlinearrec,
+                          allplt_mag,allplt_ang,allplt_cmx,
+                          allplt_mag_lin,allplt_ang_lin,allplt_cmx_lin,rotext=True)
+
+    fname = args.outputdir + 'wavediff_' + msg + '_noise' + str(int(bl_noise*100)) + '_p'+str(int(bl_uval*100)) + '_' + bl_utype + '_k' + str(ch) + '.png'
+    plt.savefig(fname,dpi=200)
+    print("MSE Image saved: " + fname)
+    plt.close(fig)    
 
 def pltviolin(dir, recdir, patterndir, num_samples, use_complex, use_truth):
     #use_complex: compare against complex images or final recovered velocity images
@@ -743,6 +837,20 @@ if __name__ == '__main__':
                       help='number of points for computing the',
                       metavar='',
                       dest='numpts')
+
+  # wavelet
+  parser.add_argument('-w', '--wavelet',
+                      action=None,
+                      nargs='*',
+                      const=None,
+                      default=['haar'],
+                      type=str,
+                      choices=['haar','db8'],
+                      required=False,
+                      help='list of wavelet frames',
+                      metavar='',
+                      dest='wavelet')
+
   # method
   parser.add_argument('-m', '--method',
                       action=None,
@@ -851,6 +959,8 @@ if __name__ == '__main__':
     plot_maskdiff(args)
   if(len(args.method) > 1):
     plot_methoddiff(args)
+  if(len(args.method) > 1):
+    plot_waveletdiff(args)
 
   # Completed!
   if(args.printlevel > 0):

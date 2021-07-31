@@ -2,7 +2,7 @@ import sys,os,math
 import numpy as np
 import matplotlib.pyplot as plt
 sys.path.append('../')
-from CSRecoverySuite import get_umask_string, get_method_string
+from CSRecoverySuite import get_umask_string, get_method_string, get_wavelet_string
 import argparse
 
 home = os.getenv('HOME')
@@ -16,18 +16,24 @@ start = 0
 end   = 15 # last distance to include in plot (final x axis value)
 interval = int((end-start)/4) #int(math.ceil(((end-start)/4) / 10.0)) * 10))
 
-def getCorrelationFileName(numsamples, numpts, noise, p, masktype, useFluidMask):
+def getCorrelationFileName(numsamples, numpts, noise, p, masktype, wavelet, method, useFluidMask):
+  res = 'corrcoeff' + str(numpts) + \
+        '_noise' + str(int(noise*100)) + \
+        '_p' + str(int(p*100)) + masktype + \
+        '_n'+str(numsamples)+ \
+        '_w' + str(get_wavelet_string(wavelet)) + \
+        '_a' + str(get_method_string(method))
   if(useFluidMask):
-    res = 'corrcoeff' + str(numpts) + '_noise' + str(int(noise*100)) + '_p' + str(int(p*100)) + masktype +'_n'+ str(numsamples) + '_fluid.npy'
+    res += '_fluid.npy'
   else:
-    res = 'corrcoeff' + str(numpts) + '_noise' + str(int(noise*100)) + '_p' + str(int(p*100)) + masktype +'_n'+ str(numsamples) + '.npy'
+    res += '.npy'
   return res
 
-def get_coeff(noise, p, masktype, method, numsamples, numpts, dir, useFluidMask):
+def get_coeff(noise, p, masktype, wavelet, method, numsamples, numpts, dir, useFluidMask):
   '''
   Retrieve the file with the correlations
   ''' 
-  corrfile = dir + method + '/' + getCorrelationFileName(numsamples, numpts, noise, p, masktype, useFluidMask)
+  corrfile = dir + get_method_string(method) + '/' + getCorrelationFileName(numsamples, numpts, noise, p, masktype, wavelet, method, useFluidMask)
   if(os.path.isfile(corrfile)):
     coeff = np.load(corrfile)
     return coeff
@@ -35,8 +41,8 @@ def get_coeff(noise, p, masktype, method, numsamples, numpts, dir, useFluidMask)
     print('Warning: no correlation file found: ',corrfile)
     return None
 
-def plot_corr(noise_percent, p, samptype, method, n, num_pts, v, dir, labelstr, useFluidMask):
-  coeff = get_coeff(noise_percent, p, samptype, method, n, num_pts, dir, useFluidMask)
+def plot_corr(noise_percent, p, samptype, wavelet, method, n, num_pts, v, dir, labelstr, useFluidMask):
+  coeff = get_coeff(noise_percent, p, samptype, wavelet, method, n, num_pts, dir, useFluidMask)
   if(coeff is None):
     return None
   else:
@@ -56,10 +62,11 @@ def plot_noisediff(args, save_fig=True):
 
   # Set the baseline conditions
   # These are the first element of the lists
-  bl_noise  = args.noise[0]
-  bl_uval   = args.uval[0]
-  bl_utype  = args.utype[0]
-  bl_method = args.method[0]
+  bl_noise   = args.noise[0]
+  bl_uval    = args.uval[0]
+  bl_utype   = args.utype[0]
+  bl_method  = args.method[0]
+  bl_wavelet = args.wavelet[0]
 
   if(args.singlechannel):
     numChannels = 1
@@ -73,7 +80,7 @@ def plot_noisediff(args, save_fig=True):
     # Loop on all noise values
     for noise in args.noise:
       label = r"{}\% noise".format(int(noise*100))
-      plot_corr(noise, bl_uval, bl_utype, bl_method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
+      plot_corr(noise, bl_uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
     
     plt.xlabel('Distance [px]',fontsize=fs)
     plt.ylabel('Correlation Coefficient',fontsize=fs)
@@ -98,10 +105,11 @@ def plot_pdiff(args, save_fig=True):
 
   # Set the baseline conditions
   # These are the first element of the lists
-  bl_noise  = args.noise[0]
-  bl_uval   = args.uval[0]
-  bl_utype  = args.utype[0]
-  bl_method = args.method[0]
+  bl_noise   = args.noise[0]
+  bl_uval    = args.uval[0]
+  bl_utype   = args.utype[0]
+  bl_method  = args.method[0]
+  bl_wavelet = args.wavelet[0]
 
   if(args.singlechannel):
     numChannels = 1
@@ -115,7 +123,7 @@ def plot_pdiff(args, save_fig=True):
     # Loop on all noise values
     for p in args.uval:
       label = r"{}\%".format(int(p*100))
-      plot_corr(bl_noise, p, bl_utype, bl_method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
+      plot_corr(bl_noise, p, bl_utype, bl_wavelet, bl_method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
     
     plt.xlabel('Distance [px]',fontsize=fs)
     plt.ylabel('Correlation Coefficient',fontsize=fs)
@@ -140,10 +148,11 @@ def plot_sampdiff(args, save_fig=True):
 
   # Set the baseline conditions
   # These are the first element of the lists
-  bl_noise  = args.noise[0]
-  bl_uval   = args.uval[0]
-  bl_utype  = args.utype[0]
-  bl_method = args.method[0]
+  bl_noise   = args.noise[0]
+  bl_uval    = args.uval[0]
+  bl_utype   = args.utype[0]
+  bl_method  = args.method[0]
+  bl_wavelet = args.wavelet[0]
 
   if(args.singlechannel):
     numChannels = 1
@@ -157,7 +166,7 @@ def plot_sampdiff(args, save_fig=True):
     # Loop on all noise values
     for samptype in args.utype:
       label = get_umask_string(samptype)
-      plot_corr(bl_noise, bl_uval, samptype, bl_method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
+      plot_corr(bl_noise, bl_uval, samptype, bl_wavelet, bl_method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
     
     plt.xlabel('Distance [px]',fontsize=fs)
     plt.ylabel('Correlation Coefficient',fontsize=fs)
@@ -182,10 +191,11 @@ def plot_methoddiff(args, save_fig=True):
 
   # Set the baseline conditions
   # These are the first element of the lists
-  bl_noise  = args.noise[0]
-  bl_uval   = args.uval[0]
-  bl_utype  = args.utype[0]
-  bl_method = args.method[0]
+  bl_noise   = args.noise[0]
+  bl_uval    = args.uval[0]
+  bl_utype   = args.utype[0]
+  bl_method  = args.method[0]
+  bl_wavelet = args.wavelet[0]
 
   if(args.singlechannel):
     numChannels = 1
@@ -199,7 +209,7 @@ def plot_methoddiff(args, save_fig=True):
     # Loop on all noise values
     for method in args.method:
       label = get_method_string(method)
-      plot_corr(bl_noise, bl_uval, bl_utype, method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
+      plot_corr(bl_noise, bl_uval, bl_utype, bl_wavelet, method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
     
     plt.xlabel('Distance [px]',fontsize=fs)
     plt.ylabel('Correlation Coefficient',fontsize=fs)
@@ -216,8 +226,49 @@ def plot_methoddiff(args, save_fig=True):
       plt.savefig(args.outputdir + 'diffmethod' + str(start) + 'to' + str(end) + '_p' + str(int(bl_uval*100)) + bl_utype + '_k' + str(k) + '.pdf')
       plt.close()
     else:
-      plt.show()            
+      plt.show()   
 
+def plot_wavediff(args, save_fig=True):
+
+  print("Plotting correlations for various wavelet basis...")
+
+  # Set the baseline conditions
+  # These are the first element of the lists
+  bl_noise   = args.noise[0]
+  bl_uval    = args.uval[0]
+  bl_utype   = args.utype[0]
+  bl_method  = args.method[0]
+  bl_wavelet = args.wavelet[0]
+
+  if(args.singlechannel):
+    numChannels = 1
+  else:
+    numChannels = 4
+
+  # Loop on the reconstruction component
+  for k in range(0,numChannels):
+
+    plt.figure(figsize=(2.2,4))
+    # Loop on all noise values
+    for wavelet in args.wavelet:
+      label = get_wavelet_string(wavelet)
+      plot_corr(bl_noise, bl_uval, bl_utype, wavelet, bl_method, args.numsamples, args.numpts, k, args.dir, label, args.usefluidmask)
+    
+    plt.xlabel('Distance [px]',fontsize=fs)
+    plt.ylabel('Correlation Coefficient',fontsize=fs)
+    plt.grid(color='gray', linestyle='-', linewidth=0.5, alpha=0.2)
+    plt.tick_params(labelsize=fs)
+    plt.ylim([-0.2,1.0])
+    plt.xlim([1.0,9.0])
+    plt.xticks(np.arange(1, 11, 2))
+    plt.legend(loc='upper center',fontsize=fs-2)
+    plt.tight_layout()
+
+    if save_fig:
+      plt.savefig(args.outputdir + 'diffwave' + str(start) + 'to' + str(end) + '_p' + str(int(bl_uval*100)) + bl_utype + '_k' + str(k) + '.pdf')
+      plt.close()
+    else:
+      plt.show()   
 
 # MAIN 
 if __name__ == '__main__':
@@ -286,6 +337,20 @@ if __name__ == '__main__':
                       help='number of points for computing the',
                       metavar='',
                       dest='numpts')
+
+  # method
+  parser.add_argument('-w', '--wavelet',
+                      action=None,
+                      nargs='*',
+                      const=None,
+                      default=['haar'],
+                      type=str,
+                      choices=['haar','db8'],
+                      required=False,
+                      help='list of wavelet basis',
+                      metavar='',
+                      dest='wavelet')
+
   # method
   parser.add_argument('-m', '--method',
                       action=None,
@@ -363,6 +428,8 @@ if __name__ == '__main__':
     plot_sampdiff(args)
   if(len(args.method) > 1):
     plot_methoddiff(args)
+  if(len(args.method) > 1):
+    plot_wavediff(args)
 
   # Completed!
   if(args.printlevel > 0):

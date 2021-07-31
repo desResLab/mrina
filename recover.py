@@ -149,7 +149,14 @@ def recover_vel(compleximg, venc=None, threshold=True):
         vel[n,k,j] = v
         # set velocity = 0 wherever mag is close enough to 0
         if threshold:
-          mask = (np.abs(m) < 1E-1)
+          # print('Thresholding...')
+          # plt.figure(figsize=(4,3))
+          # plt.plot(np.arange(len(np.abs(m).flatten())),np.abs(m).flatten())
+          # plt.axhline(y=0.25*np.max(np.abs(m)), color='r', linestyle='-',lw=2)
+          # plt.show()
+          # print(m.shape)
+          # exit(-1)
+          mask = (np.abs(m) < 0.25*np.max(np.abs(m)))
           vel[n,k,j, mask] = 0
   return vel
 
@@ -183,29 +190,43 @@ def linear_reconstruction(fourier_file, omega=None):
         linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]))
   return linrec
 
+def getMethodString(mtd):
+  if(mtd == 0):
+    return 'CS'
+  elif(mtd == 1):
+    return 'CSDEB'
+  elif(mtd == 2):
+    return 'OMP'
+
 # Get File Names
 def getFiles(args):
-  # Get Default file names
-  fourier_file = args.fromdir + 'noisy_noise' + str(int(args.noisepercent*100)) + '_n' + str(args.repetitions) + '.npy'
-  if not args.usemultipatterns: 
-    mask_file    = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + args.uType + '.npy'
-  else:
-    mask_file    = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
-  orig_file    = args.fromdir + 'imgs_n1.npy'
-  rec_file     = args.recdir + 'rec_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy' 
   
+  # Noisy Fourier measurement file
+  fourier_file = args.fromdir + 'noisy_noise' + str(int(args.noisepercent*100)) + '_n' + str(args.repetitions) + '.npy'
+
+  # Undersampling mask file
+  if not args.usemultipatterns: 
+    mask_file = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + args.uType + '.npy'
+  else:
+    mask_file = args.maskdir + 'undersamplpattern_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
+  
+  # Image file
+  orig_file = args.fromdir + 'imgs_n1.npy'
+
+  # Reconstruction file
+  rfs = str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '_w' + args.wavelet.upper() + '_a' + getMethodString(args.method) + '.npy' 
+
+  rec_file     = args.recdir + 'rec_noise' + rfs  
   # Save linear reconstruction file and velocities if requested
   rec_lin_file = None
   vel_file     = None
   vel_lin_file = None
-  
   if(args.evallinrec):
-    rec_lin_file = args.recdir + 'lin_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
-  
+    rec_lin_file = args.recdir + 'lin_noise' + rfs    
   if(args.savevels):
-    vel_file = args.recdir + 'rec_vel_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
+    vel_file = args.recdir + 'rec_vel_noise' + rfs  
     if(args.evallinrec):
-      vel_lin_file = args.recdir + 'lin_vel_noise' + str(int(args.noisepercent*100)) + '_p' + str(int(args.uVal*100)) + args.uType + '_n' + str(args.repetitions) + '.npy'
+      vel_lin_file = args.recdir + 'lin_vel_noise' + rfs  
   
   # Return file names
   return fourier_file,mask_file,orig_file,rec_file,vel_file,rec_lin_file,vel_lin_file

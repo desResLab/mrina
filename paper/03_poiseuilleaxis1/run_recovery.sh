@@ -6,13 +6,17 @@ export NUMEXPR_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 
 # Set Parameters 
+# Set Folders
 KSPACEDIR="./"
 RECDIR="./"
 PATTERNDIR="./"
-WAVELETTYPE="haar"
-PROCESSES=1
-REALIZATIONS=2
-SOLVERMODE=2 #0 cs, 1 csdebias, 2 omp
+
+# Set Running Parameters
+PROCESSES=2
+REALIZATIONS=6
+
+# Set Solver To Be Used For Reconstruction
+SOLVERMODE=2
 
 # GENERATE NOISY AND UNDERSAMPLED K-SPACE MEASUREMENTS
 
@@ -25,36 +29,39 @@ do
 
           echo 'Generating Sample with' $NOISEVAL $PVAL $SAMPTYPE
           python3 ../../genSamples.py --fromdir $KSPACEDIR \
-                                      --repetitions $REALIZATIONS \
-                                      --origin imgs_n1 \
-                                      --dest $RECDIR \
-                                      --utype $SAMPTYPE \
-                                      --urate $PVAL \
-                                      --noisepercent $NOISEVAL
+                                     --repetitions $REALIZATIONS \
+                                     --origin imgs_n1 \
+                                     --dest $RECDIR \
+                                     --utype $SAMPTYPE \
+                                     --urate $PVAL \
+                                     --noisepercent $NOISEVAL
         done
     done                                
 done
 
 # RECONSTRUCT IMAGES
 
-for SAMPTYPE in "vardengauss" #"bernoulli"
+for WAVETYPE in "haar" #"db8"
 do
-    for PVAL in 0.25 #0.50 0.75
+    for SAMPTYPE in "vardengauss" #"bernoulli"
     do
-        for NOISEVAL in 0.01 #0.05 0.1 0.3
+        for PVAL in 0.25 #0.50 0.75
         do
-            echo 'Reconstructing' $NOISEVAL $PVAL $SAMPTYPE
-            python3 ../../recover.py --noisepercent $NOISEVAL \
-                                     --urate $PVAL \
-                                     --utype $SAMPTYPE \
-                                     --repetitions $REALIZATIONS \
-                                     --numprocesses $PROCESSES \
-                                     --fromdir $KSPACEDIR \
-                                     --recdir $RECDIR \
-                                     --maskdir $PATTERNDIR \
-                                     --method $SOLVERMODE \
-                                     --wavelet $WAVELETTYPE \
-                                     --savevels
+            for NOISEVAL in 0.01 #0.05 0.1 0.3
+            do
+                echo 'Reconstructing' $NOISEVAL $PVAL $SAMPTYPE
+                python3 ../../recover.py --noisepercent $NOISEVAL \
+                                        --urate $PVAL \
+                                        --utype $SAMPTYPE \
+                                        --repetitions $REALIZATIONS \
+                                        --numprocesses $PROCESSES \
+                                        --fromdir $KSPACEDIR \
+                                        --recdir $RECDIR \
+                                        --maskdir $PATTERNDIR \
+                                        --method $SOLVERMODE \
+                                        --wavelet $WAVETYPE \
+                                        --savevels
+            done
         done
     done
 done

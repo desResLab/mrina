@@ -576,6 +576,15 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
           if not(loopA in indexSet):
             indexSet.append(loopA)
             notIndexSet.remove(loopA)
+
+      # Check if IndexSet is still empty
+      # This happens, e.g., with zero velocity components
+      if (len(indexSet)==0):
+        selectedCol = np.argmax(matchCoeffs)
+        indexSet.append(selectedCol)
+        notIndexSet.remove(selectedCol)
+
+      # Sort Index Sets
       indexSet.sort()
       notIndexSet.sort()
 

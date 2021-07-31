@@ -156,20 +156,36 @@ def get_vals(recfile, savefile, maxcorrpixeldist, numpts, singlechannel, maindir
     np.save(savefile, coeff)
   return coeff
 
-def get_all(args):  
+def get_all(args):
   # size is max. distance to retrieve correlations for
   # num_pts is the number of points to average correlation across
   for noise_percent in [0.0, 0.01, 0.05, 0.1, 0.3]:
     for p in [0.25, 0.5, 0.75, 0.80, 0.85, 0.90, 0.95]:
-      for samptype in ['bernoulli', 'vardengauss']:
-        recfile = args.recdir + 'rec_noise'+str(int(noise_percent*100))+'_p' + str(int(p*100)) + samptype +'_n'+str(args.numsamples) + '.npy'
-        if(args.usefluidmask):
-          savefile = args.recdir + 'corrcoeff' + str(args.numpts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype +'_n'+str(args.numsamples) + '_fluid'
-        else:
-          savefile = args.recdir + 'corrcoeff' + str(args.numpts) + '_noise' + str(int(noise_percent*100)) + '_p' + str(int(p*100)) + samptype +'_n'+str(args.numsamples)
-        if(os.path.exists(recfile)):
-          get_vals(recfile, savefile, args.maxcorrpixeldist, args.numpts, args.singlechannel, args.maindir, args.recdir, args.ptsdir, args.usefluidmask)
-          print('Saved! Noise: ', noise_percent,', undersampling prob:', p, ', undersampling mask:', samptype)
+      for wavetype in ['HAAR','DB8']:
+        for algtype in ['CS','CSDEB','OMP']:
+          for samptype in ['bernoulli', 'vardengauss']:
+            recfile = args.recdir + 'rec_noise' + str(int(noise_percent*100)) + \
+                                    '_p' + str(int(p*100)) + samptype + \
+                                    '_n' + str(args.numsamples) + \
+                                    '_w' + str(wavetype) + \
+                                    '_a' + str(algtype) + '.npy'
+
+            savefile = args.recdir + 'corrcoeff' + str(args.numpts) + \
+                                     '_noise' + str(int(noise_percent*100)) + \
+                                     '_p' + str(int(p*100)) + samptype + \
+                                     '_n'+str(args.numsamples)+ \
+                                     '_w' + str(wavetype) + \
+                                     '_a' + str(algtype)
+            
+            # Change name for fluid Mask 
+            if(args.usefluidmask):
+              savefile += '_fluid.npy'
+            else:
+              savefile += '.npy'
+
+            if(os.path.exists(recfile)):
+              get_vals(recfile, savefile, args.maxcorrpixeldist, args.numpts, args.singlechannel, args.maindir, args.recdir, args.ptsdir, args.usefluidmask)
+              print('Saved! Noise: ', noise_percent,', undersampling prob: ', p, ', undersampling mask: ', samptype, ', wavetype: ', wavetype, ', algorithm: ', algtype)
 
 # MAIN 
 if __name__ == '__main__':
