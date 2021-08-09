@@ -6,8 +6,7 @@ import numpy.fft as fft
 import numpy.linalg as la
 from CSRecoverySuite import generateSamplingMask, crop
 import argparse
-
-home = os.getenv('HOME')
+import matplotlib.pyplot as plt
 
 def getVenc(vel):
     mx = np.amax(np.fabs(vel))
@@ -34,10 +33,10 @@ def getKspace(sample, venc, magnitudes=None, referencephase=None):
         compyk = np.zeros(vel.shape, dtype=complex)
         #2d fourier transform each slice for k space
         for k in range(sample.shape[2]): #number of 2d images in grid
-            yk[n,0,k] = fft.fft2(mag[k]*np.exp(1j*refphase[k]))
+            yk[n,0,k] = fft.fft2(mag[k]*np.exp(1j*refphase[k]),norm='ortho')
             for j in range(0,sample.shape[1]-1): #number of velocity components
                 compyk[j,k] = magnitudes[n,j+1,k]*np.exp(1j*refphase[k])*np.exp(np.pi*1j*vel[j,k]/venc)
-                yk[n,j+1,k] = fft.fft2(compyk[j,k])
+                yk[n,j+1,k] = fft.fft2(compyk[j,k],norm='ortho')
     return yk 
 
 def undersample(kspace, mask):
@@ -71,7 +70,7 @@ def add_noise(kspace, noise_percent, num_realizations, num_components=4):
     nrm = [None]*num_components
     for v in range(kspace.shape[1]):
         nrm[v] = la.norm(kspace[0,v])
-    print('Image component norms: ', nrm)
+    print('K-space image component two-norms: ', nrm)
     noise, snr = get_noise(imsz, nrm, noise_percent, num_realizations , num_components)
     for n in range(num_realizations):
         for v in range(kspace.shape[1]):
@@ -106,7 +105,6 @@ def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noise
     if(printlevel>0):
         print('Generate and save sampling mask...')  
     
-
     undfile = tosavedir + 'undersamplpattern_p' + str(int(uVal*100)) + uType # + '_seed' + str(uSeed)       
     if useMultiPatterns:
       numPatterns = numRealizations
@@ -121,8 +119,8 @@ def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noise
     if(printlevel>0):
         print('Add noise to image...')
     noisy,snr = add_noise(kspace, noisePercent, numRealizations)
-    fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) 
-    np.save(fourier_file + '_n' + str(numRealizations), noisy)
+    fourier_file = tosavedir + 'noisy_noise' + str(int(noisePercent*100)) + '_n' + str(numRealizations)
+    np.save(fourier_file, noisy)
     
     # Save SNR
     if(printlevel>0):

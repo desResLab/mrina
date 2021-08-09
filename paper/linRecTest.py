@@ -44,7 +44,7 @@ plt.close()
 
 # Transform to k-space
 print('Transform in k-space...')
-kspace = np.fft.fft2(orimg)
+kspace = np.fft.fft2(orimg,norm='ortho')
 
 # Add noise 
 print('Add noise...')

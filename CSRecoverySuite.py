@@ -20,7 +20,7 @@ def get_umask_string(samptype):
     sys.exit(-1)
 
 def extractFluidMask(img):  
-  res = np.max(np.absolute(img[0,0]),axis=0)
+  res = np.max(np.absolute(img),axis=0)[0,0]
   return (res > 0)    
 
 def get_method_string(method):
@@ -170,7 +170,7 @@ class Operator4dFlow(genericOperator):
     # Restrict the set of wavelet basis
     self.basisSet = basisSet
     # Constant
-    self._cst           = math.pow( np.prod( insz ), -1/2 );
+    # self._cst           = math.pow( np.prod( insz ), -1/2 );
 
   def eval(self, x, mode):
     '''
@@ -180,19 +180,26 @@ class Operator4dFlow(genericOperator):
     '''
     if( mode == 1 ): # FORWARD MAP
       if( self.samplingSet is None ):
-        return self._cst * fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode));
+        # return self._cst * fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode));
+        return fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode),norm='ortho');
       else:
-        y = self._cst * fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode));
+        # y = self._cst * fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode));
+        y = fft.fft2(pywt.waverec2(array2pywt(x), wavelet=self.waveletName, mode=self.waveletMode),norm='ortho');
         return y[ self.samplingSet ];
     if( mode == 2 ): # ADJOINT MAP
       if( self.samplingSet is None ):
-        arr = np.conj( fft.fft2( np.conj(x) ) )
-        return self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode), arr.shape);
+        # arr = np.conj( fft.fft2( np.conj(x) ) )
+        # return self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode), arr.shape);
+        arr = np.conj( fft.fft2( np.conj(x),norm='ortho' ) )
+        return pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode), arr.shape);
       else:
         #y = np.zeros( self.imsz ) + 1j * np.zeros( self.imsz );
         self._buffer[ self.samplingSet ] = x[ : ];
-        arr = np.conj( fft.fft2( np.conj(self._buffer) ) )
-        return self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape);
+        # arr = np.conj( fft.fft2( np.conj(self._buffer) ) )
+        # return self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape);
+        arr = np.conj( fft.fft2( np.conj(self._buffer),norm='ortho' ) )
+        return pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape);
+
 
   #  The method returns the shape of the input array
   def input_size(self):
@@ -238,7 +245,8 @@ class Operator4dFlow(genericOperator):
       inV = inV.reshape(self.insz)
 
       # Compute the vector y
-      y = self._cst * fft.fft2(pywt.waverec2(array2pywt(inV), wavelet=self.waveletName, mode=self.waveletMode))
+      # y = self._cst * fft.fft2(pywt.waverec2(array2pywt(inV), wavelet=self.waveletName, mode=self.waveletMode))
+      y = fft.fft2(pywt.waverec2(array2pywt(inV), wavelet=self.waveletName, mode=self.waveletMode), norm='ortho')
 
       # Select frequencies as per sampling set
       if( self.samplingSet is None ):
@@ -250,13 +258,16 @@ class Operator4dFlow(genericOperator):
     
       # Apply Fourier Transform Only for frequencies in the sampling set
       if( self.samplingSet is None ):
-        arr = np.conj( fft.fft2( np.conj(x) ) )
+        # arr = np.conj( fft.fft2( np.conj(x) ) )
+        arr = np.conj( fft.fft2( np.conj(x), norm='ortho' ) )
       else:
         self._buffer[ self.samplingSet ] = x[ : ];
-        arr = np.conj( fft.fft2( np.conj(self._buffer) ) )
+        # arr = np.conj( fft.fft2( np.conj(self._buffer) ) )
+        arr = np.conj( fft.fft2( np.conj(self._buffer), norm='ortho' ) )
 
       # Perform wavelet transform
-      res = self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape)
+      # res = self._cst * pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape)
+      res = pywt2array(pywt.wavedec2(arr, wavelet=self.waveletName, mode=self.waveletMode),arr.shape)
 
       # Filter wavelet coefficients as per basisSet
       if( self.basisSet is None ):

@@ -1,5 +1,6 @@
 import sys
 import os
+import warnings
 sys.path.append('../')
 from recover import linear_reconstruction, recover_vel
 from genSamples import getKspace
@@ -10,6 +11,8 @@ from matplotlib.ticker import PercentFormatter, ScalarFormatter
 from CSRecoverySuite import crop, isvalidcrop, extractFluidMask
 from CSRecoverySuite import get_umask_string, get_method_string, get_wavelet_string
 import argparse
+
+warnings.filterwarnings('error')
 
 home = os.getenv('HOME')
 hatchPatterns = ['-', '+', 'x', '\\', '*', 'o', 'O', '.']
@@ -86,10 +89,12 @@ def generateBarPlot(lgd,xlabel,ylabel,
   yVals_mag = np.zeros(len(allplt_mag))
   for loopA in range(len(allplt_mag)):
     yVals_mag[loopA] = allplt_mag[loopA].mean()
+  
   # Angle
   yVals_ang = np.zeros(len(allplt_ang))
   for loopA in range(len(allplt_ang)):
     yVals_ang[loopA] = allplt_ang[loopA].mean()
+
   # Complex
   yVals_cmx = np.zeros(len(allplt_cmx))
   for loopA in range(len(allplt_cmx)):
@@ -133,10 +138,12 @@ def generateBarPlot(lgd,xlabel,ylabel,
     yVals_mag = np.zeros(len(allplt_mag_lin))
     for loopA in range(len(allplt_mag_lin)):
       yVals_mag[loopA] = allplt_mag_lin[loopA].mean()
+
     #
     yVals_ang = np.zeros(len(allplt_ang_lin))
     for loopA in range(len(allplt_ang_lin)):
       yVals_ang[loopA] = allplt_ang_lin[loopA].mean()
+
     #
     yVals_cmx = np.zeros(len(allplt_cmx_lin))
     for loopA in range(len(allplt_cmx_lin)):
@@ -201,7 +208,7 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples):
   if(os.path.exists(orig_file)):
     try:
       orig = np.load(orig_file).astype(np.complex)
-    except:
+    except Warning:
       print('ERROR: Cannot read original image - ',orig)
       sys.exit(-1)
     if(not(isvalidcrop(orig))):
@@ -215,7 +222,7 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples):
   if(os.path.exists(fourier_file)):
     try:
       fourier = np.load(fourier_file).astype(np.complex)
-    except:
+    except Warning:
       print('ERROR: Cannot read Fourier file - ',fourier_file)
       sys.exit(-1)
   else:
@@ -226,7 +233,7 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples):
   if(os.path.exists(mask_file)):
     try:
       mask = np.load(mask_file).astype(bool)
-    except:
+    except Warning:
       print('ERROR: Cannot read binary mask - ',mask_file)
       sys.exit(-1)
   else:
@@ -237,7 +244,7 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples):
   if(os.path.exists(recovered_file)):
     try:
       recovered = np.load(recovered_file).astype(np.complex)
-    except:
+    except Warning:
       print('ERROR: Cannot read reconstructedd image - ',recovered_file)
       sys.exit(-1)
   else:
@@ -308,12 +315,14 @@ def get_mse_mag(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
     imgDen = np.absolute(refimg[0,0])**2
     res = np.mean(imgNum[fluidMask])
     den = np.mean(imgDen[fluidMask])
+
     if(den > 1.0e-12):
       res = res/den
   else:
     res = np.mean((np.absolute(refimg[0,0])-np.absolute(csimgs[k,0]))**2)    
     if(np.mean(np.absolute(refimg[0,0])**2) > 1.0e-12):
       res = res/np.mean(np.absolute(refimg[0,0])**2)    
+
   return res
 
 def get_mse_ang(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
@@ -323,6 +332,7 @@ def get_mse_ang(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
   else:
     res = np.mean((np.angle(refimg[0,0])-np.angle(csimgs[k,0]))**2)   
     # mse_ang_cs[k]  = mse_ang_cs[k]/np.mean(np.angle(refimg)**2)
+
   return res
 
 def get_mse_cmx(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
@@ -331,12 +341,15 @@ def get_mse_cmx(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
     imgDen = np.absolute(refimg[0,0])**2
     res = np.mean(imgNum[fluidMask])
     den = np.mean(imgDen[fluidMask])
+
     if(den > 1.0e-12):
       res = res/den    
   else:
+
     res = np.mean((np.absolute(refimg[0,0]-csimgs[k,0]))**2)
     if(np.mean(np.absolute(refimg[0,0])**2) > 1.0e-12):
       res = res/np.mean(np.absolute(refimg[0,0])**2)
+
   return res
 
 def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usecompleximgs, usetrueimg, addlinearrec, useFluidMask):
@@ -350,13 +363,30 @@ def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
   # If use fluid mask, then compute the mask using the original image density+velocities
   fluidMask = None
   if(useFluidMask):
-    fluidMask = extractFluidMask(orig)
+    orig_forMask = np.load(dir + 'imgs_n1.npy').astype(np.complex)
+    fluidMask = extractFluidMask(orig_forMask)
+    # print('fluid mask: ',fluidMask.shape,fluidMask.sum(),np.prod(fluidMask.shape))
 
   # Get average cs and linear reconstructed image
   if(usetrueimg):
     refimg = orig
   else:
     refimg = csimgs.mean(axis=0,keepdims=True)
+
+  # DEBUG - CHECK THE DIFFERENCE IN RECONSTRUCTED IMAGE
+  print('orig ',orig.shape)
+  print('csimgs ',csimgs.shape)
+  plt.figure()
+  plt.subplot(1,2,1)
+  plt.title('TRUE')
+  plt.imshow(np.absolute(refimg[0,0]))
+  plt.colorbar()
+  plt.subplot(1,2,2)
+  plt.title('REC')
+  plt.imshow(np.absolute(csimgs[0,0]))
+  plt.colorbar()
+  plt.show()
+  # exit(-1)
 
   # print('Sizes')
   # print('csimgs:',csimgs.shape)

@@ -3,32 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import cv2
-sys.path.append('../')
 from recover import recover_vel, linear_reconstruction
 import argparse
-
-home = os.getenv("HOME")
-
-def rescale(img, newmax=255, truncate=True, truncateMax=1):
-  '''
-  Rescale Image from 0 to 255 and optionally truncate between 0 and truncateMax
-  '''
-  if truncate:
-    img[img < 0] = 0
-    img[img > truncateMax] = truncateMax
-
-  newimg = np.zeros(img.shape)
-  for n in range(img.shape[0]):
-    for k in range(img.shape[1]):
-      minimum = np.amin(img[n,k])
-      maximum = np.amax(img[n,k])
-      if (maximum-minimum > 1E-3):
-        newimg[n,k] = (img[n,k]-minimum)*(newmax/(maximum - minimum))
-      else:
-        newimg[n,k] = np.zeros(newimg[n,k].shape)
-
-  print('Image rescaled: new minimum: %f, new maximum: %f ' % (np.amin(newimg), np.amax(newimg)))
-  return newimg
 
 def pltimg(img, title):
   if len(img.shape)>2:
@@ -62,10 +38,7 @@ def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, pr
     imgs = np.absolute(recovered)
   else:
     imgs = recover_vel(recovered, venc)
-  
-  if(relative and not(singleChannel)):
-    imgs = rescale(imgs)
-  
+    
   # Only the first reconstructed Sample
   for n in range(1): #range(imgs.shape[0]):
     for k in range(imgs.shape[1]):
@@ -84,8 +57,9 @@ def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, pr
           myvmin = -1.2205644845962524
           myvmax = 1.3197449445724487
       else:
-        myvmin=None
-        myvmax=None
+        # ASSUMES INTENSITY AND VELOCITIES ARE IN [0,1]
+        myvmin=0
+        myvmax=1
 
       plt.imshow(imgs[n,k,0], cmap='gray',vmin=myvmin,vmax=myvmax)
       plt.axis('off')
@@ -95,6 +69,7 @@ def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, pr
                                           '_w' + str(wavetype) + \
                                           '_a' + str(algtype) + \
                                           '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
+      plt.close()
 
 def save_rec_noise(recnpyFile, orig_file, venc, p, samptype, noise_percent, wavetype, algtype, prefix, outputdir, singleChannel=False, use_truth=False, ext='.png'):
   
@@ -119,36 +94,50 @@ def save_rec_noise(recnpyFile, orig_file, venc, p, samptype, noise_percent, wave
   if(not(use_truth)):
     avg = imgs.mean(axis=0)
 
+  # # DEBUG - CHECK THE DIFFERENCE IN RECONSTRUCTED IMAGE
+  # plt.figure()
+  # plt.subplot(1,2,1)
+  # plt.title('TRUE')
+  # plt.imshow(np.absolute(true[0,3,0]))
+  # plt.colorbar()
+  # plt.subplot(1,2,2)
+  # plt.title('REC')
+  # plt.imshow(np.absolute(imgs[0,3,0]))
+  # plt.colorbar()
+  # plt.show()
+  # exit(-1)
+
   # Substract images either from the truth or the average reconstruction
+  imgRes = np.zeros_like(imgs)
   for i in range(imgs.shape[0]):
     if use_truth:
       boolMask = np.logical_or((np.absolute(imgs[i,:,:,:,:]) < 1.0e-12),(np.absolute(true[0,:,:,:,:]) < 1.0e-12))
       with np.errstate(divide='ignore', invalid='ignore'):
-        imgs[i,:,:,:,:] = 2*(imgs[i,:,:,:,:] - true[0,:,:,:,:])/(np.absolute(imgs[i,:,:,:,:]) + np.absolute(true[0,:,:,:,:]))      
-      imgs[i,boolMask] = 0.0
+        imgRes[i,:,:,:,:] = 2*(imgs[i,:,:,:,:] - true[0,:,:,:,:])/(np.absolute(imgs[i,:,:,:,:]) + np.absolute(true[0,:,:,:,:]))      
+      imgRes[i,boolMask] = 0.0
     else:
       boolMask = np.logical_or((np.absolute(imgs[i,:,:,:,:]) < 1.0e-12),(np.absolute(true[0,:,:,:,:]) < 1.0e-12))
       with np.errstate(divide='ignore', invalid='ignore'):
-        imgs[i,:,:,:,:] = 2*(imgs[i,:,:,:,:] - avg[:,:,:,:])/(np.absolute(imgs[i,:,:,:,:]) + np.absolute(avg[:,:,:,:]))
-      imgs[i,boolMask] = 0.0
+        imgRes[i,:,:,:,:] = 2*(imgs[i,:,:,:,:] - avg[:,:,:,:])/(np.absolute(imgs[i,:,:,:,:]) + np.absolute(avg[:,:,:,:]))
+      imgRes[i,boolMask] = 0.0
       
   if(use_truth):
     desc = 'true'
   else:
     desc = 'avg'
 
-  print(desc + " MSE ", ((imgs)**2).mean())
-
   for n in range(1): # range(imgs.shape[0]): # Loop on the number of samples
-    for k in range(imgs.shape[1]):
-      plt.imshow(imgs[n,k,0], cmap='seismic', vmin=-2, vmax=2)
+    for k in range(imgRes.shape[1]):
+      plt.imshow(imgRes[n,k,0], cmap='seismic', vmin=-2, vmax=2)
       plt.axis('off')
+      # plt.show()
       plt.savefig(outputdir + prefix + desc + 'recerror' + '_p' + str(int(p*100)) + samptype + \
                                                        '_noise' + str(int(noise_percent*100)) + \
                                                            '_n' + str(n) + \
                                                            '_w' + str(wavetype) + \
                                                            '_a' + str(algtype) + \
                                                            '_k' + str(k) + ext, bbox_inches='tight', pad_inches=0)
+      plt.close()
       
 def save_noisy(noise_percent, dir, recdir, venc, num_samples, relative=False, ext='.png'):
     noisy = np.load(dir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy')
@@ -156,8 +145,8 @@ def save_noisy(noise_percent, dir, recdir, venc, num_samples, relative=False, ex
     avg = noisy.mean(axis=0)
     orig_file = dir+'imgs_n1' +  '.npy'
     imgs = recover_vel(noisy, venc)
-    if relative:
-        imgs = rescale(imgs)
+    # if relative:
+    #     imgs = rescale(imgs)
     directory = recdir + 'noise' + str(int(noise_percent*100))
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -167,8 +156,8 @@ def save_noisy(noise_percent, dir, recdir, venc, num_samples, relative=False, ex
 
 def save_true(trueFileName, outputDir, relative=False):
   true = np.load(trueFileName)
-  if relative:
-    true = rescale(true, truncate=False)
+  # if relative:
+  #  true = rescale(true, truncate=False)
   for k in range(true.shape[1]):
     if(False):
       print('Min True: ',np.min(true[0,k,0]))
