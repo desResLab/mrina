@@ -6,7 +6,7 @@ import numpy.fft as fft
 import numpy.linalg as la
 from CSRecoverySuite import generateSamplingMask, crop
 import argparse
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 def getVenc(vel):
     mx = np.amax(np.fabs(vel))

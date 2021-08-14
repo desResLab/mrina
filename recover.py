@@ -155,7 +155,7 @@ def recover_vel(compleximg, venc=None, threshold=True):
           # print('Thresholding...')
           # plt.figure(figsize=(4,3))
           # plt.plot(np.arange(len(np.abs(m).flatten())),np.abs(m).flatten())
-          # plt.axhline(y=0.25*np.max(np.abs(m)), color='r', linestyle='-',lw=2)
+          # plt.axhline(y=0.1*np.max(np.abs(m)), color='r', linestyle='-',lw=2)
           # plt.show()
           # print(m.shape)
           # exit(-1)

@@ -203,6 +203,11 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples):
                                           '_w' + str(get_wavelet_string(wavelet)) + \
                                           '_a' + str(get_method_string(method)) + '.npy'
 
+  # print('orig_file',orig_file)
+  # print('fourier_file',fourier_file)
+  # print('mask_file',mask_file)
+  # print('recovered_file',recovered_file)
+
   # Check if files exist and open the images
   # Original image
   if(os.path.exists(orig_file)):
@@ -258,21 +263,40 @@ def get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, nums
   # Get all files
   fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples)
 
+  # Get velocity encoding
+  venc_file = dir + 'venc_n1.npy'
+  if os.path.exists(venc_file):
+    venc = np.load(dir + 'venc_n1.npy').astype(np.float)
+  else:
+    venc = None
+    print('WARNING: file for velocity encoding not found: ',venc_file)  
+
   # Compute linear reconstructions if requested
+  retLinRec = None
   if(addlinearrec):
     # Load undesampling mask
     if(len(mask.shape) == 3):
       linrec = linear_reconstruction(fourier,mask[0])
     else:
       linrec = linear_reconstruction(fourier,mask)
-    
     # Return complex images only for the requested channel
-    return recovered[:,channel,:,:,:], orig[:,channel,:,:,:], linrec[:,channel,:,:,:]
+    retLinRec = linrec[:,channel,:,:,:]
 
-  else:
-    
-    # Return complex images only for the requested channel
-    return recovered[:,channel,:,:,:], orig[:,channel,:,:,:], None
+  # Convert True Image to Complex
+  kspace_orig = np.zeros(orig.shape,dtype=complex)
+  referencephase = np.zeros(orig[:,0].shape)
+  magnitudes = np.ones(orig.shape)
+  mag = orig[0,0]
+  refphase = referencephase[0]
+  vel = orig[0,1:4]
+  compyk = np.zeros(vel.shape, dtype=complex)
+  for k in range(orig.shape[2]):
+      kspace_orig[0,0,k] = mag[k]*np.exp(1j*refphase[k])
+      for j in range(0,orig.shape[1]-1):
+          kspace_orig[0,j+1,k] = magnitudes[0,j+1,k]*np.exp(1j*refphase[k])*np.exp(np.pi*1j*vel[j,k]/venc)
+
+  # Return complex images only for the requested channel
+  return recovered[:,channel,:,:,:], kspace_orig[:,channel,:,:,:], retLinRec
 
 def get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec):
 
@@ -291,6 +315,7 @@ def get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
   csvels = recover_vel(recovered, venc)
 
   # Compute linear reconstructions if requested
+  retLinVels = None
   if(addlinearrec):
     # Load undesampling mask
     if(len(mask.shape) == 3):
@@ -300,14 +325,10 @@ def get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
     
     # Compute velocities from linear reconstructions
     linvels = recover_vel(linrec, venc)
-
-    # Return
-    return csvels[:,channel,:,:,:], orig[:,channel,:,:,:], linvels[:,channel,:,:,:]
-  
-  else:
+    retLinVels = linvels[:,channel,:,:,:]
     
-    # Return
-    return csvels[:,channel,:,:,:], orig[:,channel,:,:,:], None
+  # Return
+  return csvels[:,channel,:,:,:], orig[:,channel,:,:,:], retLinVels
 
 def get_mse_mag(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
   if(useFluidMask):
@@ -374,19 +395,26 @@ def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
     refimg = csimgs.mean(axis=0,keepdims=True)
 
   # DEBUG - CHECK THE DIFFERENCE IN RECONSTRUCTED IMAGE
-  print('orig ',orig.shape)
-  print('csimgs ',csimgs.shape)
-  plt.figure()
-  plt.subplot(1,2,1)
-  plt.title('TRUE')
-  plt.imshow(np.absolute(refimg[0,0]))
-  plt.colorbar()
-  plt.subplot(1,2,2)
-  plt.title('REC')
-  plt.imshow(np.absolute(csimgs[0,0]))
-  plt.colorbar()
-  plt.show()
-  # exit(-1)
+  # plt.figure(figsize=(10,3))
+  # print('noise ' + str(noise) + ' uval ' + str(uval) + ' utype ' + str(utype) + ' wave ' + str(wavelet) + ' alg ' + str(method))
+  # if usecompleximgs:
+  #   print('Using Complex Images')
+  # else:
+  #   print('Using Components')
+  # plt.subplot(1,3,1)
+  # plt.title('TRUE')
+  # plt.imshow(np.absolute(refimg[0,0]))
+  # plt.colorbar()
+  # plt.subplot(1,3,2)
+  # plt.title('REC')
+  # plt.imshow(np.absolute(csimgs[0,0]))
+  # plt.colorbar()
+  # plt.subplot(1,3,3)
+  # plt.title('LIN')
+  # plt.imshow(np.absolute(linimgs[0,0]))
+  # plt.colorbar()  
+  # plt.show()
+  # plt.close()
 
   # print('Sizes')
   # print('csimgs:',csimgs.shape)
