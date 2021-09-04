@@ -1,7 +1,0 @@
-sh 04_aortaideal_01_saveimgs.sh
-sh 04_aortaideal_02_correlations.sh
-sh 04_aortaideal_03_pltcorr.sh
-sh 04_aortaideal_04_pltmse.sh
-sh 04_aortaideal_05_correlations_fluid.sh
-sh 04_aortaideal_06_pltcorr_fluid.sh
-sh 04_aortaideal_07_pltmse_fluid.sh

@@ -1,7 +1,0 @@
-sh 05_aortamri_01_saveimgs.sh
-sh 05_aortamri_02_correlations.sh
-sh 05_aortamri_03_pltcorr.sh
-sh 05_aortamri_04_pltmse.sh
-sh 05_aortamri_05_correlations_fluid.sh
-sh 05_aortamri_06_pltcorr_fluid.sh
-sh 05_aortamri_07_pltmse_fluid.sh

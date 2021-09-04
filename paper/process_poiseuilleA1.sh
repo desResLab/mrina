@@ -1,7 +1,0 @@
-sh 02_poiseuilleA1_01_saveimgs.sh
-sh 02_poiseuilleA1_02_correlations.sh
-sh 02_poiseuilleA1_03_pltcorr.sh
-sh 02_poiseuilleA1_04_pltmse.sh
-sh 02_poiseuilleA1_05_correlations_fluid.sh
-sh 02_poiseuilleA1_06_pltcorr_fluid.sh
-sh 02_poiseuilleA1_07_pltmse_fluid.sh
