@@ -1,0 +1,49 @@
+#!/bin/bash
+
+cd CS
+qsub run_recovery_CS_BE.sh
+qsub run_recovery_CS_VG_n1_p25.sh
+qsub run_recovery_CS_VG_n1_p50.sh
+qsub run_recovery_CS_VG_n1_p75.sh
+qsub run_recovery_CS_VG_n5_p25.sh
+qsub run_recovery_CS_VG_n5_p50.sh
+qsub run_recovery_CS_VG_n5_p75.sh
+qsub run_recovery_CS_VG_n10_p25.sh
+qsub run_recovery_CS_VG_n10_p50.sh
+qsub run_recovery_CS_VG_n10_p75.sh
+qsub run_recovery_CS_VG_n30_p25.sh
+qsub run_recovery_CS_VG_n30_p50.sh
+qsub run_recovery_CS_VG_n30_p75.sh
+cd ..
+
+cd CSDEB
+qsub run_recovery_CSDEB_BE.sh
+qsub run_recovery_CSDEB_VG_n1_p25.sh
+qsub run_recovery_CSDEB_VG_n1_p50.sh
+qsub run_recovery_CSDEB_VG_n1_p75.sh
+qsub run_recovery_CSDEB_VG_n5_p25.sh
+qsub run_recovery_CSDEB_VG_n5_p50.sh
+qsub run_recovery_CSDEB_VG_n5_p75.sh
+qsub run_recovery_CSDEB_VG_n10_p25.sh
+qsub run_recovery_CSDEB_VG_n10_p50.sh
+qsub run_recovery_CSDEB_VG_n10_p75.sh
+qsub run_recovery_CSDEB_VG_n30_p25.sh
+qsub run_recovery_CSDEB_VG_n30_p50.sh
+qsub run_recovery_CSDEB_VG_n30_p75.sh
+cd ..
+
+cd OMP
+qsub run_recovery_OMP_BE.sh
+qsub run_recovery_OMP_VG_n1_p25.sh
+qsub run_recovery_OMP_VG_n1_p50.sh
+qsub run_recovery_OMP_VG_n1_p75.sh
+qsub run_recovery_OMP_VG_n5_p25.sh
+qsub run_recovery_OMP_VG_n5_p50.sh
+qsub run_recovery_OMP_VG_n5_p75.sh
+qsub run_recovery_OMP_VG_n10_p25.sh
+qsub run_recovery_OMP_VG_n10_p50.sh
+qsub run_recovery_OMP_VG_n10_p75.sh
+qsub run_recovery_OMP_VG_n30_p25.sh
+qsub run_recovery_OMP_VG_n30_p50.sh
+qsub run_recovery_OMP_VG_n30_p75.sh
+cd ..

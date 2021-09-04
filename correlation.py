@@ -88,13 +88,16 @@ def get_samples(recfile, singlechannel, vencdir):
     samples[k] = samples[k] - avgimg    
   return samples
 
-def get_saved_points(samples, size, num_pts, maindir, ptsdir, useFluidMask):
+def get_saved_points(samples, size, num_pts, maindir, ptsdir, useFluidMask, fluidMaskFile):
   imsz = samples.shape[3:]
 
   # Get File Name
   fluidMask = None
   if(useFluidMask):
-    print('Using Fluid Mask...')
+    if(fluidMaskFile == ''):
+      print('Using fluid mask...')
+    else:
+      print('Using fluid mask from file: '+maindir+fluidMaskFile+'...')
 
     # Get File with Original Image
     orig_file = maindir + 'imgs_n1.npy'
@@ -106,8 +109,12 @@ def get_saved_points(samples, size, num_pts, maindir, ptsdir, useFluidMask):
       print('ERROR: Cannot find file with original image.')
       exit(-1)
 
-    # Extract Fluid Mask
-    fluidMask = extractFluidMask(orig)
+    if(fluidMaskFile == ''):
+      # Extract fluid mask for simple geometries
+      fluidMask = extractFluidMask(orig)
+    else:
+      # Read mask from file 
+      fluidMask = np.load(maindir + fluidMaskFile)
 
     if(False):
       # Plot the fluid mask for debug
@@ -147,10 +154,10 @@ def get_coeff(size, num_pts, samples, points):
     coeff[np.isnan(coeff)] = 1.0
   return coeff
 
-def get_vals(recfile, savefile, maxcorrpixeldist, numpts, singlechannel, maindir, recdir, ptsdir, useFluidMask, save_numpy=True):
+def get_vals(recfile, savefile, maxcorrpixeldist, numpts, singlechannel, maindir, recdir, ptsdir, useFluidMask, fluidMaskFile, save_numpy=True):
   samples = get_samples(recfile, singlechannel, args.vencdir)
   print('Use Fluid Mask: ',useFluidMask)
-  points  = get_saved_points(samples, maxcorrpixeldist, numpts, maindir, ptsdir, useFluidMask)
+  points  = get_saved_points(samples, maxcorrpixeldist, numpts, maindir, ptsdir, useFluidMask, fluidMaskFile)
   coeff   = get_coeff(maxcorrpixeldist, numpts, samples, points)
   if save_numpy:
     np.save(savefile, coeff)
@@ -184,7 +191,7 @@ def get_all(args):
               savefile += '.npy'
 
             if(os.path.exists(recfile)):
-              get_vals(recfile, savefile, args.maxcorrpixeldist, args.numpts, args.singlechannel, args.maindir, args.recdir, args.ptsdir, args.usefluidmask)
+              get_vals(recfile, savefile, args.maxcorrpixeldist, args.numpts, args.singlechannel, args.maindir, args.recdir, args.ptsdir, args.usefluidmask, args.fluidmaskfile)
               print('Saved! Noise: ', noise_percent,', undersampling prob: ', p, ', undersampling mask: ', samptype, ', wavetype: ', wavetype, ', algorithm: ', algtype)
 
 # MAIN 
@@ -291,6 +298,20 @@ if __name__ == '__main__':
                       required=False,
                       help='compute correlation only within fluid region',
                       dest='usefluidmask')  
+
+  # fluidmaskfile
+  parser.add_argument('--fluidmaskfile',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='name of the npy file containing the binary mask',
+                      metavar='',
+                      dest='fluidmaskfile')  
+
   # Print Level
   parser.add_argument('-p', '--printlevel',
                       action=None,

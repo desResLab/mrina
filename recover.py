@@ -159,8 +159,9 @@ def recover_vel(compleximg, venc=None, threshold=True):
           # plt.show()
           # print(m.shape)
           # exit(-1)
-          mask = (np.abs(m) < 0.25*np.max(np.abs(m)))
-          vel[n,k,j, mask] = 0
+          # mask = (np.abs(m) < 0.25*np.max(np.abs(m)))
+          # vel[n,k,j, mask] = 0
+          pass
   return vel
 
 def phase_info(compleximg):

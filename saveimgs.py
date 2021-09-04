@@ -30,7 +30,7 @@ def save_mask(maskFile, outputFile):
   plt.savefig(outputFile, bbox_inches='tight', pad_inches=0)
   plt.close()
 
-def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, prefix, outputdir, singleChannel=False, relative=False):
+def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, prefix, outputdir, limits, singleChannel=False, relative=False):
   
   recovered = np.load(infilename)
 
@@ -43,24 +43,14 @@ def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, pr
   for n in range(1): #range(imgs.shape[0]):
     for k in range(imgs.shape[1]):
       # Custom image Scaling for Comparison
-      if(False):
-        if(k==0):
-          myvmin = 0.0
-          myvmax = 184.2392788833003
-        elif(k==1):
-          myvmin = -1.0776501893997192
-          myvmax = 1.0873665809631348
-        elif(k==2):
-          myvmin = -1.146713376045227
-          myvmax = 1.4400959014892578
-        elif(k==3):
-          myvmin = -1.2205644845962524
-          myvmax = 1.3197449445724487
-      else:
-        # ASSUMES INTENSITY AND VELOCITIES ARE IN [0,1]
-        myvmin=0
-        myvmax=1
+      myvmin=limits[2*k]
+      myvmax=limits[2*k+1]
+      if(myvmin is not None):
+        print('-- Using min value: ',myvmin)
+      if(myvmax is not None):
+        print('-- Using max value: ',myvmax)
 
+      # Show pictures
       plt.imshow(imgs[n,k,0], cmap='gray',vmin=myvmin,vmax=myvmax)
       plt.axis('off')
       plt.savefig(outputdir + prefix + 'rec_p' + str(int(p*100)) + samptype + \
@@ -213,7 +203,7 @@ def save_all(args,relativeScale=False):
               if(os.path.exists(recnpy)):
                 if(args.printlevel > 0):
                   print('Saving image reconstructions: ',recnpy)
-                save_rec(recnpy, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.outputdir, singleChannel=args.singlechannel,relative=relativeScale)
+                save_rec(recnpy, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.outputdir, args.limits, singleChannel=args.singlechannel,relative=relativeScale)
                 if(args.printlevel > 0):
                   print('Saving image reconstruction errors')
                 save_rec_noise(recnpy, trueFileName, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.outputdir, use_truth=args.usetrueasref, singleChannel=args.singlechannel)
@@ -362,6 +352,20 @@ if __name__ == '__main__':
                       help='print level, 0 - no print, >0 increasingly more information ',
                       metavar='',
                       dest='printlevel')
+
+  # limits
+  parser.add_argument('--limits',
+                      action=None,
+                      nargs='*',
+                      const=None,
+                      default=[None,None,None,None,None,None,None,None],
+                      type=float,
+                      choices=None,
+                      required=False,
+                      help='list of images limits',
+                      metavar='',
+                      dest='limits')
+
 
   # Parse Commandline Arguments
   args = parser.parse_args()

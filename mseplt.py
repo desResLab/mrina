@@ -373,7 +373,7 @@ def get_mse_cmx(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
 
   return res
 
-def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usecompleximgs, usetrueimg, addlinearrec, useFluidMask):
+def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usecompleximgs, usetrueimg, addlinearrec, useFluidMask, fluidMaskFile):
     
   # Get CS reconstructions, linear reconstruction and original image
   if usecompleximgs:
@@ -384,9 +384,14 @@ def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
   # If use fluid mask, then compute the mask using the original image density+velocities
   fluidMask = None
   if(useFluidMask):
-    orig_forMask = np.load(dir + 'imgs_n1.npy').astype(np.complex)
-    fluidMask = extractFluidMask(orig_forMask)
-    # print('fluid mask: ',fluidMask.shape,fluidMask.sum(),np.prod(fluidMask.shape))
+
+    if(fluidMaskFile == ''):
+      orig_forMask = np.load(dir + 'imgs_n1.npy').astype(np.complex)
+      fluidMask = extractFluidMask(orig_forMask)
+      print('Using automatically extracted fluid mask...')
+    else:
+      fluidMask = np.load(dir + fluidMaskFile)
+      print('Using fluid mask from file: '+ dir + fluidMaskFile)
 
   # Get average cs and linear reconstructed image
   if(usetrueimg):
@@ -489,7 +494,7 @@ def plot_pdiff(args):
 
     for i,uval in enumerate(sorted(args.uval)): 
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, bl_noise, uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, bl_noise, uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
       
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -557,7 +562,7 @@ def plot_noisediff(args):
 
     for i,noise in enumerate(sorted(args.noise)):
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, noise, bl_uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, noise, bl_uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
 
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -626,7 +631,7 @@ def plot_maskdiff(args):
 
     for i,utype in enumerate(args.utype):
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
       
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -695,7 +700,7 @@ def plot_methoddiff(args):
 
     for i,method in enumerate(args.method):
 
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, bl_wavelet, method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, bl_wavelet, method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
         
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -765,7 +770,7 @@ def plot_waveletdiff(args):
 
     for i,wavelet in enumerate(args.wavelet):
 
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
         
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -971,6 +976,7 @@ if __name__ == '__main__':
                       required=False,
                       help='evaluate the MSE based on the reconstructed complex image. Default: use velocity components.',
                       dest='usecompleximgs')    
+
   # usefluidmask
   parser.add_argument('--usefluidmask',
                       action='store_true',
@@ -978,6 +984,20 @@ if __name__ == '__main__':
                       required=False,
                       help='evaluate the MSE only within the fluid region. Default: use full image',
                       dest='usefluidmask')    
+
+  # fluidmaskfile
+  parser.add_argument('--fluidmaskfile',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='name of the npy file containing the binary mask',
+                      metavar='',
+                      dest='fluidmaskfile')  
+
   # addlinear reconstructions
   parser.add_argument('--addlinearrec',
                       action='store_true',
@@ -1023,16 +1043,3 @@ if __name__ == '__main__':
   # Completed!
   if(args.printlevel > 0):
     print('Completed!!!')  
-
-
-
-    
-
-
-
-
-
-
-
-
-
