@@ -18,19 +18,17 @@ def pltimg(img, title):
 def save_mask(maskFile, outputFile):
   '''
   Save undersampling mask to file
-  CAREFULL: NEED TO CHANGE THE CONTOUR TO GRAY
   '''
-  print('WARNING: Need to change the cmap to "gray" in the final edit!!!')
   mask = np.load(maskFile).astype(bool)
   if(len(mask.shape) == 3):
-    plt.imshow(np.absolute(np.fft.fftshift(mask[0])), cmap='Greys', vmin=0, vmax=1)
+    plt.imshow(np.absolute(np.fft.fftshift(mask[0])), cmap='gray', vmin=0, vmax=1)
   else:
-    plt.imshow(np.absolute(np.fft.fftshift(mask)), cmap='Greys', vmin=0, vmax=1)
+    plt.imshow(np.absolute(np.fft.fftshift(mask)), cmap='gray', vmin=0, vmax=1)
   plt.axis('off')
   plt.savefig(outputFile, bbox_inches='tight', pad_inches=0)
   plt.close()
 
-def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, prefix, outputdir, limits, singleChannel=False, relative=False):
+def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, prefix, maindir, outputdir, limits, fluidmaskfile, singleChannel=False, relative=False):
   
   recovered = np.load(infilename)
 
@@ -38,6 +36,12 @@ def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, pr
     imgs = np.absolute(recovered)
   else:
     imgs = recover_vel(recovered, venc)
+
+  # Set to zero the pixels outside the fluid mask
+  if(fluidmaskfile != ''):
+    print('Using fluid mask: ',maindir + fluidmaskfile)
+    fluidmask = np.load(maindir + fluidmaskfile)
+    imgs[0,:,0,np.logical_not(fluidmask)] = 0.0
     
   # Only the first reconstructed Sample
   for n in range(1): #range(imgs.shape[0]):
@@ -203,7 +207,7 @@ def save_all(args,relativeScale=False):
               if(os.path.exists(recnpy)):
                 if(args.printlevel > 0):
                   print('Saving image reconstructions: ',recnpy)
-                save_rec(recnpy, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.outputdir, args.limits, singleChannel=args.singlechannel,relative=relativeScale)
+                save_rec(recnpy, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.maindir, args.outputdir, args.limits, args.fluidmaskfile, singleChannel=args.singlechannel,relative=relativeScale)
                 if(args.printlevel > 0):
                   print('Saving image reconstruction errors')
                 save_rec_noise(recnpy, trueFileName, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.outputdir, use_truth=args.usetrueasref, singleChannel=args.singlechannel)
@@ -352,6 +356,19 @@ if __name__ == '__main__':
                       help='print level, 0 - no print, >0 increasingly more information ',
                       metavar='',
                       dest='printlevel')
+
+  # fluidmaskfile
+  parser.add_argument('--fluidmaskfile',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default='',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='name of the npy file containing the binary mask',
+                      metavar='',
+                      dest='fluidmaskfile')    
 
   # limits
   parser.add_argument('--limits',
