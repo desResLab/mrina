@@ -65,6 +65,53 @@ def save_rec(infilename, venc, p, samptype, noise_percent, wavetype, algtype, pr
                                           '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
       plt.close()
 
+def save_lin(infilename,
+             venc, p, samptype, noise_percent, wavetype, num_samples,
+             prefix, maindir, outputdir, limits, fluidmaskfile, usemultipatterns,
+             singleChannel=False, relative=False):
+
+  if(usemultipatterns):
+    mask_file = maindir + 'undersamplpattern_p' + str(int(p*100)) + samptype + '_n' + str(num_samples) + '.npy'
+  else:
+    mask_file = maindir + 'undersamplpattern_p' + str(int(p*100)) + samptype + '.npy'
+
+  mask = np.load(maindir + mask_file)
+  noisy = np.load(maindir + 'noisy_noise' + str(int(noise_percent*100)) + '_n' + str(num_samples) + '.npy')
+  linrec = linear_reconstruction(noisy,mask)
+
+  if(singleChannel):
+    imgs = np.absolute(linrec)
+  else:
+    imgs = recover_vel(linrec, venc)
+
+  # Set to zero the pixels outside the fluid mask
+  if(fluidmaskfile != ''):
+    print('Using fluid mask: ',maindir + fluidmaskfile)
+    fluidmask = np.load(maindir + fluidmaskfile)
+    imgs[0,:,0,np.logical_not(fluidmask)] = 0.0
+    
+  # Only the first reconstructed Sample
+  for n in range(1): #range(imgs.shape[0]):
+    for k in range(imgs.shape[1]):
+      # Custom image Scaling for Comparison
+      myvmin=limits[2*k]
+      myvmax=limits[2*k+1]
+      if(myvmin is not None):
+        print('-- Using min value: ',myvmin)
+      if(myvmax is not None):
+        print('-- Using max value: ',myvmax)
+
+      # Show pictures
+      plt.imshow(imgs[n,k,0], cmap='gray',vmin=myvmin,vmax=myvmax)
+      plt.axis('off')
+      plt.savefig(outputdir + prefix + 'linrec_p' + str(int(p*100)) + samptype + \
+                                      '_noise' + str(int(noise_percent*100)) + \
+                                          '_n' + str(n) + \
+                                          '_w' + str(wavetype) + \
+                                          '_k' + str(k) + '.png', bbox_inches='tight', pad_inches=0)
+      plt.close()
+
+
 def save_rec_noise(recnpyFile, orig_file, venc, p, samptype, noise_percent, wavetype, algtype, prefix, outputdir, singleChannel=False, use_truth=False, ext='.png'):
   
   # Read File with CS Reconstructions 
@@ -197,6 +244,7 @@ def save_all(args,relativeScale=False):
 
       for noise_percent in [0.0, 0.01, 0.05, 0.1, 0.3]:
         for wavetype in ['HAAR','DB8']:
+          # Loop on the reconstruction method
           for algtype in ['CS','CSDEB','OMP']:
             if(args.saverec):
               recnpy = args.recdir + 'rec_noise' + str(int(noise_percent*100)) + \
@@ -211,7 +259,14 @@ def save_all(args,relativeScale=False):
                 if(args.printlevel > 0):
                   print('Saving image reconstruction errors')
                 save_rec_noise(recnpy, trueFileName, venc, p, samptype, noise_percent, wavetype, algtype, prefstr, args.outputdir, use_truth=args.usetrueasref, singleChannel=args.singlechannel)
-  
+
+          # Save linear reconstructions if appropriate
+          if(os.path.exists(recnpy)):
+            if(args.savelin):
+              if(args.printlevel > 0):
+                print('Saving linear reconstruction')
+              save_lin(recnpy, venc, p, samptype, noise_percent, wavetype, args.numsamples, prefstr, args.maindir, args.outputdir, args.limits, args.fluidmaskfile, args.usemultipatterns, singleChannel=args.singlechannel,relative=relativeScale)
+
 # MAIN 
 if __name__ == '__main__':
 
@@ -336,6 +391,14 @@ if __name__ == '__main__':
                       help='save noise image',
                       dest='savenoise')
 
+# save linear reconstructions
+  parser.add_argument('--savelin',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='save linear reconstructions',
+                      dest='savelin')
+
   # singlechannel
   parser.add_argument('--singlechannel',
                       action='store_true',
@@ -368,7 +431,15 @@ if __name__ == '__main__':
                       required=False,
                       help='name of the npy file containing the binary mask',
                       metavar='',
-                      dest='fluidmaskfile')    
+                      dest='fluidmaskfile')   
+
+  # use unique undesampling pattern for each reconstruction (false) or change every time
+  parser.add_argument('-um', '--usemultipatterns',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='generate a unique undersampling pattern for each noise realization',
+                      dest='usemultipatterns')
 
   # limits
   parser.add_argument('--limits',

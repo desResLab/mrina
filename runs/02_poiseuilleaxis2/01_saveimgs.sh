@@ -8,8 +8,11 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --savemask \
                     --saverec \
                     --savenoise \
+                    --savelin \
                     --usetrueasref \
-                    --printlevel 1
+                    --printlevel 1 \
+                    --limits 0.0 1.0 0.0 1.0 0.0 1.0 0.0 1.0 \
+                    --fluidmaskfile p2_mask.npy
 
 # CS with respect to the avg image
 python3 ../../saveimgs.py --numsamples 100 \
@@ -21,7 +24,10 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --savemask \
                     --saverec \
                     --savenoise \
-                    --printlevel 1
+                    --savelin \
+                    --printlevel 1 \
+                    --limits 0.0 1.0 0.0 1.0 0.0 1.0 0.0 1.0 \
+                    --fluidmaskfile p2_mask.npy
 
 # CSDEB with respect to the true image
 python3 ../../saveimgs.py --numsamples 100 \
@@ -33,8 +39,11 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --savemask \
                     --saverec \
                     --savenoise \
+                    --savelin \
                     --usetrueasref \
-                    --printlevel 1
+                    --printlevel 1 \
+                    --limits 0.0 1.0 0.0 1.0 0.0 1.0 0.0 1.0 \
+                    --fluidmaskfile p2_mask.npy
 
 # CSDEB with respect to the avg image
 python3 ../../saveimgs.py --numsamples 100 \
@@ -46,7 +55,10 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --savemask \
                     --saverec \
                     --savenoise \
-                    --printlevel 1
+                    --savelin \
+                    --printlevel 1 \
+                    --limits 0.0 1.0 0.0 1.0 0.0 1.0 0.0 1.0 \
+                    --fluidmaskfile p2_mask.npy
 
 # OMP with respect to the true image
 python3 ../../saveimgs.py --numsamples 100 \
@@ -58,8 +70,11 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --savemask \
                     --saverec \
                     --savenoise \
+                    --savelin \
                     --usetrueasref \
-                    --printlevel 1
+                    --printlevel 1 \
+                    --limits 0.0 1.0 0.0 1.0 0.0 1.0 0.0 1.0 \
+                    --fluidmaskfile p2_mask.npy
 
 # OMP with respect to the avg image
 python3 ../../saveimgs.py --numsamples 100 \
@@ -71,4 +86,7 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --savemask \
                     --saverec \
                     --savenoise \
-                    --printlevel 1
+                    --savelin \
+                    --printlevel 1 \
+                    --limits 0.0 1.0 0.0 1.0 0.0 1.0 0.0 1.0 \
+                    --fluidmaskfile p2_mask.npy

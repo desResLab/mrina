@@ -1,7 +1,5 @@
 *.npy
 *.py
-cs/
-csdebias/
-omp/
+*.pdf
 !imgs_n1.npy
 

@@ -334,6 +334,7 @@ class OperatorWaveletToFourier(genericOperator):
         else:
             y[np.logical_not(self.samplingSet)] = 0.0
             _im = fft.ifft2(y, norm='ortho')
+        return _im
 
     @property
     def shape(self):

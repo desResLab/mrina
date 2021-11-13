@@ -145,23 +145,9 @@ def recover_vel(compleximg, venc=None, threshold=True):
       vel[n,0,j] = np.abs(m)
       for k in range(1,compleximg.shape[1]):
         v = compleximg[n,k,j]
-        # Formula in the paper: correct.
+        # Formula in the paper
         v = venc/(np.pi)*(np.angle(v) - np.angle(m))
-        # This works with some of the old reconstruction files
-        # v = venc/(2*np.pi)*(np.angle(v) - np.angle(m))
         vel[n,k,j] = v
-        # set velocity = 0 wherever mag is close enough to 0
-        if threshold:
-          # print('Thresholding...')
-          # plt.figure(figsize=(4,3))
-          # plt.plot(np.arange(len(np.abs(m).flatten())),np.abs(m).flatten())
-          # plt.axhline(y=0.1*np.max(np.abs(m)), color='r', linestyle='-',lw=2)
-          # plt.show()
-          # print(m.shape)
-          # exit(-1)
-          # mask = (np.abs(m) < 0.25*np.max(np.abs(m)))
-          # vel[n,k,j, mask] = 0
-          pass
   return vel
 
 def phase_info(compleximg):
@@ -171,18 +157,30 @@ def phase_info(compleximg):
   return refphase, np.abs(compleximg)
 
 def linear_reconstruction(fourier_file, omega=None):
+  # Check if fourier_file is file or string
   if isinstance(fourier_file, str): 
     kspace = np.load(fourier_file)
   else:
     kspace = fourier_file
+
+  # Check Omega if 2D or 3D with multiple undersampling patterns
   if omega is not None:
-    if len(omega.shape) == 3 and omega.shape[0] == 1:
-      omega = crop(omega[0])
-    elif len(omega.shape) == 2:
+    # Check the size of the 3D mask, either one or equal to the samples
+    if(len(omega.shape) == 3):
+      if((omega.shape[0] != 1)and(omega.shape[0] != kspace.shape[0])):
+        print('Invalid number of samples in 3D mask.')
+        exit(-1)
+    # Multiple mask case
+    if(len(omega.shape) == 3):
+      for loopA in range(omega.shape[0]):      
+        omega[loopA] = crop(omega[loopA])
+    elif(len(omega.shape) == 2):
       omega = crop(omega)
     else:
       print("ERROR: mask has unexpected shape.")
       sys.exit(-1)
+
+  # Perform linear reconstructions      
   imsz = crop(kspace[0,0,0]).shape
   kspace = kspace[:,:,:, :imsz[0], :imsz[1]]
   linrec = np.zeros(kspace.shape[0:3] + imsz, dtype=complex)
@@ -190,7 +188,12 @@ def linear_reconstruction(fourier_file, omega=None):
     for k in range(kspace.shape[1]):
       for j in range(kspace.shape[2]):
         if omega is not None:
-          kspace[n,k,j][~omega] = 0
+          if(len(omega.shape) == 2):
+            kspace[n,k,j][~omega] = 0
+          elif((len(omega.shape) == 3)and(omega.shape[0] == 1)):
+            kspace[n,k,j][~omega[0]] = 0
+          else:
+            kspace[n,k,j][~omega[n]] = 0
         linrec[n,k,j] = fft.ifft2(crop(kspace[n,k,j]), norm='ortho')
   return linrec
 

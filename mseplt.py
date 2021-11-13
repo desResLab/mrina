@@ -11,6 +11,7 @@ from matplotlib.ticker import PercentFormatter, ScalarFormatter
 from CSRecoverySuite import crop, isvalidcrop, extractFluidMask
 from CSRecoverySuite import get_umask_string, get_method_string, get_wavelet_string
 import argparse
+from datetime import datetime
 
 warnings.filterwarnings('error')
 
@@ -192,11 +193,14 @@ def generateBarPlot(lgd,xlabel,ylabel,
 
   return fig
 
-def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples):
+def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usemultipatterns):
   # Get Image File Names
   orig_file        = dir + 'imgs_n1.npy'
   fourier_file     = dir + 'noisy_noise' + str(int(noise*100)) + '_n' + str(numsamples) + '.npy'
-  mask_file        = maskdir + 'undersamplpattern_p' + str(int(uval*100)) + utype + '.npy'
+  if(usemultipatterns):
+    mask_file = maskdir + 'undersamplpattern_p' + str(int(uval*100)) + utype + '_n' + str(numsamples) + '.npy'
+  else:
+    mask_file = maskdir + 'undersamplpattern_p' + str(int(uval*100)) + utype + '.npy'
   recovered_file   = dir + get_method_string(method) + '/' + 'rec_noise' + str(int(noise*100)) + \
                                           '_p' + str(int(uval*100)) + utype + \
                                           '_n' + str(numsamples) + \
@@ -258,10 +262,10 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples):
 
   return fourier, orig, mask, recovered
 
-def get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec):
+def get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec, usemultipatterns):
     
   # Get all files
-  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples)
+  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usemultipatterns)
 
   # Get velocity encoding
   venc_file = dir + 'venc_n1.npy'
@@ -274,11 +278,8 @@ def get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, nums
   # Compute linear reconstructions if requested
   retLinRec = None
   if(addlinearrec):
-    # Load undesampling mask
-    if(len(mask.shape) == 3):
-      linrec = linear_reconstruction(fourier,mask[0])
-    else:
-      linrec = linear_reconstruction(fourier,mask)
+    # Perform linear reconstruction
+    linrec = linear_reconstruction(fourier,mask)
     # Return complex images only for the requested channel
     retLinRec = linrec[:,channel,:,:,:]
 
@@ -298,10 +299,10 @@ def get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, nums
   # Return complex images only for the requested channel
   return recovered[:,channel,:,:,:], kspace_orig[:,channel,:,:,:], retLinRec
 
-def get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec):
+def get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec, usemultipatterns):
 
   # Get all files
-  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples)
+  fourier, orig, mask, recovered = get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usemultipatterns)
 
   # Get velocity encoding
   venc_file = dir + 'venc_n1.npy'
@@ -317,18 +318,26 @@ def get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
   # Compute linear reconstructions if requested
   retLinVels = None
   if(addlinearrec):
-    # Load undesampling mask
-    if(len(mask.shape) == 3):
-      linrec = linear_reconstruction(fourier,mask[0])
-    else:
-      linrec = linear_reconstruction(fourier,mask)
-    
-    # Compute velocities from linear reconstructions
+    # Perform linear reconstruction
+    linrec = linear_reconstruction(fourier,mask)
+    # Compute velocities from linear reconstruction
     linvels = recover_vel(linrec, venc)
     retLinVels = linvels[:,channel,:,:,:]
     
   # Return
   return csvels[:,channel,:,:,:], orig[:,channel,:,:,:], retLinVels
+
+def get_perc_diff(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
+  '''
+  Evaluate the percentage 
+  '''
+  refimg[0,0][np.abs(refimg[0,0]) < 1.0e-3] = 1.0e-3
+  res = np.absolute((np.absolute(refimg[0,0])-np.absolute(csimgs[k,0]))/(np.absolute(refimg[0,0])))
+  if(useFluidMask):
+    res = np.median(res[fluidMask])
+  else:
+    res = np.median(res)
+  return res
 
 def get_mse_mag(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
   if(useFluidMask):
@@ -336,7 +345,6 @@ def get_mse_mag(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
     imgDen = np.absolute(refimg[0,0])**2
     res = np.mean(imgNum[fluidMask])
     den = np.mean(imgDen[fluidMask])
-
     if(den > 1.0e-12):
       res = res/den
   else:
@@ -373,13 +381,13 @@ def get_mse_cmx(k,csimgs,refimg,useFluidMask=False,fluidMask=None):
 
   return res
 
-def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usecompleximgs, usetrueimg, addlinearrec, useFluidMask, fluidMaskFile):
+def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, usecompleximgs, usetrueimg, addlinearrec, useFluidMask, fluidMaskFile, usemultipatterns):
     
   # Get CS reconstructions, linear reconstruction and original image
   if usecompleximgs:
-    csimgs, orig, linimgs = get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec)
+    csimgs, orig, linimgs = get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec, usemultipatterns)
   else:
-    csimgs, orig, linimgs = get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec) 
+    csimgs, orig, linimgs = get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsamples, addlinearrec, usemultipatterns) 
 
   # If use fluid mask, then compute the mask using the original image density+velocities
   fluidMask = None
@@ -427,28 +435,32 @@ def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
   # print('linimgs: ',linimgs.shape)
 
   # Init vectors for MSE: one for every sample
-  mse_mag_cs = np.zeros(csimgs.shape[0])
-  mse_ang_cs = np.zeros(csimgs.shape[0])
-  mse_cmx_cs = np.zeros(csimgs.shape[0])
+  mse_mag_cs  = np.zeros(csimgs.shape[0])
+  mse_ang_cs  = np.zeros(csimgs.shape[0])
+  mse_cmx_cs  = np.zeros(csimgs.shape[0])
+  perc_err_cs = np.zeros(csimgs.shape[0])
 
   if(addlinearrec):
     
     # Init vectors for linear MSE
-    mse_mag_lin = np.zeros(csimgs.shape[0])
-    mse_ang_lin = np.zeros(csimgs.shape[0])
-    mse_cmx_lin = np.zeros(csimgs.shape[0])
+    mse_mag_lin  = np.zeros(csimgs.shape[0])
+    mse_ang_lin  = np.zeros(csimgs.shape[0])
+    mse_cmx_lin  = np.zeros(csimgs.shape[0])
+    perc_err_lin = np.zeros(csimgs.shape[0])
 
     # Compute image average
     avglin = linimgs.mean(axis=0,keepdims=True)
     
   for k in range(csimgs.shape[0]):
-      
+
     # Magnitude
     mse_mag_cs[k]  = get_mse_mag(k,csimgs,refimg,useFluidMask,fluidMask)
     # Angle - Now that you mention it, I think we should add np.angle(orig)-np.angle(csimgs[k]) and np.abs(orig-csimgs[k]).
     mse_ang_cs[k]  = get_mse_ang(k,csimgs,refimg,useFluidMask,fluidMask)
     # Complex
     mse_cmx_cs[k]  = get_mse_cmx(k,csimgs,refimg,useFluidMask,fluidMask)
+    # Percent Error
+    perc_err_cs[k] = get_perc_diff(k,csimgs,refimg,useFluidMask,fluidMask)
 
     if(addlinearrec):
       
@@ -458,13 +470,15 @@ def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
       mse_ang_lin[k] = get_mse_ang(k,linimgs,refimg,useFluidMask,fluidMask)
       # Complex
       mse_cmx_lin[k] = get_mse_cmx(k,linimgs,refimg,useFluidMask,fluidMask)
+      # Percent Error
+      perc_err_lin[k] = get_perc_diff(k,csimgs,refimg,useFluidMask,fluidMask)
 
   if(addlinearrec):
-    return mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin
+    return mse_mag_cs, mse_ang_cs, mse_cmx_cs, perc_err_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin, perc_err_lin
   else:
-    return mse_mag_cs, mse_ang_cs, mse_cmx_cs, None, None, None
+    return mse_mag_cs, mse_ang_cs, mse_cmx_cs, perc_err_cs, None, None, None, None
 
-def plot_pdiff(args):
+def plot_pdiff(args,perc_dict):
 
   print('Plotting MSE for various undersampling ratios...')
 
@@ -494,7 +508,7 @@ def plot_pdiff(args):
 
     for i,uval in enumerate(sorted(args.uval)): 
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, bl_noise, uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, perc_err_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin, perc_err_lin = get_error(ch, args.dir, args.maskdir, bl_noise, uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile, args.usemultipatterns)
       
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -517,8 +531,12 @@ def plot_pdiff(args):
       else:
         msg += '_vel'
 
+      # Store percent error
+      comp = 'pdiff_k'+str(ch)+'_p'+str(uval)+'_'+msg
+      perc_dict[comp+'_cs'] = perc_err_cs
+      perc_dict[comp+'_lin'] = perc_err_lin
+
     lgd = [str(int(x*100)) + '\%' for x in sorted(args.uval)]
-    # fig = generateViolinPlot(lgd,'Undersampling ratio',allplt,allplt_lin)
     fig = generateBarPlot(lgd,'Undersampling ratio',ylabel,
                           args.usecompleximgs,args.addlinearrec,
                           allplt_mag,allplt_ang,allplt_cmx,
@@ -529,7 +547,7 @@ def plot_pdiff(args):
     print("MSE Image saved: " + fname)
     plt.close(fig)
 
-def plot_noisediff(args):
+def plot_noisediff(args,perc_dict):
   '''
   Ploting MSE for variable k-space noise
   '''
@@ -562,7 +580,7 @@ def plot_noisediff(args):
 
     for i,noise in enumerate(sorted(args.noise)):
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch, args.dir, args.maskdir, noise, bl_uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, perc_err_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin, perc_err_lin = get_error(ch, args.dir, args.maskdir, noise, bl_uval, bl_utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile, args.usemultipatterns)
 
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -585,6 +603,11 @@ def plot_noisediff(args):
       else:
         msg += '_vel'
 
+      # Store percent error
+      comp = 'noisediff_k'+str(ch)+'_noise'+str(noise)+'_'+msg
+      perc_dict[comp+'_cs'] = perc_err_cs
+      perc_dict[comp+'_lin'] = perc_err_lin
+
     # Generate Plots
     lgd = [str(int(x*100)) + '\%' for x in sorted(args.noise)]
     # fig = generateViolinPlot(lgd,'Noise intensity',allplt,allplt_lin)
@@ -599,7 +622,7 @@ def plot_noisediff(args):
     print("MSE Image saved: " + fname)
     plt.close(fig)
 
-def plot_maskdiff(args):
+def plot_maskdiff(args,perc_dict):
   '''
   Ploting MSE for variable undesampling masks
   '''
@@ -631,7 +654,7 @@ def plot_maskdiff(args):
 
     for i,utype in enumerate(args.utype):
       
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, perc_err_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin, perc_err_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, utype, bl_wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile, args.usemultipatterns)
       
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -654,6 +677,11 @@ def plot_maskdiff(args):
       else:
         msg += '_vel'
 
+      # Store percent error
+      comp = 'maskdiff_k'+str(ch)+'_'+str(utype)+'_'+msg
+      perc_dict[comp+'_cs'] = perc_err_cs
+      perc_dict[comp+'_lin'] = perc_err_lin
+
     lgd = []
     for loopA in range(len(args.utype)):
       lgd.append(get_umask_string(args.utype[loopA]))
@@ -670,7 +698,7 @@ def plot_maskdiff(args):
     print("MSE Image saved: " + fname)
     plt.close(fig)  
 
-def plot_methoddiff(args):
+def plot_methoddiff(args,perc_dict):
 
   print('Plotting MSE for various reconstruction methods...')
     
@@ -700,7 +728,7 @@ def plot_methoddiff(args):
 
     for i,method in enumerate(args.method):
 
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, bl_wavelet, method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, perc_err_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin, perc_err_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, bl_wavelet, method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile, args.usemultipatterns)
         
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -723,6 +751,11 @@ def plot_methoddiff(args):
       else:
         msg += '_vel'
 
+      # Store percent error
+      comp = 'methoddiff_k'+str(ch)+'_'+str(method)+'_'+msg
+      perc_dict[comp+'_cs'] = perc_err_cs
+      perc_dict[comp+'_lin'] = perc_err_lin        
+
     # Generate Plots
     lgd = []
     for loopA in range(len(args.method)):
@@ -740,7 +773,7 @@ def plot_methoddiff(args):
     plt.close(fig)
 
 # Difference in the wavelet frame
-def plot_waveletdiff(args):
+def plot_waveletdiff(args,perc_dict):
 
   print('Plotting MSE for various wavelet frames...')
     
@@ -770,7 +803,7 @@ def plot_waveletdiff(args):
 
     for i,wavelet in enumerate(args.wavelet):
 
-      mse_mag_cs, mse_ang_cs, mse_cmx_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile)
+      mse_mag_cs, mse_ang_cs, mse_cmx_cs, perc_err_cs, mse_mag_lin, mse_ang_lin, mse_cmx_lin, perc_err_lin = get_error(ch,args.dir, args.maskdir, bl_noise, bl_uval, bl_utype, wavelet, bl_method, args.numsamples, args.usecompleximgs, args.usetrueimg, args.addlinearrec, args.usefluidmask, args.fluidmaskfile, args.usemultipatterns)
         
       allplt_mag[i] = mse_mag_cs
       allplt_ang[i] = mse_ang_cs
@@ -792,6 +825,11 @@ def plot_waveletdiff(args):
         msg += '_cmx'
       else:
         msg += '_vel'
+
+      # Store percent error
+      comp = 'wavediff_k'+str(ch)+'_'+str(wavelet)+'_'+msg
+      perc_dict[comp+'_cs'] = perc_err_cs
+      perc_dict[comp+'_lin'] = perc_err_lin                
 
     # Generate Plots
     lgd = []
@@ -1012,6 +1050,15 @@ if __name__ == '__main__':
                       required=False,
                       help='use the true image to evaluate the MSE',
                       dest='usetrueimg')    
+
+  # use unique undesampling pattern for each reconstruction (false) or change every time
+  parser.add_argument('-um', '--usemultipatterns',
+                      action='store_true',
+                      default=False,
+                      required=False,
+                      help='generate a unique undersampling pattern for each noise realization',
+                      dest='usemultipatterns')
+
   # Print Level
   parser.add_argument('-p', '--printlevel',
                       action=None,
@@ -1029,16 +1076,21 @@ if __name__ == '__main__':
   args = parser.parse_args()
 
   # Plot the parameter perturbations
+  perc_dict = {}
   if(len(args.noise) > 1):
-    plot_noisediff(args)
+    plot_noisediff(args,perc_dict)
   if(len(args.uval) > 1):
-    plot_pdiff(args)
+    plot_pdiff(args,perc_dict)
   if(len(args.utype) > 1):
-    plot_maskdiff(args)
+    plot_maskdiff(args,perc_dict)
   if(len(args.method) > 1):
-    plot_methoddiff(args)
+    plot_methoddiff(args,perc_dict)
   if(len(args.method) > 1):
-    plot_waveletdiff(args)
+    plot_waveletdiff(args,perc_dict)
+
+  # Save Dictionary to File
+  print('Saving percent error dictionary to file...')
+  np.save('perc_dict' + str(int(round(datetime.now().timestamp()))) + '.npy', perc_dict) 
 
   # Completed!
   if(args.printlevel > 0):

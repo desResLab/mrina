@@ -9,10 +9,11 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --dir ./ \
                         --outputdir ./OUT/03_mse/ \
                         --maskdir ./ \
-                        --usefluidmask \
                         --usecompleximgs \
                         --addlinearrec \
                         --usetrueimg \
+                        --usefluidmask \
+                        --fluidmaskfile ia_mask.npy \
                         --printlevel 1
 
 # Complex, avg image, multi-channel
@@ -26,9 +27,10 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --dir ./ \
                         --outputdir ./OUT/03_mse/ \
                         --maskdir ./ \
-                        --usefluidmask \
                         --usecompleximgs \
                         --addlinearrec \
+                        --usefluidmask \
+                        --fluidmaskfile ia_mask.npy \
                         --printlevel 1
 
 # Vels, true image, multi-channel
@@ -42,9 +44,10 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --dir ./ \
                         --outputdir ./OUT/03_mse/ \
                         --maskdir ./ \
-                        --usefluidmask \
                         --addlinearrec \
                         --usetrueimg \
+                        --usefluidmask \
+                        --fluidmaskfile ia_mask.npy \
                         --printlevel 1
 
 # Vels, avg image, multi-channel
@@ -58,6 +61,7 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --dir ./ \
                         --outputdir ./OUT/03_mse/ \
                         --maskdir ./ \
-                        --usefluidmask \
                         --addlinearrec \
+                        --usefluidmask \
+                        --fluidmaskfile ia_mask.npy \
                         --printlevel 1
