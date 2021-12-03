@@ -22,9 +22,11 @@ CS_MODE     = 0
 DEBIAS_MODE = 1
 OMP_MODE    = 2
 
-def_omp_mode = 'stomp'
-def_omp_iter = 10
-def_omp_ts   = 2.0
+# OMP algorithm defaults
+def_omp_mode     = 'stomp'
+def_omp_iter     = 10
+def_omp_ts       = 2.0
+def_omp_usenorms = False
 
 def get_eta(im, imNrm, noise_percent, m):
   avgnorm = imNrm/math.sqrt(im.size)
@@ -36,7 +38,8 @@ def get_eta(im, imNrm, noise_percent, m):
     eta = 1E-3
   return eta
 
-def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts):
+def recoverOne(kspace, imsz, eta, omega, wvlt='haar', 
+               solver_mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts, omp_usenorms=def_omp_usenorms):
   
   A = OperatorWaveletToFourier(imsz, samplingSet=omega, waveletName=wvlt)
   
@@ -53,7 +56,7 @@ def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE, omp_m
     tol = eta/np.linalg.norm(yim.ravel(),2)
     print('Recovering using OMP with tol = %8.3e' % (tol))
 
-    wim = OMPRecovery(A, yim, tol=tol, ompMethod=omp_mode, maxItns=omp_iter, ts_factor=omp_ts)[0]
+    wim = OMPRecovery(A, yim, tol=tol, ompMethod=omp_mode, maxItns=omp_iter, ts_factor=omp_ts, useNorms=omp_usenorms)[0]
 
   else:
     # CS Recovery
@@ -76,7 +79,8 @@ def recoverOne(kspace, imsz, eta, omega, wvlt='haar', solver_mode=CS_MODE, omp_m
 
   return csim
   
-def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wvlt='haar', solver_mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts):    
+def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wvlt='haar', 
+            solver_mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts, omp_usenorms=def_omp_usenorms):    
   imsz = crop(noisy[0,0,0]).shape
   cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
   print('Pattern shape: ', pattern.shape)
@@ -94,13 +98,14 @@ def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wv
         im = crop(original[0,k,j])
         imNrm=np.linalg.norm(im.ravel(), 2)
         eta = get_eta(im, imNrm, noise_percent, imsz[0])
-        cs[n,k,j] = recoverOne(crop(noisy[n,k,j]), imsz, eta, omega, wvlt, solver_mode, omp_mode, omp_iter, omp_ts)
+        cs[n,k,j] = recoverOne(crop(noisy[n,k,j]), imsz, eta, omega, wvlt, solver_mode, omp_mode, omp_iter, omp_ts,omp_usenorms)
         print('Recovered! Repetition: %d, Image: %d, Component: %d' % (n,k,j))
 
   return_dict[processnum] = cs
   return cs
 
-def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar', mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts):
+def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar', 
+               mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts, omp_usenorms=def_omp_usenorms):
 	
   # Load data
   if isinstance(fourier_file,str):
@@ -122,13 +127,13 @@ def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar'
   jobs = []
   imsz = crop(original[0,0,0]).shape
   first = original[0,0,0]  
-  wsz = pywt2array(pywt.wavedec2(crop(first), wavelet=wvlt, mode='periodization'), imsz).shape
   for n in range(0, data.shape[0], interval):
     if pattern.shape[0] > 1:
       pattern_sample = pattern[n:(n+interval)]
     else:
       pattern_sample = pattern
-    p = Process(target=recover, args=(data[n:n+interval], original, pattern_sample, noise_percent, int(n/interval), return_dict, wvlt, mode, omp_mode, omp_iter, omp_ts))
+    p = Process(target=recover, args=(data[n:n+interval], original, pattern_sample, noise_percent, int(n/interval), return_dict, 
+                                      wvlt, mode, omp_mode, omp_iter, omp_ts, omp_usenorms))
     jobs.append(p)
     p.start()
   for job in jobs:
@@ -398,6 +403,14 @@ if __name__ == '__main__':
                       metavar='',
                       dest='ompiter')
 
+    # save velocities
+  parser.add_argument('--ompusenorms',
+                    action='store_true',
+                    default=False,
+                    required=False,
+                    help='Include column norms in OMP mathing phase',
+                    dest='ompusenorms')    
+
   # wavelet type
   parser.add_argument('-w', '--wavelet',
                       action=None,
@@ -461,7 +474,8 @@ if __name__ == '__main__':
                            mode=args.method,
                            omp_mode=args.ompmode, 
                            omp_iter=args.ompiter, 
-                           omp_ts=args.ompts)
+                           omp_ts=args.ompts,
+                           omp_usenorms=args.ompusenorms)
     print('Saving reconstruction to file: ',rec_file)
     np.save(rec_file, recovered)
   else:

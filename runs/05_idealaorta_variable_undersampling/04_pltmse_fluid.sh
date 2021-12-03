@@ -15,7 +15,8 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --addlinearrec \
                         --usetrueimg \
                         --usemultipatterns \
-                        --printlevel 1
+                        --printlevel 1 \
+                        --percstring 1
 
 # Complex, avg image, multi-channel
 python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
@@ -33,7 +34,8 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --usecompleximgs \
                         --addlinearrec \
                         --usemultipatterns \
-                        --printlevel 1
+                        --printlevel 1 \
+                        --percstring 2
 
 # Vels, true image, multi-channel
 python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
@@ -51,7 +53,8 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --addlinearrec \
                         --usetrueimg \
                         --usemultipatterns \
-                        --printlevel 1
+                        --printlevel 1 \
+                        --percstring 3
 
 # Vels, avg image, multi-channel
 python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
@@ -68,4 +71,5 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --fluidmaskfile ia_mask.npy \
                         --addlinearrec \
                         --usemultipatterns \
-                        --printlevel 1
+                        --printlevel 1 \
+                        --percstring 4

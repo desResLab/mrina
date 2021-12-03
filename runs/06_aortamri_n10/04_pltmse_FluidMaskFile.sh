@@ -14,7 +14,8 @@ python3 ../../mseplt.py --noise 0.1 \
                         --usetrueimg \
                         --usefluidmask \
                         --fluidmaskfile mriaorta_mask.npy \
-                        --printlevel 1
+                        --printlevel 1 \
+                        --percstring 1
 
 # Complex, avg image, multi-channel
 python3 ../../mseplt.py --noise 0.1 \
@@ -31,7 +32,8 @@ python3 ../../mseplt.py --noise 0.1 \
                         --addlinearrec \
                         --usefluidmask \
                         --fluidmaskfile mriaorta_mask.npy \
-                        --printlevel 1
+                        --printlevel 1 \
+                        --percstring 2
 
 # Vels, true image, multi-channel
 python3 ../../mseplt.py --noise 0.1 \
@@ -48,7 +50,8 @@ python3 ../../mseplt.py --noise 0.1 \
                         --usetrueimg \
                         --usefluidmask \
                         --fluidmaskfile mriaorta_mask.npy \
-                        --printlevel 1
+                        --printlevel 1 \
+                        --percstring 3
 
 # Vels, avg image, multi-channel
 python3 ../../mseplt.py --noise 0.1 \
@@ -64,4 +67,5 @@ python3 ../../mseplt.py --noise 0.1 \
                         --addlinearrec \
                         --usefluidmask \
                         --fluidmaskfile mriaorta_mask.npy \
-                        --printlevel 1
+                        --printlevel 1 \
+                        --percstring 4

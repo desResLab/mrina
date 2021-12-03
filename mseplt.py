@@ -1072,6 +1072,20 @@ if __name__ == '__main__':
                       metavar='',
                       dest='printlevel')
 
+  # String for perc_err files
+  parser.add_argument('-ps', '--percstring',
+                      action=None,
+                      # nargs='*',
+                      const=None,
+                      default='',
+                      type=str,
+                      choices=None,
+                      required=False,
+                      help='string for percent error file',
+                      metavar='',
+                      dest='percstring')
+  
+
   # Parse Commandline Arguments
   args = parser.parse_args()
 
@@ -1089,8 +1103,9 @@ if __name__ == '__main__':
     plot_waveletdiff(args,perc_dict)
 
   # Save Dictionary to File
-  print('Saving percent error dictionary to file...')
-  np.save('perc_dict' + str(int(round(datetime.now().timestamp()))) + '.npy', perc_dict) 
+  perc_file = 'perc_dict_' + args.percstring + '.npy'
+  print('Saving percent error dictionary to file: ',perc_file)
+  np.save(perc_file, perc_dict)
 
   # Completed!
   if(args.printlevel > 0):

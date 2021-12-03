@@ -3,6 +3,8 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libc.math cimport sqrt
+#cython: language_level=3
+
 
 ################################
 #### OMP RECOVERY   ############
@@ -504,7 +506,8 @@ class lsQR(object):
         self.var = var
         return
 
-def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, maxItns=10, ompMethod='stomp',ts_factor=2.0):
+def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, maxItns=10, 
+                ompMethod='stomp',ts_factor=2.0, useNorms=False):
 
   #gives the OMP solution x given the matrix A and vector b and error 
   #parameter, Tr, to find a stopping point
@@ -529,6 +532,21 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
 
   # Initialize Solution to Zero
   ompSol = np.zeros(n,dtype=np.complex) 
+
+  # Determine Column Norms
+  if(useNorms):
+  # Anorm = np.ones(np.prod(A.wavShape))
+  # if(False):
+    Anorm = np.zeros(np.prod(A.wavShape))
+    print('Pre-computing Operator Column Norms...')
+    for loopA in range(A.wavShape[0]):
+      print('%d/%d' % (loopA,A.wavShape[0]))
+      for loopB in range(A.wavShape[1]):
+        unit = np.zeros(A.wavShape)
+        unit[loopA,loopB] = 1.0
+        Anorm[loopA * A.wavShape[0] + loopB] = np.linalg.norm(A.eval(unit))**2
+        # print('%15f' % (Anorm[loopA * A.wavShape[0] + loopB]),end='')
+    print('OK')
   
   # Print Header
   if(showProgress):
@@ -555,9 +573,18 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
 
     if(ompMethod == 'omp'):
 
-      # Get index with maximum correlation
-      # Select a single column       
-      selectedCol = notIndexSet[np.argmax(np.absolute(A.adjoint(tmp).flatten())[notIndexSet])]              
+      if(useNorms):
+        # Compute vector e
+        e = np.absolute((np.linalg.norm(tmp)**2 - (A.adjoint(tmp)**2/Anorm.reshape(A.wavShape))).flatten())
+        # Get the minimum of e restricted to the indices not in the support
+        e[indexSet] = np.inf
+        selectedCol = np.argmin(e)
+      else:
+        # selectedCol = notIndexSet[np.argmax(np.absolute(A.T * curr_res)[notIndexSet])]
+        # Get index with maximum correlation
+        # Select a single column       
+        selectedCol = notIndexSet[np.argmax(np.absolute(A.adjoint(tmp).flatten())[notIndexSet])]              
+
       # Add index to index set
       indexSet.append(selectedCol)
       indexSet.sort()
@@ -570,7 +597,12 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
       # Set threshold as per D.L. Donoho et al. 2012 paper 
       thr = np.linalg.norm(curr_res)/np.sqrt(A.samplingSet.sum())*ts_factor
       
-      matchCoeffs = np.absolute(A.adjoint(tmp).flatten())
+      # Compute the Coefficients      
+      if(useNorms):
+        matchCoeffs = np.absolute((A.adjoint(tmp)/np.sqrt(Anorm.reshape(A.wavShape))).flatten())
+      else:
+        matchCoeffs = np.absolute(A.adjoint(tmp).flatten())
+
       for loopA in range(len(matchCoeffs)):
         if(matchCoeffs[loopA] >= thr):
           if not(loopA in indexSet):

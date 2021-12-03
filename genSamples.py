@@ -14,6 +14,7 @@ def getVenc(vel):
     # Shouldn'd be max*1.5????
     # CHECK THIS !!!
     venc = mx*1.5
+    # venc = mx*3.0
     return venc
 
 def getKspace(sample, venc, magnitudes=None, referencephase=None):
