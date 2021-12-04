@@ -1,4 +1,4 @@
-# Uncertainty and Undersampling with Applications to 4D Flow Magnetic Resonance Imaging
+# MRIA: A Python library for reconstruction of undersampled 4D Flow MR images
 Modeling noise random fields generated from  [[ArXiv](link_here)]
 
 [Lauren Hensley Partin](), [Daniele E. Schiavazzi](https://www3.nd.edu/~dschiava/) and [Carlos A. Sing-Long Collao]()
