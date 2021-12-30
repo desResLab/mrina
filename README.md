@@ -1,4 +1,4 @@
-# MRIA: A Python library for reconstructing 4D Flow MR images from undersampled k-space acquisitions
+# MRINA: MRI Noise Analysis library
 Modeling noise random fields generated from  [[ArXiv](link_here)]
 
 [Lauren Hensley Partin](), [Daniele E. Schiavazzi](https://www3.nd.edu/~dschiava/) and [Carlos A. Sing-Long Collao]()
