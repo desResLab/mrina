@@ -3,8 +3,6 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libc.math cimport sqrt
-#cython: language_level=3
-
 
 ################################
 #### OMP RECOVERY   ############

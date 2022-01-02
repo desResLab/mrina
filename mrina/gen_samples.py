@@ -4,7 +4,7 @@ import math
 import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
-from CSRecoverySuite import generateSamplingMask, crop
+from mrina import generateSamplingMask, crop
 import argparse
 # import matplotlib.pyplot as plt
 
@@ -78,7 +78,7 @@ def add_noise(kspace, noise_percent, num_realizations, num_components=4):
             samples[n,v,0] = kspace[0,v,0] + noise[n,v]
     return samples, snr
 
-def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noisePercent,useMultiPatterns, printlevel):
+def genSamples(fromdir,numRealizations,truefile,tosavedir,uType,uVal,uSeed,noisePercent,useMultiPatterns,printlevel):
     
     #p: percent not sampled, uType: bernoulli, vardengauss, halton, sliceIndex= 0,1,2 where to slice in grid
     #npydir: where to store numpy files, directory: where to retrieve vtk files, numSamples: # files to create

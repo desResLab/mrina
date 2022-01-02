@@ -1,6 +1,9 @@
 # Byte-compiled files
 __pycache__/
+mrina_venv/
 build/
+dist/
+mrina.egg-info/
 *.pyc
 *.npy
 *.c
