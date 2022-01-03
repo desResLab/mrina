@@ -1,4 +1,4 @@
-python3 ../../correlation.py --numsamples 100 \
+python -m mrina.correlation --numsamples 100 \
                              --numpts 50 \
                              --recdir ./CS/ \
                              --ptsdir ./ \
@@ -8,7 +8,7 @@ python3 ../../correlation.py --numsamples 100 \
                              --fluidmaskfile ia_mask.npy \
                              --printlevel 1
 
-python3 ../../correlation.py --numsamples 100 \
+python -m mrina.correlation --numsamples 100 \
                              --numpts 50 \
                              --recdir ./CSDEB/ \
                              --ptsdir ./ \
@@ -18,7 +18,7 @@ python3 ../../correlation.py --numsamples 100 \
                              --fluidmaskfile ia_mask.npy \
                              --printlevel 1
 
-python3 ../../correlation.py --numsamples 100 \
+python -m mrina.correlation --numsamples 100 \
                              --numpts 50 \
                              --recdir ./OMP/ \
                              --ptsdir ./ \

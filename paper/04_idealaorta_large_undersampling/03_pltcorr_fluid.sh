@@ -1,4 +1,4 @@
-python3 ../../corrplt.py --noise 0.1 0.05 0.3 \
+python -m mrina.plot_corr --noise 0.1 0.05 0.3 \
                          --uval 0.85 0.90 0.95 \
                          --utype vardengauss \
                          --method cs csdebias omp \

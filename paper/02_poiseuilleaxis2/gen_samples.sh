@@ -24,7 +24,7 @@ do
         do
 
           echo 'Generating Sample with' $NOISEVAL $PVAL $SAMPTYPE
-          python ../../genSamples.py --fromdir $KSPACEDIR \
+          python -m mrina.gen_samples --fromdir $KSPACEDIR \
                                      --repetitions $REALIZATIONS \
                                      --origin imgs_n1 \
                                      --dest $RECDIR \

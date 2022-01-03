@@ -1,5 +1,5 @@
 # CS with respect to the true image
-python3 ../../saveimgs.py --numsamples 100 \
+python -m mrina.save_imgs --numsamples 100 \
                     --maindir ./ \
                     --recdir ./CS/ \
                     --maskdir ./ \
@@ -16,7 +16,7 @@ python3 ../../saveimgs.py --numsamples 100 \
 
 
 # CS with respect to the avg image
-python3 ../../saveimgs.py --numsamples 100 \
+python -m mrina.save_imgs --numsamples 100 \
                     --maindir ./ \
                     --recdir ./CS/ \
                     --maskdir ./ \
@@ -31,7 +31,7 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --fluidmaskfile ia_mask.npy
 
 # CSDEB with respect to the true image
-python3 ../../saveimgs.py --numsamples 100 \
+python -m mrina.save_imgs --numsamples 100 \
                     --maindir ./ \
                     --recdir ./CSDEB/ \
                     --maskdir ./ \
@@ -47,7 +47,7 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --fluidmaskfile ia_mask.npy
 
 # CSDEB with respect to the avg image
-python3 ../../saveimgs.py --numsamples 100 \
+python -m mrina.save_imgs --numsamples 100 \
                     --maindir ./ \
                     --recdir ./CSDEB/ \
                     --maskdir ./ \
@@ -62,7 +62,7 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --fluidmaskfile ia_mask.npy
 
 # OMP with respect to the true image
-python3 ../../saveimgs.py --numsamples 100 \
+python -m mrina.save_imgs --numsamples 100 \
                     --maindir ./ \
                     --recdir ./OMP2/ \
                     --maskdir ./ \
@@ -78,7 +78,7 @@ python3 ../../saveimgs.py --numsamples 100 \
                     --fluidmaskfile ia_mask.npy
 
 # OMP with respect to the avg image
-python3 ../../saveimgs.py --numsamples 100 \
+python -m mrina.save_imgs --numsamples 100 \
                     --maindir ./ \
                     --recdir ./OMP2/ \
                     --maskdir ./ \

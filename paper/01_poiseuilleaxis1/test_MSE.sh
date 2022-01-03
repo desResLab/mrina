@@ -1,6 +1,6 @@
 # Complex, true image, multi-channel
 # --usecompleximgs \
-python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
+python -m mrina.plot_mse --noise 0.1 0.01 0.05 0.3 \
                         --uval 0.75 0.25 0.5 \
                         --utype vardengauss bernoulli \
                         --method cs csdebias omp \

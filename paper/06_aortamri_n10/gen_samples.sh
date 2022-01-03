@@ -22,7 +22,7 @@ do
     for PVAL in 0.25 0.5 0.75 0.80 0.85 0.90 0.95
     do
       echo 'Generating Sample with' $NOISEVAL $PVAL $SAMPTYPE
-      python ../../genSamples.py --fromdir $KSPACEDIR \
+      python -m mrina.gen_samples --fromdir $KSPACEDIR \
                                  --repetitions $REALIZATIONS \
                                  --origin imgs_n1 \
                                  --dest $RECDIR \

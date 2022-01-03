@@ -1,7 +1,7 @@
-## MRIna: A library for MRI Noise Analysis
+# MRIna: A library for MRI Noise Analysis
 
 MRIna is a library for the analysis of reconstruction noise for 
-Modeling noise random fields generated from  [[ArXiv](link_here)]
+Modeling noise random fields generated from  [[ArXiv]()]
 
 [Lauren Hensley Partin](), [Daniele E. Schiavazzi](https://www3.nd.edu/~dschiava/) and [Carlos A. Sing-Long Collao](https://www.ing.uc.cl/academicos-e-investigadores/carlos-alberto-sing-long-collao/)
 
@@ -10,37 +10,51 @@ The complete set of results from the above paper can be found [at this link](htt
 
 ---
 
-### What you can do with MRIna.
+## What you can do with MRIna.
 
-The mrina library provides functionalities to 
+The MRIna library provides the following functionalities.
 
-- Generate k-space undersampling masks of various types including *Bernoulli*, *variable density triangular*, *variable density Gaussian*, *variable density exponential* and *Halton* quasi-random. 
-- Supports 
-- 
-- 
-- 
-- 
+- It supports the generation of k-space undersampling masks of various types including **Bernoulli**, **variable density triangular**, **variable density Gaussian**, **variable density exponential** and **Halton** quasi-random sequences. 
+- It supports arbitrary operators that implement a forward call (**eval**), and inverse call (**adjoint**), column restriction (**colRestrict**), **shape** and **norm**.
+- It supports various **non-linear reconstruction methods** including l1-norm minimization with iterative thresholding and stagewise orthogonal matching pursuit. 
+- It provides a number of scripts to generate ensembles of synthetic, subsampled and noisy k-space images (4 complex images), to reconstruct image density and velocities, and to post-process to compute error patterns, correlation, MSE and relative errors. 
 
 ---
 
+## Single-image examples
 
-### Examples for single-image processing
+<table>
+  <tr>
+    <td>Original image</td>
+    <td> <img src="resources/im.jpg"  alt="1" width = 200px ></td>
+    <td>Wavelet transform</td>
+    <td> <img src="resources/wim.jpg"  alt="1" width = 200px ></td>
+  </tr> 
+  <tr>
+    <td>k-space mask</td>  
+    <td> <img src="resources/mask.jpg"  alt="1" width = 200px ></td>
+    <td>Noisy k-space measurements</td>  
+    <td> <img src="resources/y.jpg"  alt="1" width = 200px ></td>
+  <tr>
+    <td>Reconstruction: noiseless</td>  
+    <td> <img src="resources/imrec_noiseless.jpg"  alt="1" width = 200px ></td>
+    <td>Reconstruction: CS</td>  
+    <td> <img src="resources/imrec_noisy.jpg"  alt="1" width = 200px ></td>
+  </tr>
+  <tr>
+    <td>Reconstruction: CSDEB</td>    
+    <td> <img src="resources/imrec_noisy_bd.jpg"  alt="1" width = 200px ></td>    
+    <td>Reconstruction: stOMP</td>  
+    <td> <img src="resources/imrec_noisy_omp.jpg"  alt="1" width = 200px ></td>    
+  </tr>
+</table>
 
-| Original Image | ![](resources/im.jpg) |
-| Wavelet transform | ![](resources/wim.jpg) |
-| k-space mask | ![](resources/mask.jpg) |
-| k-space noisy measurements | ![](resources/y.jpg) |
-| Reconstruction: noiseless | ![](resources/imrec_noiseless.jpg) |
-| Reconstruction: CS | ![](resources/imrec_noisy.jpg) |
-| Reconstruction: CSDEB | ![](resources/imrec_noisy_bd.jpg) |
-| Reconstruction: OMP | ![](resources/imrec_noisy_omp.jpg) |
-
-#### Read grayscale image
+### Read grayscale image
 ```python
 import cv2
 im = cv2.imread('city.png', cv2.IMREAD_GRAYSCALE)/255.0
 ```
-#### Read grayscale image
+### Read grayscale image
 ```python
 from mrina import generateSamplingMask
 
@@ -52,7 +66,7 @@ omega = generateSamplingMask(im.shape, delta, 'bernoulli')
 nsamp = np.sum((omega == 1).ravel())/np.prod(omega.shape)
 print('Included frequencies: %.1f%%' % (nsamp*100))
 ```
-#### Read grayscale image
+### Read grayscale image
 ```python
 import pywt
 
@@ -64,16 +78,16 @@ plt.imshow(np.log(np.abs(wim)+1.0e-5), cmap='gray')
 plt.axis('off')
 plt.show()
 ```
-#### Initialize a WaveletToFourier operator and generate undersampled k-space measurements
+### Initialize a WaveletToFourier operator and generate undersampled k-space measurements
 ```python
-from maps import OperatorWaveletToFourier
+from mrina import OperatorWaveletToFourier
 
 A = OperatorWaveletToFourier(im.shape, samplingSet=omega[0], waveletName=waveName)
 yim = A.eval(wim, 1)
 ```
-#### Noiseless recovery using l1-norm minimization
+### Noiseless recovery using l1-norm minimization
 ```python
-from solver_l1_norm import RecoveryL1NormNoisy
+from mrina import RecoveryL1NormNoisy
 
 # Recovery - for low values of eta it is better to use SoS-L1Ball
 wimrec_cpx, _ = RecoveryL1NormNoisy(0.01, yim, A, disp=True, method='SoS-L1Ball')
@@ -81,7 +95,7 @@ wimrec_cpx, _ = RecoveryL1NormNoisy(0.01, yim, A, disp=True, method='SoS-L1Ball'
 imrec_cpx = A.getImageFromWavelet(wimrec_cpx)
 imrec = np.abs(imrec_cpx)
 ```
-#### Generate k-space noise
+### Generate k-space noise
 ```python
 # Target SNR
 SNR = 50
@@ -92,7 +106,7 @@ sigma = np.sqrt(yim_pow / SNR)
 # Noisy measurements
 y = yim + sigma * (np.random.normal(size=yim.shape) + 1j * np.random.normal(size=yim.shape))
 ```
-#### Image recovery with l1-norm minimization
+### Image recovery with l1-norm minimization
 ```python
 # Parameter eta
 eta = np.sqrt(2 * y.size) * sigma
@@ -102,7 +116,7 @@ wimrec_noisy_cpx, _ = RecoveryL1NormNoisy(eta, y, A, disp=True, disp_method=Fals
 imrec_noisy = np.abs(A.getImageFromWavelet(wimrec_noisy_cpx))
 ```
 
-#### Estimator debiasing 
+### Estimator debiasing 
 ```python
 # Support of noisy solution
 wim_supp = np.where(np.abs(wimrec_noisy_cpx) > 1E-4 * la.norm(wimrec_noisy_cpx.ravel(), np.inf), True, False)
@@ -116,50 +130,42 @@ wimrec_noisy_cpx_deb[Adeb.basisSet] = lsqr.x[:]
 # The recovered coefficients could be complex!
 imrec_noisy_deb = np.abs(Adeb.getImageFromWavelet(wimrec_noisy_cpx_deb))
 ```
-#### Image recovery with stOMP
+### Image recovery with stOMP
 ```python
-from solver_omp import lsQR,OMPRecovery
+from mrina import lsQR,OMPRecovery
 # Recovery
 wimrec_noisy_cpx, _ = OMPRecovery(A, y)
 # The recovered coefficients could be complex!
 imrec_noisy_cpx = A.getImageFromWavelet(wimrec_noisy_cpx)
 imrec_noisy = np.abs(imrec_noisy_cpx)
 ```
+---
 
-### Script functionalities 
+## Script functionalities 
 
-mrina also provides scripts to automate
+MRIna also provides scripts to automate:
 
 - the generation of noisy k-space signals.
-- non-linear image reconstruction using algorithms based on l1-norm minimization and greedy heuristics.
-- post-processing of reconstructed images.
+- linear and non-linear image reconstruction.
+- reconstructed images post-processing.
 
-#### Sample generation
+### Sample generation
 
 ```sh
-  python -m mrina.genSamples --fromdir KSPACEDIR \
-                             --repetitions REALIZATIONS \
-                             --origin IMGNAME \
-                             --dest RECDIR \
-                             --utype SAMPTYPE \
-                             --urate PVAL \
-                             --noisepercent NOISEVAL
+  python -m mrina.genSamples --fromdir $KSPACEDIR \
+                             --repetitions $REALIZATIONS \
+                             --origin $IMGNAME \
+                             --dest $RECDIR \
+                             --utype $SAMPTYPE \
+                             --urate $PVAL \
+                             --noisepercent $NOISEVAL
 ```
-- *KSPACEDIR* - 
-- *REALIZATIONS* - 
-- *IMGNAME* - 
-- *RECDIR* - 
-- *SAMPTYPE* - 
-- *PVAL* - 
-- *NOISEVAL* - 
-
 For additional information on the script input parameters, type
 ```
 python -m mrina.gen_samples --help
 
 ```
-
-#### Image recovery
+### Image recovery
 ```sh
   python -m mrina.recover --noisepercent $NOISEVAL \
                           --urate $PVAL \
@@ -173,56 +179,39 @@ python -m mrina.gen_samples --help
                           --wavelet $WAVETYPE \
                           --savevels
 ```
-
-
-NOISEVAL \
-PVAL \
-SAMPTYPE \
-REALIZATIONS \
-PROCESSES \
-KSPACEDIR \
-RECDIR \
-PATTERNDIR \
-SOLVERMODE \
-WAVETYPE \
-                          --savevels
-
-
-
 For additional information on the script input parameters, type
 ```
-python -m mrina.gen_samples --help
+python -m mrina.recover --help
 
 ```
 
 
-#### Post-processing - Saving reconstructed images
+### Post-processing - Saving reconstructed images
 ```sh
-  python -m mrina.saveimgs --numsamples 100 \
-                           --maindir ./ \
-                           --recdir ./CS/ \
-                           --maskdir ./ \
-                           --outputdir ./OUT/01_imgs/ \
+  python -m mrina.saveimgs --numsamples $REALIZATIONS \
+                           --maindir $MAINDIR \
+                           --recdir $RECDIR \
+                           --maskdir $MASKDIR \
+                           --outputdir $OUTDIR \
                            --savetrue \
                            --savemask \
                            --saverec \
                            --savenoise \
                            --savelin \
                            --usetrueasref \
-                           --printlevel 1 \
-                           --savel in \
-                           --limits 0.0 1.0 0.0 0.9733396442983887 0.0 1.0 0.0 0.9733215407741752 \
-                           --fluidmaskfile ia_mask.npy
+                           --printlevel $PRINTLEV \
+                           --savelin \
+                           --limits $LIMITS \
+                           --fluidmaskfile $FMFILE
 ```
-
 For additional information on the script input parameters, type
 ```
-python -m mrina.gen_samples --help
+python -m mrina.saveimgs --help
 
 ```
-
-
-python3 ../../correlation.py --numsamples 100 \
+### Post-processing - Computing correlations
+```sh
+python -m mrina.correlation --numsamples $REALIZATIONS \
                              --numpts 50 \
                              --recdir ./CS/ \
                              --ptsdir ./ \
@@ -230,9 +219,15 @@ python3 ../../correlation.py --numsamples 100 \
                              --maindir ./ \
                              --usefluidmask \
                              --printlevel 1
+```
+For additional information on the script input parameters, type
+```
+python -m mrina.correlation --help
 
-
-python3 ../../corrplt.py --noise 0.1 0.01 0.05 0.3 \
+```
+### Post-processing - Plot correlations
+```sh
+python -m mrina.plot_corr --noise 0.1 0.01 0.05 0.3 \
                          --uval 0.75 0.25 0.5 \
                          --utype vardengauss bernoulli \
                          --method cs csdebias omp \
@@ -243,12 +238,15 @@ python3 ../../corrplt.py --noise 0.1 0.01 0.05 0.3 \
                          --outputdir ./OUT/02_corr/ \
                          --usefluidmask \
                          --printlevel 1
+```
+For additional information on the script input parameters, type
+```
+python -m mrina.plot_corr --help
 
-
-
-
-# Complex, true image, multi-channel
-python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
+```
+### Post-processing - Compute MSE and relative errors
+```sh
+python -m mrina.plot_mse --noise 0.1 0.01 0.05 0.3 \
                         --uval 0.75 0.25 0.5 \
                         --utype vardengauss bernoulli \
                         --method cs csdebias omp \
@@ -265,18 +263,22 @@ python3 ../../mseplt.py --noise 0.1 0.01 0.05 0.3 \
                         --fluidmaskfile ia_mask.npy \
                         --printlevel 1 \
                         --percstring 1
+```
+For additional information on the script input parameters, type
+```
+python -m mrina.plot_mse --help
 
-
-### Core Dependencies
+```
+## Core Dependencies
 * Python 3.6.5
 * [PyWavelets](https://pywavelets.readthedocs.io/en/latest/) 1.1.1
 * [Numpy](https://numpy.org/) 1.18.1
 * [Scipy](https://www.scipy.org/) 1.1.0
 * [Matplotlib](https://matplotlib.org/) 3.1.0
-* [Cython]
-* [opencv]
+* [Cython](https://cython.org/)
+* [opencv](https://opencv.org/)
 
-### Citation
+## Citation
 Find this useful or like this work? Cite us with:
 ```latex
 Add Paper once published...

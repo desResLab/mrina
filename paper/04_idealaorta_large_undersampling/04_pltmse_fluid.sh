@@ -1,5 +1,5 @@
 # Complex, true image, multi-channel
-python3 ../../mseplt.py --noise 0.1 0.05 0.3 \
+python -m mrina.plot_mse --noise 0.1 0.05 0.3 \
                         --uval 0.85 0.90 0.95 \
                         --utype vardengauss \
                         --method cs csdebias omp \
@@ -18,7 +18,7 @@ python3 ../../mseplt.py --noise 0.1 0.05 0.3 \
                         --percstring 1
 
 # Complex, avg image, multi-channel
-python3 ../../mseplt.py --noise 0.1 0.05 0.3 \
+python -m mrina.plot_mse --noise 0.1 0.05 0.3 \
                         --uval 0.85 0.90 0.95 \
                         --utype vardengauss \
                         --method cs csdebias omp \
@@ -36,7 +36,7 @@ python3 ../../mseplt.py --noise 0.1 0.05 0.3 \
                         --percstring 2
 
 # Vels, true image, multi-channel
-python3 ../../mseplt.py --noise 0.1 0.05 0.3 \
+python -m mrina.plot_mse --noise 0.1 0.05 0.3 \
                         --uval 0.85 0.90 0.95 \
                         --utype vardengauss \
                         --method cs csdebias omp \
@@ -54,7 +54,7 @@ python3 ../../mseplt.py --noise 0.1 0.05 0.3 \
                         --percstring 3
 
 # Vels, avg image, multi-channel
-python3 ../../mseplt.py --noise 0.1 0.05 0.3 \
+python -m mrina.plot_mse --noise 0.1 0.05 0.3 \
                         --uval 0.85 0.90 0.95 \
                         --utype vardengauss \
                         --method cs csdebias omp \

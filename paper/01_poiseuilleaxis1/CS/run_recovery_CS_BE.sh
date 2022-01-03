@@ -33,16 +33,16 @@ PVAL=0.75
 for WAVETYPE in "haar" "db8"
 do
     echo 'Reconstructing' $NOISEVAL $PVAL $SAMPTYPE
-    python ../../../recover.py --noisepercent $NOISEVAL \
-                               --urate $PVAL \
-                               --utype $SAMPTYPE \
-                               --repetitions $REALIZATIONS \
-                               --numprocesses $PROCESSES \
-                               --fromdir $KSPACEDIR \
-                               --recdir $RECDIR \
-                               --maskdir $PATTERNDIR \
-                               --method $SOLVERMODE \
-                               --wavelet $WAVETYPE \
-                               --savevels
+    python -m mrina.recover --noisepercent $NOISEVAL \
+                            --urate $PVAL \
+                            --utype $SAMPTYPE \
+                            --repetitions $REALIZATIONS \
+                            --numprocesses $PROCESSES \
+                            --fromdir $KSPACEDIR \
+                            --recdir $RECDIR \
+                            --maskdir $PATTERNDIR \
+                            --method $SOLVERMODE \
+                            --wavelet $WAVETYPE \
+                            --savevels
 done
 
