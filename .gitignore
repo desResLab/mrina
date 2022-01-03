@@ -4,6 +4,7 @@ mrina_venv/
 build/
 dist/
 mrina.egg-info/
+mrina.code-workspace
 *.pyc
 *.npy
 *.c
