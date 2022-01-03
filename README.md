@@ -1,5 +1,7 @@
 # MRIna: A library for MRI Noise Analysis
 
+[![Documentation Status](https://readthedocs.org/projects/mrina/badge/?version=latest)](https://mrina.readthedocs.io/en/latest/?badge=latest)
+
 MRIna is a library for the analysis of reconstruction noise for 
 Modeling noise random fields generated from  [[ArXiv]()]
 
