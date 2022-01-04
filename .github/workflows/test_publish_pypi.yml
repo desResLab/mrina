@@ -27,8 +27,10 @@ jobs:
 
     - name: Build a binary wheel and a source tarball
       run: |
-        echo 'Building library...'
-        python setup.py sdist bdist_wheel build_ext --inplace
+        echo 'Building cython extension library...'
+        python setup.py build_ext --inplace
+        echo 'Building python library...'
+        python setup.py sdist bdist_wheel
         auditwheel repair --plat manylinux_2_17_x86_64 dist/mrina-*.whl
         mv wheelhouse/* dist
         rm dist/*-cp39-cp39-linux_x86_64.whl
