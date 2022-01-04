@@ -3,13 +3,13 @@ import os
 import warnings
 sys.path.append('../')
 from recover import linear_reconstruction, recover_vel
-from genSamples import getKspace
+from gen_samples import getKspace
 import numpy as np
 import numpy.fft as fft
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter, ScalarFormatter
-from CSRecoverySuite import crop, isvalidcrop, extractFluidMask
-from CSRecoverySuite import get_umask_string, get_method_string, get_wavelet_string
+from mri_utils import crop, isvalidcrop, extractFluidMask
+from mri_utils import get_umask_string, get_method_string, get_wavelet_string
 import argparse
 from datetime import datetime
 
