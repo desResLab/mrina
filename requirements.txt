@@ -4,3 +4,5 @@ pywavelets==1.1.1
 # scipy
 # opencv-python
 Cython
+wheel
+auditwheel
