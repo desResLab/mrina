@@ -3,4 +3,4 @@ pywavelets==1.1.1
 # matplotlib
 # scipy
 # opencv-python
-Cython
+cython

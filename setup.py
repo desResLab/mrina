@@ -1,6 +1,6 @@
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
-from Cython.Build import cythonize
+from cython.Build import cythonize
 
 # To use a consistent encoding
 from codecs import open
