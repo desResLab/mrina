@@ -41,7 +41,6 @@ setup(
     install_requires=["numpy"],
     ext_modules = cythonize("mrina/solver_omp.pyx",
                             annotate=True,
-                            compiler_directives={'language_level':3}
-                            build_dir='mrina'),
+                            compiler_directives={'language_level':3}),
     include_dirs=[np.get_include()]
 )
