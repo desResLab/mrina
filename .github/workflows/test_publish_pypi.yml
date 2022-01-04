@@ -32,7 +32,7 @@ jobs:
         auditwheel repair --plat manylinux_2_17_x86_64 dist/mrina-*.whl
         mv wheelhouse/* dist
         rm dist/*-cp39-cp39-linux_x86_64.whl
-        ls -lha
+        ls -lha mrina/
 
     - name: Run tests
       run: |
