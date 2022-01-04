@@ -1,5 +1,5 @@
 # Always prefer setuptools over distutils
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
 import numpy as np
 
@@ -39,7 +39,8 @@ setup(
     packages=["mrina"],
     include_package_data=True,
     install_requires=["numpy"],
-    ext_modules = cythonize("mrina/solver_omp.pyx",
+    extensions = [Extension("mrina.solver_omp", ["mrina/solver_omp.pyx"])]
+    ext_modules = cythonize(extensions,
                             annotate=True,
                             compiler_directives={'language_level':3}),
     include_dirs=[np.get_include()]
