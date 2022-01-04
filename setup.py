@@ -39,7 +39,7 @@ setup(
     packages=["mrina"],
     include_package_data=True,
     install_requires=["numpy"],
-    extensions = [Extension("mrina.solver_omp", ["mrina/solver_omp.pyx"])]
+    extensions = [Extension("mrina.solver_omp", ["mrina/solver_omp.pyx"])],
     ext_modules = cythonize(extensions,
                             annotate=True,
                             compiler_directives={'language_level':3}),
