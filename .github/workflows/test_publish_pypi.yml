@@ -10,10 +10,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@master
-    - name: Set up Python 3.9
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 3.9 
+        python-version: 3.8
 
     - name: Install pypa/build
       run: |
@@ -33,11 +33,7 @@ jobs:
         python setup.py sdist bdist_wheel
         auditwheel repair --plat manylinux_2_17_x86_64 dist/mrina-*.whl
         mv wheelhouse/* dist
-        rm dist/*-cp39-cp39-linux_x86_64.whl
-        echo "ls"
-        ls -lha
-        echo "ls mrina/"
-        ls -lha mrina/
+        rm dist/*-cp38-cp38-linux_x86_64.whl
 
     - name: Run tests
       run: |
