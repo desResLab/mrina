@@ -7,6 +7,7 @@ from mrina.mri_utils import generateSamplingMask
 from mrina.mri_utils import crop
 # l1-norm solvers
 from mrina.solver_l1_norm import RecoveryL1NormNoisy
+from mrina.solver_l1_norm import MinimizeSumOfSquares
 # Orthogonal matching pursuit solvers
 from mrina.solver_omp import lsQR
 from mrina.solver_omp import OMPRecovery

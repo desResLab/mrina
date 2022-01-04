@@ -3,7 +3,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 sys.path.append('../')
-from CSRecoverySuite import extractFluidMask
+from mri_utils import extractFluidMask
 from recover import recover_vel
 import argparse
 

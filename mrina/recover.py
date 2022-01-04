@@ -11,8 +11,8 @@ from gen_samples import getKspace,getVenc
 from mri_utils import CSRecovery, CSRecoveryDebiasing, Operator4dFlow, pywt2array, array2pywt, crop
 # Import Solvers
 from maps import OperatorWaveletToFourier
-from solver_l1_norm import RecoveryL1NormNoisy, MinimizeSumOfSquares
-from solver_omp import OMPRecovery
+from mrina import RecoveryL1NormNoisy, MinimizeSumOfSquares
+from mrina import OMPRecovery
 
 import argparse
 
