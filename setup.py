@@ -1,6 +1,7 @@
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
 from Cython.Build import cythonize
+import numpy as np
 
 # To use a consistent encoding
 from codecs import open
@@ -38,5 +39,5 @@ setup(
     packages=["mrina"],
     include_package_data=True,
     install_requires=["numpy"],
-    ext_modules = cythonize("mrina/solver_omp.pyx",annotate=True,compiler_directives={'language_level':3},include_dirs=[numpy.get_include()])
+    ext_modules = cythonize("mrina/solver_omp.pyx",annotate=True,compiler_directives={'language_level':3},include_dirs=[np.get_include()])
 )
