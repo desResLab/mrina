@@ -1,0 +1,38 @@
+name: Test library and publish to PyPI
+on: push
+
+jobs:
+  build-n-publish:
+
+    name: Test and publish
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@master
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.9 
+
+    - name: Install pypa/build
+      run: |
+        echo 'Installing pip...'
+        python -m pip install build --user
+
+    - name: Build a binary wheel and a source tarball
+      run: |
+        echo 'Installing pip...'
+        python -m build --sdist --wheel --outdir dist/ .
+
+    - name: Run tests
+      run: |
+        python -m unittest tests/test_l2.py
+        python -m unittest tests/test_recovery.py
+        python -m unittest tests/test_omp.py
+
+    - name: Publish to PyPI
+      if: startsWith(github.ref, 'refs/tags')
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}

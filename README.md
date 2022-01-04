@@ -1,14 +1,24 @@
-# MRIna: A library for MRI Noise Analysis
-
 [![Documentation Status](https://readthedocs.org/projects/mrina/badge/?version=latest)](https://mrina.readthedocs.io/en/latest/?badge=latest)
+
+# MRIna: A library for MRI Noise Analysis
 
 MRIna is a library for the analysis of reconstruction noise for 
 Modeling noise random fields generated from  [[ArXiv]()]
 
 [Lauren Hensley Partin](), [Daniele E. Schiavazzi](https://www3.nd.edu/~dschiava/) and [Carlos A. Sing-Long Collao](https://www.ing.uc.cl/academicos-e-investigadores/carlos-alberto-sing-long-collao/)
 
-
 The complete set of results from the above paper can be found [at this link](https://notredame.box.com/s/fdrd3e3du555u1ikarrfkvt3jsxddwe9)
+
+---
+
+## Installation and documentation
+
+You can install MRIna with pip ([link to PyPI](https://pypi.org/project/mrina/))
+```
+pip install mrina
+```
+
+For the documentation follow this [link](https://mrina.readthedocs.io/en/latest/).
 
 ---
 
@@ -280,8 +290,8 @@ python -m mrina.plot_mse --help
 * [Cython](https://cython.org/)
 * [opencv](https://opencv.org/)
 
-## Citation
+<!-- ## Citation
 Find this useful or like this work? Cite us with:
 ```latex
 Add Paper once published...
-```
+``` -->
