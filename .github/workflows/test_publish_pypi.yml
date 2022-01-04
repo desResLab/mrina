@@ -28,7 +28,8 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: |
         echo 'Building library...'
-        python -m build --sdist --wheel --outdir dist/ .
+        python setup.py sdist bdist_wheel
+        # python -m build --sdist --wheel --outdir dist/ .
 
     - name: Run tests
       run: |
