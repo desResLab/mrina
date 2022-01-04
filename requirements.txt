@@ -1,6 +1,6 @@
 pywavelets==1.1.1
-numpy==1.18.1
-matplotlib
-scipy
-opencv-python
-cython
+# numpy==1.18.1
+# matplotlib
+# scipy
+# opencv-python
+Cython
