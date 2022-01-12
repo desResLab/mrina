@@ -2,7 +2,7 @@ import sys,os,math
 import numpy as np
 import matplotlib.pyplot as plt
 sys.path.append('../')
-from mri_utils import get_umask_string, get_method_string, get_wavelet_string
+from mrina.mri_utils import get_umask_string, get_method_string, get_wavelet_string
 import argparse
 
 home = os.getenv('HOME')

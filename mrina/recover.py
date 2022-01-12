@@ -7,13 +7,12 @@ import math
 import scipy.misc
 from scipy.stats import norm
 from multiprocessing import Process, cpu_count, Manager
-from mrina import getKspace,getVenc
-from mrina import crop
+from mrina.gen_samples import getKspace,getVenc
+from mrina.mri_utils import crop
 # Import Solvers
-from mrina import OperatorWaveletToFourier
-from mrina import RecoveryL1NormNoisy, MinimizeSumOfSquares
-from mrina import OMPRecovery
-
+from mrina.maps import OperatorWaveletToFourier
+from mrina.solver_l1_norm import RecoveryL1NormNoisy, MinimizeSumOfSquares
+from mrina.solver_omp import OMPRecovery
 import argparse
 
 home = os.getenv('HOME')

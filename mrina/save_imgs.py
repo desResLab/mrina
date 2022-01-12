@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import cv2
-from recover import recover_vel, linear_reconstruction
+from mrina.recover import recover_vel, linear_reconstruction
 import argparse
 
 def pltimg(img, title):

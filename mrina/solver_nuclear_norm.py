@@ -3,7 +3,7 @@ import numpy as np
 import numpy.linalg as la
 import time
 import scipy.optimize as sciopt
-from solver_l1_norm import sft, project_l1_ball, MinimizeSumOfSquares
+from mrina.solver_l1_norm import sft, project_l1_ball, MinimizeSumOfSquares
 
 # %%
 # Projection onto the nuclear norm ball / tall matrices
