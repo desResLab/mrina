@@ -19,7 +19,7 @@ extensions = [Extension("mrina.solver_omp", ["mrina/solver_omp.pyx"])]
 # This call to setup() does all the work
 setup(
     name="mrina",
-    version="0.1.6",
+    version="0.1.7",
     description="Library for MRI noise analysis",
     long_description=long_description,
     long_description_content_type="text/markdown",

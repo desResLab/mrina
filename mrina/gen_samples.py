@@ -54,7 +54,7 @@ def get_noise(imsz, nrm, noise_percent, num_realizations, num_components=4):
 
     for n in range(num_realizations):
         for j in range(num_components):
-            # IS THERE A 2 MISSING HERE?? !!!
+            # Average norm
             avgnorm = nrm[j]/math.sqrt(np.prod(imsz))
             stdev = noise_percent * avgnorm
             if(stdev < 1.0e-12):           
