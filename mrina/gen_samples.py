@@ -4,7 +4,7 @@ import math
 import numpy as np
 import numpy.fft as fft
 import numpy.linalg as la
-from mrina import generateSamplingMask, crop
+from mrina.mri_utils import generateSamplingMask, crop
 import argparse
 # import matplotlib.pyplot as plt
 
