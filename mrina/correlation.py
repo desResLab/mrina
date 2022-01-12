@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 sys.path.append('../')
 from mrina.mri_utils import extractFluidMask
-from recover import recover_vel
+from mrina.recover import recover_vel
 import argparse
 
 home = os.getenv('HOME')
