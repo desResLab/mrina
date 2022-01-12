@@ -2,10 +2,9 @@
 
 # MRIna: A library for MRI Noise Analysis
 
-MRIna is a library for the analysis of reconstruction noise for 
-Modeling noise random fields generated from  [[ArXiv]()]
+MRIna is a library for the analysis of reconstruction noise from undersampled 4D flow MRI. For additional details, please refer to the publication below:
 
-[Lauren Hensley Partin](), [Daniele E. Schiavazzi](https://www3.nd.edu/~dschiava/) and [Carlos A. Sing-Long Collao](https://www.ing.uc.cl/academicos-e-investigadores/carlos-alberto-sing-long-collao/)
+Lauren Partin, [Daniele E. Schiavazzi](https://www3.nd.edu/~dschiava/) and [Carlos A. Sing-Long Collao](https://www.ing.uc.cl/academicos-e-investigadores/carlos-alberto-sing-long-collao/), *An analysis of reconstruction noise from undersampled 4D flow MRI* [arXiv](http://arxiv.org/abs/2201.03715)
 
 The complete set of results from the above paper can be found [at this link](https://notredame.box.com/s/fdrd3e3du555u1ikarrfkvt3jsxddwe9)
 
@@ -15,7 +14,7 @@ The complete set of results from the above paper can be found [at this link](htt
 
 You can install MRIna with pip ([link to PyPI](https://pypi.org/project/mrina/))
 ```
-pip install mrina
+pip install PyWavelets mrina
 ```
 
 For the documentation follow this [link](https://mrina.readthedocs.io/en/latest/).
@@ -26,14 +25,20 @@ For the documentation follow this [link](https://mrina.readthedocs.io/en/latest/
 
 The MRIna library provides the following functionalities.
 
-- It supports the generation of k-space undersampling masks of various types including **Bernoulli**, **variable density triangular**, **variable density Gaussian**, **variable density exponential** and **Halton** quasi-random sequences. 
+- It generates k-space undersampling masks of various types including **Bernoulli**, **variable density triangular**, **variable density Gaussian**, **variable density exponential** and **Halton** quasi-random sequences. 
 - It supports arbitrary operators that implement a forward call (**eval**), and inverse call (**adjoint**), column restriction (**colRestrict**), **shape** and **norm**.
-- It supports various **non-linear reconstruction methods** including l1-norm minimization with iterative thresholding and stagewise orthogonal matching pursuit. 
-- It provides a number of scripts to generate ensembles of synthetic, subsampled and noisy k-space images (4 complex images), to reconstruct image density and velocities, and to post-process to compute error patterns, correlation, MSE and relative errors. 
+- It supports various **non-linear reconstruction methods** including l1-norm minimization with iterative thresholding and orthogonal matching pursuit based greedy heuristics.
+- It provides a number of scripts to 
+ 
+  + generate ensembles of synthetic, subsampled and noisy k-space images (4 complex images);
+  + reconstruct image density and velocities;
+  + post-process to compute correlations, MSE, error patterns and relative errors.
 
 ---
 
 ## Single-image examples
+
+Example of recovering a 64x64 pixel image from its undersampled frequency information using a Gaussian mask in k-space, 75% undersampling (only 1 every 4 frequencies is retained) and adding a SNR equal to 50.
 
 <table>
   <tr>
@@ -48,7 +53,7 @@ The MRIna library provides the following functionalities.
     <td>Noisy k-space measurements</td>  
     <td> <img src="resources/y.jpg"  alt="1" width = 200px ></td>
   <tr>
-    <td>Reconstruction: noiseless</td>  
+    <td>Noiseless reconstruction: </td>  
     <td> <img src="resources/imrec_noiseless.jpg"  alt="1" width = 200px ></td>
     <td>Reconstruction: CS</td>  
     <td> <img src="resources/imrec_noisy.jpg"  alt="1" width = 200px ></td>
@@ -66,19 +71,19 @@ The MRIna library provides the following functionalities.
 import cv2
 im = cv2.imread('city.png', cv2.IMREAD_GRAYSCALE)/255.0
 ```
-### Read grayscale image
+### Generate undersampling mask
 ```python
 from mrina import generateSamplingMask
 
-# Select an undesampling ratio
-delta = 0.25
+# Set an undesampling ratio (refers to the frequencies that are dropped)
+delta = 0.75
 # Generate an undersampling mask
 omega = generateSamplingMask(im.shape, delta, 'bernoulli')
 # Verify the undersampling ratio
 nsamp = np.sum((omega == 1).ravel())/np.prod(omega.shape)
 print('Included frequencies: %.1f%%' % (nsamp*100))
 ```
-### Read grayscale image
+### Compute and show wavelet representation
 ```python
 import pywt
 
@@ -90,10 +95,11 @@ plt.imshow(np.log(np.abs(wim)+1.0e-5), cmap='gray')
 plt.axis('off')
 plt.show()
 ```
-### Initialize a WaveletToFourier operator and generate undersampled k-space measurements
+### Initialize a WaveletToFourier operator and generate noiseless k-space measurements
 ```python
 from mrina import OperatorWaveletToFourier
 
+# Create a new operator
 A = OperatorWaveletToFourier(im.shape, samplingSet=omega[0], waveletName=waveName)
 yim = A.eval(wim, 1)
 ```
@@ -103,51 +109,50 @@ from mrina import RecoveryL1NormNoisy
 
 # Recovery - for low values of eta it is better to use SoS-L1Ball
 wimrec_cpx, _ = RecoveryL1NormNoisy(0.01, yim, A, disp=True, method='SoS-L1Ball')
-# The recovered coefficients could be complex!
+# The recovered coefficients could be complex.
 imrec_cpx = A.getImageFromWavelet(wimrec_cpx)
 imrec = np.abs(imrec_cpx)
 ```
-### Generate k-space noise
+### Generate noise in the frequency domain
 ```python
 # Target SNR
 SNR = 50
 # Signal power. The factor 2 accounts for real/imaginary parts
 yim_pow = la.norm(yim.ravel()) ** 2 / (2 * yim.size)
-# Noise st. dev.
+# Set noise standard deviation
 sigma = np.sqrt(yim_pow / SNR)
-# Noisy measurements
+# Add noise
 y = yim + sigma * (np.random.normal(size=yim.shape) + 1j * np.random.normal(size=yim.shape))
 ```
 ### Image recovery with l1-norm minimization
 ```python
-# Parameter eta
+# Set the eta parameter
 eta = np.sqrt(2 * y.size) * sigma
-# Recovery
+# Run recovery with CS
 wimrec_noisy_cpx, _ = RecoveryL1NormNoisy(eta, y, A, disp=True, disp_method=False, method='BPDN')
-# The recovered coefficients could be complex!
+# The recovered coefficients could be complex...
 imrec_noisy = np.abs(A.getImageFromWavelet(wimrec_noisy_cpx))
 ```
-
 ### Estimator debiasing 
 ```python
-# Support of noisy solution
+# Get the support from the CS solution
 wim_supp = np.where(np.abs(wimrec_noisy_cpx) > 1E-4 * la.norm(wimrec_noisy_cpx.ravel(), np.inf), True, False)
-# Restriction of the operator
+# Restrict the operator
 Adeb = A.colRestrict(wim_supp)
-# Solve least-squares problem
+# Solve a least-squares problem
 lsqr = lsQR(Adeb)  
 lsqr.solve(y[Adeb.samplingSet])
 wimrec_noisy_cpx_deb = np.zeros(Adeb.wavShape,dtype=np.complex)
 wimrec_noisy_cpx_deb[Adeb.basisSet] = lsqr.x[:]
-# The recovered coefficients could be complex!
+# The recovered coefficients could be complex...
 imrec_noisy_deb = np.abs(Adeb.getImageFromWavelet(wimrec_noisy_cpx_deb))
 ```
 ### Image recovery with stOMP
 ```python
 from mrina import lsQR,OMPRecovery
-# Recovery
+# Run stOMP recovery
 wimrec_noisy_cpx, _ = OMPRecovery(A, y)
-# The recovered coefficients could be complex!
+# The recovered coefficients could be complex...
 imrec_noisy_cpx = A.getImageFromWavelet(wimrec_noisy_cpx)
 imrec_noisy = np.abs(imrec_noisy_cpx)
 ```
@@ -159,12 +164,20 @@ MRIna also provides scripts to automate:
 
 - the generation of noisy k-space signals.
 - linear and non-linear image reconstruction.
-- reconstructed images post-processing.
+- post-processing of reconstructed images.
+
+### Image data
+
+The image data should be stored on a numpy tensor in *npy* format with shape (r, i, n, im_1, im_2), where:
+
++ r is the number of image repetitions.
++ i is the image number. For 4D flow MRI you need 4 images, i.e., one density and three velocity components. 
++ im_1,im_2 are the two image dimensions.
 
 ### Sample generation
 
 ```sh
-  python -m mrina.genSamples --fromdir $KSPACEDIR \
+  python -m mrina.gen_samples --fromdir $KSPACEDIR \
                              --repetitions $REALIZATIONS \
                              --origin $IMGNAME \
                              --dest $RECDIR \
@@ -175,7 +188,6 @@ MRIna also provides scripts to automate:
 For additional information on the script input parameters, type
 ```
 python -m mrina.gen_samples --help
-
 ```
 ### Image recovery
 ```sh
@@ -194,10 +206,7 @@ python -m mrina.gen_samples --help
 For additional information on the script input parameters, type
 ```
 python -m mrina.recover --help
-
 ```
-
-
 ### Post-processing - Saving reconstructed images
 ```sh
   python -m mrina.saveimgs --numsamples $REALIZATIONS \
@@ -219,7 +228,6 @@ python -m mrina.recover --help
 For additional information on the script input parameters, type
 ```
 python -m mrina.saveimgs --help
-
 ```
 ### Post-processing - Computing correlations
 ```sh
@@ -235,7 +243,6 @@ python -m mrina.correlation --numsamples $REALIZATIONS \
 For additional information on the script input parameters, type
 ```
 python -m mrina.correlation --help
-
 ```
 ### Post-processing - Plot correlations
 ```sh
@@ -254,7 +261,6 @@ python -m mrina.plot_corr --noise 0.1 0.01 0.05 0.3 \
 For additional information on the script input parameters, type
 ```
 python -m mrina.plot_corr --help
-
 ```
 ### Post-processing - Compute MSE and relative errors
 ```sh
@@ -279,7 +285,6 @@ python -m mrina.plot_mse --noise 0.1 0.01 0.05 0.3 \
 For additional information on the script input parameters, type
 ```
 python -m mrina.plot_mse --help
-
 ```
 ## Core Dependencies
 * Python 3.6.5
@@ -290,8 +295,15 @@ python -m mrina.plot_mse --help
 * [Cython](https://cython.org/)
 * [opencv](https://opencv.org/)
 
-<!-- ## Citation
-Find this useful or like this work? Cite us with:
-```latex
-Add Paper once published...
-``` -->
+## Citation
+Did you find this useful? Cite us using:
+```
+@misc{partin2022analysis,
+      title={An analysis of reconstruction noise from undersampled 4D flow MRI}, 
+      author={Lauren Partin and Daniele E. Schiavazzi and Carlos A. Sing Long},
+      year={2022},
+      eprint={2201.03715},
+      archivePrefix={arXiv},
+      primaryClass={eess.IV}
+}
+```

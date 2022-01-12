@@ -7,10 +7,10 @@ import math
 import scipy.misc
 from scipy.stats import norm
 from multiprocessing import Process, cpu_count, Manager
-from gen_samples import getKspace,getVenc
-from mri_utils import CSRecovery, CSRecoveryDebiasing, Operator4dFlow, pywt2array, array2pywt, crop
+from mrina import getKspace,getVenc
+from mrina import crop
 # Import Solvers
-from maps import OperatorWaveletToFourier
+from mrina import OperatorWaveletToFourier
 from mrina import RecoveryL1NormNoisy, MinimizeSumOfSquares
 from mrina import OMPRecovery
 

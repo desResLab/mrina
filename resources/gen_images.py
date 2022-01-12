@@ -12,7 +12,7 @@ from mrina import (OMPRecovery, OperatorWaveletToFourier, RecoveryL1NormNoisy,
 # Original image
 im = cv2.imread('../tests/city.png', cv2.IMREAD_GRAYSCALE)/255.0
 # Rescale Image      
-size_ratio = 0.25
+size_ratio = 0.75
 im = cv2.resize(im,
                 (0,0),
                 fx=size_ratio, 
@@ -21,7 +21,6 @@ im = cv2.resize(im,
 plt.imshow(im, cmap='gray')
 plt.axis('off')
 plt.savefig('im.jpg',bbox_inches='tight', pad_inches=0)
-
 
 # ### Generating undersampling mask in *k*-space
 delta = 0.75
@@ -72,8 +71,6 @@ plt.imshow(np.fft.fftshift(np.log(np.abs(y))), cmap='gray')
 plt.axis('off')
 plt.savefig('y.jpg',bbox_inches='tight', pad_inches=0)
 plt.close()
-
-exit()
 
 # ### Noisy recovery
 eta = np.sqrt(2 * y.size) * sigma
