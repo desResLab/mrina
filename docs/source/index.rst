@@ -24,11 +24,11 @@ Welcome to MRIna's documentation!
    :caption: Python API:
 
    api/maps
-   api/gen_samples
-   api/recover
-   api/mri_utils
-   api/solver_l1_norm
-   api/solver_omp
+     api/gen_samples
+     api/recover
+     api/mri_utils
+     api/solver_l1_norm
+     api/solver_omp
 
 Indices and tables
 ==================
