@@ -14,7 +14,7 @@ Welcome to MRIna's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Example:
+   :caption: Examples:
 
    examples/single_image_recovery
    examples/scripts
