@@ -10,11 +10,25 @@ Welcome to MRIna's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   info/intro
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Example:
+
+   examples/single_image_recovery
+   examples/scripts
+
 .. toctree::
    :maxdepth: 2
    :caption: Python API:
 
    api/maps
+   api/gen_samples
+   api/recover
+   api/mri_utils
+   api/solver_l1_norm
+   api/solver_omp
 
 Indices and tables
 ==================

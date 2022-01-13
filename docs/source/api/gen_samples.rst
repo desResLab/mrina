@@ -1,8 +1,8 @@
-=========
-Operators
-=========
+=================
+Sample Generation
+=================
 
-.. currentmodule:: mrina.maps
+.. currentmodule:: mrina.gen_samples
 
 .. Don't include inherited members to keep the doc short
 .. autoclass:: mrina.OperatorLinear
