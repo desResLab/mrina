@@ -14,7 +14,7 @@ HERE = path.abspath(path.dirname(__file__))
 with open(path.join(HERE, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-extensions = [Extension("mrina.solver_omp", ["./mrina/solver_omp.pyx"])]
+extensions = [Extension("mrina.solver_omp", ["mrina/solver_omp.pyx"])]
 
 # This call to setup() does all the work
 setup(
@@ -44,5 +44,5 @@ setup(
     ext_modules = cythonize(extensions,
                             annotate=True,
                             compiler_directives={'language_level':3}),
-    include_dirs=[np.get_include()]
+    include_dirs=[np.get_include(),'mrina']
 )
