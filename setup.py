@@ -44,7 +44,7 @@ setup(
     ext_modules = cythonize(extensions,
                             annotate=True,
                             compiler_directives={'language_level':3},
-                            include_path=[os.path.join(os.path.dirname(os.path.abspath(__file__)), "mrina")]
+                            include_path=[path.join(os.path.dirname(os.path.abspath(__file__)),"mrina")]
                             ),
     include_dirs=[np.get_include()]
 )
