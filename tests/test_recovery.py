@@ -97,7 +97,7 @@ class recovery_test_suite(unittest.TestCase):
     if(useLSQR):
         lsqr = lsQR(Adeb)  
         lsqr.solve(self.y[Adeb.samplingSet])
-        wimrec_noisy_cpx_deb = np.zeros(Adeb.wavShape,dtype=np.complex)
+        wimrec_noisy_cpx_deb = np.zeros(Adeb.wavShape,dtype=complex)
         wimrec_noisy_cpx_deb[Adeb.basisSet] = lsqr.x[:]
     else:
         from mrina import MinimizeSumOfSquares
