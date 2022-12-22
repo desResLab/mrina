@@ -168,7 +168,7 @@ class lsQR(object):
         if itnlim == 0: itnlim = 3*n
 
         if wantvar:
-            var = np.zeros(n,1,dtype=np.complex)
+            var = np.zeros(n,1,dtype=complex)
         else:
             var = None
 
@@ -200,7 +200,7 @@ class lsQR(object):
         # Set up the first vectors u and v for the bidiagonalization.
         # These satisfy  beta*M*u = b,  alpha*N*v = A'u.
 
-        x = np.zeros(n,dtype=np.complex)
+        x = np.zeros(n,dtype=complex)
         cdef double xNrgNorm2 = 0.0   # Squared energy norm of final solution.
         dErr = np.zeros(window)       # Truncated direct error terms.
         cdef double trncDirErr = 0.0  # Truncated direct error.
@@ -221,7 +221,7 @@ class lsQR(object):
             u /= beta
             if M is not None: Mu /= beta
             ###
-            tmp = np.zeros(A.imShape,dtype=np.complex)
+            tmp = np.zeros(A.imShape,dtype=complex)
             tmp[A.samplingSet] = u[:]
             Nv = A.adjoint(tmp)[A.basisSet]
             ###
@@ -282,7 +282,7 @@ class lsQR(object):
             #              alpha*N*v  =  A'*u  -   beta*N*v.
             
             ###
-            tmp = np.zeros(A.wavShape, dtype=np.complex)
+            tmp = np.zeros(A.wavShape, dtype=complex)
             tmp[A.basisSet] = v[:]
             Mu = A.eval(tmp)[A.samplingSet] - alpha*Mu
             ###
@@ -298,7 +298,7 @@ class lsQR(object):
                 if M is not None: Mu /= beta
                 Anorm = normof4(Anorm, alpha, beta, damp)
                 ###
-                tmp = np.zeros(A.imShape,dtype=np.complex)
+                tmp = np.zeros(A.imShape,dtype=complex)
                 tmp[A.samplingSet] = u[:]
                 Nv = A.adjoint(tmp)[A.basisSet] - beta*Nv
                 ###
@@ -529,7 +529,7 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
   notIndexSet = [loopA for loopA in range(n)]
 
   # Initialize Solution to Zero
-  ompSol = np.zeros(n,dtype=np.complex) 
+  ompSol = np.zeros(n,dtype=complex) 
 
   # Determine Column Norms
   if(useNorms):
@@ -566,7 +566,7 @@ def OMPRecovery(A, b, double tol=1E-6, showProgress=True, int progressInt=1, max
     # Start with the Norm of b
     minepsilon = np.linalg.norm(b, ord=2)**2
 
-    tmp = np.zeros(A.imShape,dtype=np.complex)
+    tmp = np.zeros(A.imShape,dtype=complex)
     tmp[A.samplingSet] = curr_res[:]
 
     if(ompMethod == 'omp'):

@@ -52,7 +52,7 @@ def MinimizeSumOfSquares(y, A, xinit=None,
     L = 2.05 * A.norm() ** 2
     # Initialize variables
     if xinit is None:
-        x = np.zeros(A.wavShape, dtype=np.complex)
+        x = np.zeros(A.wavShape, dtype=complex)
     else:
         x = xinit
     xNrm = la.norm(x.ravel(), 2)
@@ -93,7 +93,7 @@ def MinimizeSumOfSquaresL1Ball(t, y, A, xinit=None, L=None,
                                 restart=True):
     # Project initial iterate on the l1-ball
     if xinit is None:
-        x = np.zeros(A.inShape, dtype=np.complex)
+        x = np.zeros(A.inShape, dtype=complex)
     else:
         x = project_l1_ball(xinit, t)
     if L is None:
@@ -164,7 +164,7 @@ def MinimizeBPDN(t, y, A, xinit=None, L=None,
                     restart=True):
     # Project initial iterate on the l1-ball
     if xinit is None:
-        x = np.zeros(A.inShape, dtype=np.complex)
+        x = np.zeros(A.inShape, dtype=complex)
     else:
         x = project_l1_ball(xinit, t)
     z = x
@@ -259,7 +259,7 @@ class RootSolverL1NormNoisy():
             # Lower bound
             self._t[0] = 0.0
             self._ft[0] = la.norm(y.ravel()) - eta
-            self._xinit[0] = np.zeros(A.inShape, dtype=np.complex)
+            self._xinit[0] = np.zeros(A.inShape, dtype=complex)
             # Upper bound
             self._t[1] = la.norm(_xopt.ravel(), 1)
             self._ft[1] = la.norm(_ropt.ravel(), 2) - eta
@@ -273,7 +273,7 @@ class RootSolverL1NormNoisy():
             _z = A.adjoint(y)
             self._t[1] = la.norm(_z.ravel(), np.inf)
             self._ft[1] = la.norm(y.ravel(), 2) - eta
-            self._xinit[1] = np.zeros(A.inShape, dtype=np.complex)
+            self._xinit[1] = np.zeros(A.inShape, dtype=complex)
         else:
             raise ValueError('Method can be either SoS-L1Ball or BPDN.')
         self.method = method
