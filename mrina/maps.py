@@ -222,7 +222,7 @@ class OperatorWaveletToFourier(genericOperator):
                 if self.basisSet is None:
                     _x = x
                 else:
-                    _x = np.zeros(self.wavShape, dtype=np.complex)
+                    _x = np.zeros(self.wavShape, dtype=complex)
                     _x[self.basisSet] = x[self.basisSet]
             else:
                 if self.basisSet is None:
@@ -258,7 +258,7 @@ class OperatorWaveletToFourier(genericOperator):
             if self.samplingSet is None:
                 _im = fft.ifft2(x, norm='ortho')
             else:
-                _f = np.zeros(self.imShape, dtype=np.complex)
+                _f = np.zeros(self.imShape, dtype=complex)
                 _f[self.samplingSet] = x[self.samplingSet]
                 # _f = x
                 # _f[np.logical_not(self.samplingSet)] = 0.0
@@ -310,7 +310,7 @@ class OperatorWaveletToFourier(genericOperator):
             if self.basisSet is None:
                 _x = x
             else:
-                _x = np.zeros(self.imShape, dtype=np.complex)
+                _x = np.zeros(self.imShape, dtype=complex)
                 _x[self.basisSet] = x[:]
         else:
             if self.basisSet is None:
@@ -460,7 +460,7 @@ class OperatorWaveletToFourierX4(genericOperator):
 
     def eval(self, x, mode=1):
         if mode == 1:
-            _y = np.zeros(self._outShape, dtype=np.complex)
+            _y = np.zeros(self._outShape, dtype=complex)
             if self.inSlices is None:
                 if self.outSlices is None:
                     for I in range(4):
@@ -477,7 +477,7 @@ class OperatorWaveletToFourierX4(genericOperator):
                         _y[self.outSlices[I][0]:self.outSlices[I][1]] = self.map[I].eval(x[self.inSlices[I][0]:self.inSlices[I][1]], mode)
             return _y
         if mode == 2:
-            _x = np.zeros(self._inShape, dtype=np.complex)
+            _x = np.zeros(self._inShape, dtype=complex)
             if self.outSlices is None:
                 if self.inSlices is None:
                     for I in range(4):
@@ -522,7 +522,7 @@ class OperatorWaveletToFourierX4(genericOperator):
         return s
 
     def getImageFromWavelet(self, x):
-        _im = np.zeros(self.imShape + (4,), dtype=np.complex)
+        _im = np.zeros(self.imShape + (4,), dtype=complex)
         if self.inSlices is None:
             for I in range(4):
                 _im[:, :, I] = self.map[I].getImageFromWavelet(x[:, :, I])
@@ -532,7 +532,7 @@ class OperatorWaveletToFourierX4(genericOperator):
         return _im
 
     def getImageFromFourier(self, y):
-        _im = np.zeros(self.imShape + (4,), dtype=np.complex)
+        _im = np.zeros(self.imShape + (4,), dtype=complex)
         if self.outSlices is None:
             for I in range(4):
                 _im[:, :, I] = self.map[I].getImageFromFourier(y[:, :, I])
