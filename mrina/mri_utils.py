@@ -210,7 +210,7 @@ def generateSamplingMask(imsz, p, saType='bernoulli', num_patterns=1, seed=12343
     return np.full(imsz, True, dtype=bool)
   else:
     np.random.seed(seed)
-    mask = np.empty((num_patterns, ) + imsz, dtype=np.bool)
+    mask = np.empty((num_patterns, ) + imsz, dtype=bool)
     for k in range(num_patterns):
       #to keep undersampling the same for each slice
       if saType=='bernoulli':
