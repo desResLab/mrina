@@ -53,7 +53,7 @@ class omp_test_suite(unittest.TestCase):
 
     np.random.seed(1345)
     aMat = np.random.randn(m,n) + 1j * np.random.randn(m,n)
-    x = np.zeros(n,dtype=np.complex)
+    x = np.zeros(n,dtype=complex)
     index_set = np.random.randint(0, n, size=p)
     x[index_set] = np.random.normal(loc = 6, scale = 1, size = p) + 1j * np.random.normal(loc = 6, scale = 1, size = p)
     b = np.dot(aMat,x)
