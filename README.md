@@ -142,7 +142,7 @@ Adeb = A.colRestrict(wim_supp)
 # Solve a least-squares problem
 lsqr = lsQR(Adeb)  
 lsqr.solve(y[Adeb.samplingSet])
-wimrec_noisy_cpx_deb = np.zeros(Adeb.wavShape,dtype=np.complex)
+wimrec_noisy_cpx_deb = np.zeros(Adeb.wavShape,dtype=complex)
 wimrec_noisy_cpx_deb[Adeb.basisSet] = lsqr.x[:]
 # The recovered coefficients could be complex...
 imrec_noisy_deb = np.abs(Adeb.getImageFromWavelet(wimrec_noisy_cpx_deb))

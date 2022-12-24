@@ -203,18 +203,13 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples, use
                                           '_w' + str(get_wavelet_string(wavelet)) + \
                                           '_a' + str(get_method_string(method)) + '.npy'
 
-  # print('orig_file',orig_file)
-  # print('fourier_file',fourier_file)
-  # print('mask_file',mask_file)
-  # print('recovered_file',recovered_file)
-
   # Check if files exist and open the images
   # Original image
   if(os.path.exists(orig_file)):
     try:
-      orig = np.load(orig_file).astype(np.complex)
+      orig = np.load(orig_file).astype(complex)
     except Warning:
-      print('ERROR: Cannot read original image - ',orig)
+      print('ERROR: Cannot read original image - ',orig_file)
       sys.exit(-1)
     if(not(isvalidcrop(orig))):
       print('ERROR: Invalid original image file.')
@@ -226,7 +221,7 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples, use
   # Noisy Fourier Image
   if(os.path.exists(fourier_file)):
     try:
-      fourier = np.load(fourier_file).astype(np.complex)
+      fourier = np.load(fourier_file).astype(complex)
     except Warning:
       print('ERROR: Cannot read Fourier file - ',fourier_file)
       sys.exit(-1)
@@ -248,7 +243,7 @@ def get_files(dir, maskdir, noise, uval, utype, wavelet, method, numsamples, use
   # File with reconstructed image
   if(os.path.exists(recovered_file)):
     try:
-      recovered = np.load(recovered_file).astype(np.complex)
+      recovered = np.load(recovered_file).astype(complex)
     except Warning:
       print('ERROR: Cannot read reconstructedd image - ',recovered_file)
       sys.exit(-1)
@@ -266,7 +261,7 @@ def get_complex(channel, dir, maskdir, noise, uval, utype, wavelet, method, nums
   # Get velocity encoding
   venc_file = dir + 'venc_n1.npy'
   if os.path.exists(venc_file):
-    venc = np.load(dir + 'venc_n1.npy').astype(np.float)
+    venc = np.load(dir + 'venc_n1.npy').astype(float)
   else:
     venc = None
     print('WARNING: file for velocity encoding not found: ',venc_file)  
@@ -303,7 +298,7 @@ def get_final(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
   # Get velocity encoding
   venc_file = dir + 'venc_n1.npy'
   if os.path.exists(venc_file):
-    venc = np.load(dir + 'venc_n1.npy').astype(np.float)
+    venc = np.load(dir + 'venc_n1.npy').astype(float)
   else:
     venc = None
     print('WARNING: file for velocity encoding not found: ',venc_file)
@@ -390,7 +385,7 @@ def get_error(channel, dir, maskdir, noise, uval, utype, wavelet, method, numsam
   if(useFluidMask):
 
     if(fluidMaskFile == ''):
-      orig_forMask = np.load(dir + 'imgs_n1.npy').astype(np.complex)
+      orig_forMask = np.load(dir + 'imgs_n1.npy').astype(complex)
       fluidMask = extractFluidMask(orig_forMask)
       print('Using automatically extracted fluid mask...')
     else:

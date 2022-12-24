@@ -88,7 +88,7 @@ wim_supp = np.where(np.abs(wimrec_noisy_cpx) > 1E-4 * la.norm(wimrec_noisy_cpx.r
 Adeb = A.colRestrict(wim_supp)
 lsqr = lsQR(Adeb)  
 lsqr.solve(y[Adeb.samplingSet])
-wimrec_noisy_cpx_deb = np.zeros(Adeb.wavShape,dtype=np.complex)
+wimrec_noisy_cpx_deb = np.zeros(Adeb.wavShape,dtype=complex)
 wimrec_noisy_cpx_deb[Adeb.basisSet] = lsqr.x[:]
 imrec_noisy_cpx_deb = Adeb.getImageFromWavelet(wimrec_noisy_cpx_deb)
 imrec_noisy_deb = np.abs(imrec_noisy_cpx_deb)

@@ -49,7 +49,7 @@ def MinimizeSumOfSquaresNuclearBall(t, y, A, Xinit=None, L=None,
                                         restart=True):
     # Project initial iterate on the nuclear-ball
     if Xinit is None:
-        X = np.zeros(A.inShape, dtype=np.complex)
+        X = np.zeros(A.inShape, dtype=complex)
     else:
         X = Xinit
     X = project_nuclear_ball(X, t)
@@ -123,7 +123,7 @@ def MinimizeNNDN(t, y, A, Xinit=None, L=None,
                     restart=True):
     # Project initial iterate on the nuclear-ball
     if Xinit is None:
-        X = np.zeros(A.inShape, dtype=np.complex)
+        X = np.zeros(A.inShape, dtype=complex)
     else:
         X = Xinit
     # Lipschitz constant
@@ -210,7 +210,7 @@ class RootSolverNuclearNormNoisy():
             # Lower bound
             self._t[0] = 0.0
             self._ft[0] = la.norm(y.ravel()) - eta
-            self._Xinit[0] = np.zeros(A.inShape, dtype=np.complex)
+            self._Xinit[0] = np.zeros(A.inShape, dtype=complex)
             # Upper bound
             _Xopt, _fopt = MinimizeSumOfSquares(y, A, 
                                                 maxItns=maxItns, 
@@ -234,7 +234,7 @@ class RootSolverNuclearNormNoisy():
             _Z = A.adjoint(y)
             self._t[1] = la.norm(np.sqrt(la.eigvalsh(_Z.conj().T @ _Z)), np.inf)
             self._ft[1] = la.norm(y.ravel(), 2) - self.eta
-            self._Xinit[1] = np.zeros(A.inShape, dtype=np.complex)
+            self._Xinit[1] = np.zeros(A.inShape, dtype=complex)
         else:
             raise ValueError('Method can be either SoS-NucBall or NNDN.')
         self.method = method

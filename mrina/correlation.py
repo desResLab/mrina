@@ -104,7 +104,7 @@ def get_saved_points(samples, size, num_pts, maindir, ptsdir, useFluidMask, flui
   
     # Check if files exist and open the images
     if(os.path.exists(orig_file)):
-      orig = np.load(orig_file).astype(np.complex)
+      orig = np.load(orig_file).astype(complex)
     else:
       print('ERROR: Cannot find file with original image.')
       exit(-1)
