@@ -50,7 +50,7 @@ def select_points(dist, imsz, useFluidMask=False, fluidMask=None):
   return pt2, pt1
 
 def get_points(size, num_pts, imsz, ptsdir, pointFileName, useFluidMask=False, fluidMask=None):
-  print('Getting points of size ' + str(size) + ' and ' + str(num_pts) + ' points...')
+  print('Acquiring '+str(num_pts)+' pairs of points with max distance ' + str(size) + '...')
   points = np.zeros((size, num_pts, 2, 2), dtype=int)
   for k in range(1,size+1):
     if(k % 10 == 0):

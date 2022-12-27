@@ -51,7 +51,6 @@ def plot_corr(noise_percent, p, samptype, wavelet, method, n, num_pts, v, dir, l
     corravg = np.mean(coeff, axis=1)
     corrmin = np.percentile(coeff, 10, axis=1)
     corrmax = np.percentile(coeff, 90, axis=1)
-    size = len(corravg)
     p, = plt.plot(range(start+1,end+1), corravg[start:end], label=labelstr)
     plt.fill_between(range(start+1,end+1), corrmin[start:end], corrmax[start:end], alpha=0.2) # label='10-90 CI')
     return p
