@@ -26,6 +26,7 @@ def_omp_mode     = 'stomp'
 def_omp_iter     = 10
 def_omp_ts       = 2.0
 def_omp_usenorms = False
+def_eta_factor   = 1.0
 
 def get_eta(im, imNrm, noise_percent, m):
   avgnorm = imNrm/math.sqrt(im.size)
@@ -79,7 +80,9 @@ def recoverOne(kspace, imsz, eta, omega, wvlt='haar',
   return csim
   
 def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wvlt='haar', 
-            solver_mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts, omp_usenorms=def_omp_usenorms):    
+            solver_mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts, omp_usenorms=def_omp_usenorms,
+            eta_factor=def_eta_factor):
+
   imsz = crop(noisy[0,0,0]).shape
   cs = np.zeros(noisy.shape[0:3] + imsz,dtype=complex)
   print('Pattern shape: ', pattern.shape)
@@ -96,7 +99,7 @@ def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wv
       for j in range(noisy.shape[2]):
         im = crop(original[0,k,j])
         imNrm=np.linalg.norm(im.ravel(), 2)
-        eta = get_eta(im, imNrm, noise_percent, imsz[0])
+        eta = get_eta(im, imNrm, noise_percent, imsz[0])*eta_factor
         cs[n,k,j] = recoverOne(crop(noisy[n,k,j]), imsz, eta, omega, wvlt, solver_mode, omp_mode, omp_iter, omp_ts,omp_usenorms)
         print('Recovered! Repetition: %d, Image: %d, Component: %d' % (n,k,j))
 
@@ -104,7 +107,8 @@ def recover(noisy, original, pattern, noise_percent, processnum, return_dict, wv
   return cs
 
 def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar', 
-               mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts, omp_usenorms=def_omp_usenorms):
+               mode=CS_MODE, omp_mode=def_omp_mode, omp_iter=def_omp_iter, omp_ts=def_omp_ts, omp_usenorms=def_omp_usenorms,
+               eta_factor=def_eta_factor):
 	
   # Load data
   if isinstance(fourier_file,str):
@@ -132,7 +136,7 @@ def recoverAll(fourier_file, orig_file, pattern, noise_percent, c=2, wvlt='haar'
     else:
       pattern_sample = pattern
     p = Process(target=recover, args=(data[n:n+interval], original, pattern_sample, noise_percent, int(n/interval), return_dict, 
-                                      wvlt, mode, omp_mode, omp_iter, omp_ts, omp_usenorms))
+                                      wvlt, mode, omp_mode, omp_iter, omp_ts, omp_usenorms, eta_factor))
     jobs.append(p)
     p.start()
   for job in jobs:
@@ -445,7 +449,21 @@ if __name__ == '__main__':
                     default=False,
                     required=False,
                     help='Save velocity fields',
-                    dest='savevels')    
+                    dest='savevels') 
+
+                         # Maximum number of iterations for OMP/STOMP
+  parser.add_argument('-e','--etafactor',
+                      action=None,
+                      # nargs='+',
+                      const=None,
+                      default=1.0,
+                      type=float,
+                      choices=None,
+                      required=False,
+                      help='Amplification factor for eta hyperparameter',
+                      metavar='',
+                      dest='etafactor')
+
 
   # Parse Commandline Arguments
   args = parser.parse_args()
@@ -474,7 +492,8 @@ if __name__ == '__main__':
                            omp_mode=args.ompmode, 
                            omp_iter=args.ompiter, 
                            omp_ts=args.ompts,
-                           omp_usenorms=args.ompusenorms)
+                           omp_usenorms=args.ompusenorms,
+                           eta_factor=args.etafactor)
     print('Saving reconstruction to file: ',rec_file)
     np.save(rec_file, recovered)
   else:
